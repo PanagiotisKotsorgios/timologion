@@ -1,0 +1,212 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  @apply bg-ink-100 text-ink-900 antialiased;
+  font-family: var(--font-body), system-ui, sans-serif;
+  /* Safe-area padding for iPhone notch / bottom bar. */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  /* Prevent horizontal bounce on iOS when a stray element overflows. */
+  overflow-x: hidden;
+}
+
+/* iOS Safari auto-zooms into any focused <input> / <select> / <textarea>
+   whose computed font-size is < 16px. Force the minimum on mobile so the
+   page never zooms on focus. */
+@media (max-width: 640px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Tap targets: enlarge small buttons on touch devices for accessibility. */
+@media (hover: none) and (pointer: coarse) {
+  button,
+  [role="button"],
+  a {
+    -webkit-tap-highlight-color: rgba(11, 27, 58, 0.08);
+  }
+}
+
+/* Focus visible: brand ring on interactive elements. */
+:where(button, [role="button"], a, input, select, textarea):focus-visible {
+  @apply outline-none ring-2 ring-brand-500 ring-offset-2 ring-offset-white;
+}
+
+@media print {
+  body { background: #fff; }
+  aside, header { display: none !important; }
+  main { padding: 0 !important; }
+}
+
+/* ─── Minimal utilities for marketing + auth surfaces ─────────────────── */
+
+.text-hero {
+  font-size: clamp(3rem, 8vw, 7.5rem);
+  line-height: 0.95;
+  letter-spacing: -0.045em;
+  font-weight: 800;
+}
+
+.text-display {
+  font-size: clamp(2.25rem, 5vw, 4.5rem);
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+  font-weight: 700;
+}
+
+.text-headline {
+  font-size: clamp(1.75rem, 3.5vw, 3rem);
+  line-height: 1.08;
+  letter-spacing: -0.025em;
+  font-weight: 700;
+}
+
+.eyebrow {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+/* Reveal on load — staggered via animation-delay. */
+@keyframes rise {
+  0%   { opacity: 0; transform: translateY(16px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.rise-in {
+  animation: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+
+/* Big form input for marketing + auth. */
+.big-input {
+  @apply block w-full rounded-2xl border-2 bg-white px-6 text-lg text-black placeholder:text-black/40 transition-colors;
+  border-color: rgba(15, 31, 57, 0.35);
+  height: 68px;
+  font-weight: 500;
+}
+.big-input:hover {
+  border-color: rgba(15, 31, 57, 0.6);
+}
+.big-input:focus {
+  outline: none;
+  border-color: #0f1f39;
+  box-shadow: 0 0 0 4px rgba(15, 31, 57, 0.12);
+}
+
+.big-textarea {
+  @apply block w-full rounded-2xl border-2 bg-white px-6 py-5 text-lg text-black placeholder:text-black/40 transition-colors;
+  border-color: rgba(15, 31, 57, 0.35);
+  font-weight: 500;
+}
+.big-textarea:hover {
+  border-color: rgba(15, 31, 57, 0.6);
+}
+.big-textarea:focus {
+  outline: none;
+  border-color: #0f1f39;
+  box-shadow: 0 0 0 4px rgba(15, 31, 57, 0.12);
+}
+
+/* Row-level compact input for tables like Γραμμές. */
+.row-input {
+  @apply h-9 w-full rounded-md border border-ink-300 bg-white px-2 text-sm text-ink-900 placeholder:text-ink-500 transition-colors;
+}
+.row-input:hover { border-color: rgba(15, 31, 57, 0.4); }
+.row-input:focus {
+  outline: none;
+  border-color: #0f1f39;
+  box-shadow: 0 0 0 2px rgba(15, 31, 57, 0.15);
+}
+
+.row-select {
+  @apply h-9 w-full rounded-md border border-ink-300 bg-white px-2 pr-7 text-sm text-ink-900 appearance-none transition-colors;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'><path d='M2 4l3 3 3-3' fill='none' stroke='%230f172a' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+}
+.row-select:hover { border-color: rgba(15, 31, 57, 0.4); }
+.row-select:focus {
+  outline: none;
+  border-color: #0f1f39;
+  box-shadow: 0 0 0 2px rgba(15, 31, 57, 0.15);
+}
+
+/* ─── Data table treatment (app + admin lists) ────────────────────────── */
+
+.data-table {
+  @apply w-full text-sm;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.data-table thead th {
+  @apply sticky top-0 z-10 border-b-2 border-brand-900/20 bg-brand-50 px-4 py-3 text-left text-[11px] font-bold uppercase tracking-widest text-brand-900;
+}
+
+.data-table tbody tr {
+  @apply border-b border-ink-300/60 bg-white transition-colors;
+}
+
+.data-table tbody tr:nth-child(even) {
+  background-color: #fafbfd;
+}
+
+.data-table tbody tr:hover {
+  background-color: #eef3fb;
+  box-shadow: inset 4px 0 0 0 #25457b;
+}
+
+.data-table tbody tr:last-child {
+  border-bottom: 0;
+}
+
+.data-table tbody td {
+  @apply px-4 py-3.5 text-[15px] text-ink-900 align-middle;
+}
+
+.data-table tbody td.mono {
+  @apply font-mono text-[13px];
+}
+
+/* Tighter cells on small screens so the table doesn't force scroll unless
+   really necessary. */
+@media (max-width: 640px) {
+  .data-table thead th {
+    @apply px-2.5 py-2.5 text-[10px];
+  }
+  .data-table tbody td {
+    @apply px-2.5 py-3 text-sm;
+  }
+}
+
+/* Scroll shadow: when a table (or any wrapper) overflows horizontally on
+   mobile, hint at hidden content. Any element with `.scroll-shadow-x` gets
+   fade masks on both edges that only appear if there's overflow. */
+.scroll-shadow-x {
+  background:
+    linear-gradient(to right, white 30%, rgba(255, 255, 255, 0)) left center /
+      40px 100% no-repeat,
+    linear-gradient(to left, white 30%, rgba(255, 255, 255, 0)) right center /
+      40px 100% no-repeat,
+    linear-gradient(to right, rgba(11, 27, 58, 0.12), rgba(11, 27, 58, 0))
+      left center / 14px 100% no-repeat,
+    linear-gradient(to left, rgba(11, 27, 58, 0.12), rgba(11, 27, 58, 0))
+      right center / 14px 100% no-repeat;
+  background-attachment: local, local, scroll, scroll;
+}
+
