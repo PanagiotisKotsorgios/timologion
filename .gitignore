@@ -37,6 +37,10 @@ prisma/*.db-journal
 coverage/
 .nyc_output/
 
+# ─── TypeScript incremental build cache ───────────────────────────
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
 # ─── Runtime / cache ──────────────────────────────────────────────
 .turbo/
 .vercel/

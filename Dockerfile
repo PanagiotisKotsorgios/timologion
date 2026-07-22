@@ -36,15 +36,21 @@ RUN addgroup --system --gid 1001 nodejs \
 # Copy the built app assets. Prefer standalone output when present.
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/scripts ./scripts
+COPY --from=builder /app/tsconfig.json ./tsconfig.json
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/next.config.ts ./next.config.ts
 
-# On startup, run any pending Prisma migrations then boot the server. This is
-# safe to re-run on every deploy — Prisma tracks the applied migration set in
-# the `_prisma_migrations` table.
-CMD ["sh", "-c", "npx prisma migrate deploy && npm run start"]
+# On startup:
+#   1. Run any pending Prisma migrations (idempotent — tracked in
+#      _prisma_migrations table).
+#   2. Run first-boot bootstrap (idempotent — seeds default plans and, on
+#      the very first boot only, creates an initial super_admin from
+#      INITIAL_ADMIN_EMAIL if set).
+#   3. Boot the Next.js server.
+CMD ["sh", "-c", "npx prisma migrate deploy && npx tsx scripts/first-boot.ts && npm run start"]
 
 USER nextjs
 EXPOSE 3000

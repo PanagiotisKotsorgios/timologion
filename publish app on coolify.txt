@@ -1,156 +1,99 @@
 ════════════════════════════════════════════════════════════════
-  timologion — DEPLOYMENT GUIDE FOR COOLIFY
+  timologion — ONE-CLICK COOLIFY DEPLOYMENT
 ════════════════════════════════════════════════════════════════
 
-The repo already ships with a production Dockerfile, .dockerignore,
-prisma migrate on boot, and Vercel-style cron JSON. Coolify will
-pick up the Dockerfile automatically and run everything.
-
-Total setup time: ~15 minutes for a fresh install.
-
-
-──── STEP 1 · PROVISION A PRODUCTION MYSQL DATABASE ──────────────
-
-  In Coolify:
-    Resources → New Resource → Database → MySQL
-
-  Pick a name (e.g. "timologion-db"), region, and version 8.x.
-  Coolify will spin up the container and give you a connection
-  string that looks like:
-
-    mysql://timologion:PASSWORD@timologion-db:3306/timologion
-
-  Copy this string — you will paste it into DATABASE_URL below.
-
-  IMPORTANT: keep the DB on the same Coolify server as the app so
-  they can talk over the internal Docker network without exposing
-  the DB port to the public internet.
+The repo ships with a full docker-compose.yaml that Coolify runs
+end-to-end. The database, migrations, admin user, secrets — all
+happen on the first "Deploy" click. You don't have to provision
+MySQL separately or generate any secrets by hand.
 
 
-──── STEP 2 · CREATE THE APPLICATION ─────────────────────────────
+──── STEP 1 · CREATE THE APPLICATION IN COOLIFY ──────────────────
 
-  In Coolify:
-    Resources → New Resource → Application → Public Repository
+  Coolify → Resources → New Resource → Application
+    → Public Repository
+    → Docker Compose
 
   Fill in:
     Repository URL:  https://github.com/PanagiotisKotsorgios/timologion
     Branch:          main
-    Build pack:      Dockerfile   (Coolify auto-detects this)
-    Port:            3000
-    Health-check:    /
+    Base directory:  /
+    Docker Compose location:  docker-compose.yaml
+
+  Coolify will parse the compose file and detect two services:
+     - "app"    (the Next.js app)
+     - "mysql"  (the MySQL 8 database, private volume attached)
 
   Save.
 
 
-──── STEP 3 · ENVIRONMENT VARIABLES ──────────────────────────────
+──── STEP 2 · (OPTIONAL) INITIAL ADMIN VARIABLES ─────────────────
 
-  Open the app in Coolify → Environment Variables tab.
-  Add each of the following.
+  If you want your super_admin user auto-created on the very first
+  boot, add these three variables in Coolify → Environment Variables
+  BEFORE the first deploy:
 
-  ─── Core (REQUIRED) ─────────────────────────────
+    INITIAL_ADMIN_EMAIL=you@yourcompany.gr
+    INITIAL_ADMIN_PASSWORD=       (leave empty for a random one)
+    INITIAL_ADMIN_NAME=Your Name
 
-  DATABASE_URL=mysql://timologion:PASSWORD@timologion-db:3306/timologion
-      (from step 1)
+  If you leave INITIAL_ADMIN_PASSWORD blank, the first-boot script
+  generates a random 32-char password and PRINTS it to the container
+  logs surrounded by an ASCII box. Copy it immediately — that's the
+  only place it will ever appear.
 
-  SESSION_SECRET=<generate 64 hex characters>
-      Generate locally:
-        node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
+  If you skip these variables entirely, no admin is created and you
+  can promote yourself later via the terminal:
 
-  APP_BASE_URL=https://your-domain.com
-      The public URL of your app. Used for OAuth redirects,
-      password-reset links, verification links, sitemap, robots.
-
-  NODE_ENV=production
-
-  ─── Wrapp (set once you have staging credentials) ─────
-
-  WRAPP_API_BASE_URL=https://wrapp.ai/api/v1
-  WRAPP_API_KEY=<empty for now; fill in after Wrapp onboarding>
-
-  ─── Cron secret (REQUIRED for scheduled jobs) ─────────
-
-  CRON_SECRET=<generate 32 hex characters, same command as above>
-      Coolify's scheduled tasks will send this in the
-      Authorization header. Without it, the cron endpoints
-      return 401.
-
-  ─── Observability (OPTIONAL but recommended) ──────────
-
-  SENTRY_DSN=https://xxx@sentry.io/yyy
-      Empty = logger falls through to console (still fine).
-
-  ─── OAuth (OPTIONAL) ──────────────────────────────────
-
-  GOOGLE_CLIENT_ID=
-  GOOGLE_CLIENT_SECRET=
-  FACEBOOK_APP_ID=
-  FACEBOOK_APP_SECRET=
-
-      Leave empty and the corresponding button will still
-      render but will show a graceful "provider disabled"
-      message to the user. Fill them in later.
-
-      Redirect URIs to register on each provider's dashboard:
-        Google:   ${APP_BASE_URL}/api/auth/google/callback
-        Facebook: ${APP_BASE_URL}/api/auth/fb/callback
-                  (note: /fb/ not /facebook/ — evades ad-blocker
-                  filter lists)
+    Coolify → app → Terminal
+    $ npx tsx scripts/admin.ts promote you@yourcompany.gr super_admin
 
 
-──── STEP 4 · DEPLOY ─────────────────────────────────────────────
+──── STEP 3 · CLICK "DEPLOY" ─────────────────────────────────────
 
-  Click the big blue "Deploy" button.
+  That's it. Coolify will:
 
-  Coolify will:
-    1. Clone the repo
-    2. Run the multi-stage Dockerfile:
-         base → deps → builder → runner
-    3. Inside the container, on startup:
-         npx prisma migrate deploy   (applies pending migrations)
-         npm run start               (boots Next.js)
+    1. Pull the repo.
+    2. Auto-generate MYSQL passwords, SESSION_SECRET, CRON_SECRET.
+       (These persist across redeploys — set once, live forever.)
+    3. Start the MySQL container with a persistent volume.
+    4. Build the Next.js image from the multi-stage Dockerfile.
+    5. Wait for MySQL to be healthy.
+    6. Start the app container. Inside it:
+         a. npx prisma migrate deploy    (creates all tables)
+         b. npx tsx scripts/first-boot   (seeds 4 default plans,
+                                           creates initial admin
+                                           if configured)
+         c. npm run start                 (boots Next.js)
+    7. Attach the app's public FQDN to the service and issue
+       a Let's Encrypt cert automatically.
 
-  First deploy takes 3–5 min (npm install + Next build).
-  Subsequent deploys are ~1 min thanks to Docker layer caching.
+  Watch the build logs. When you see "Ready in Xms" the app is live.
 
-  Watch the build logs in Coolify → your app → Logs.
-  When you see "Ready in Xms" the app is live.
-
-
-──── STEP 5 · HTTPS + DOMAIN ─────────────────────────────────────
-
-  In Coolify → your app → Domains tab:
-    Add your domain, e.g. app.timologion.gr
-    Enable "Force HTTPS"
-    Enable "Generate SSL certificate with Let's Encrypt"
-
-  Point your DNS A record at the Coolify server's IP.
-  Coolify handles the Let's Encrypt cert automatically once
-  DNS propagates (usually a few minutes).
-
-  Don't forget to update APP_BASE_URL to the HTTPS domain and
-  redeploy so all links in emails point to the correct host.
+  First deploy: ~5 min. Subsequent deploys: ~1 min.
 
 
-──── STEP 6 · CREATE YOUR FIRST ADMIN USER ───────────────────────
+──── STEP 4 · HTTPS + DOMAIN ─────────────────────────────────────
 
-  Option A — via UI:
-    Register normally at https://your-domain.com/register.
-    Then run the promote-to-admin script inside the container:
+  In Coolify → your app → Domains:
+    Add your domain (e.g. app.timologion.gr).
+    Enable "Force HTTPS" and Let's Encrypt.
+    Point your DNS A record at Coolify's server IP.
 
-      Coolify → your app → Terminal
-      $ npx tsx scripts/admin.ts promote your@email.com super_admin
-
-  Option B — pure CLI:
-    Coolify → your app → Terminal
-    $ npx tsx scripts/admin.ts create admin@timologion.gr StrongPassword123!
+  IMPORTANT: after adding the domain, re-deploy so APP_BASE_URL
+  picks up the new HTTPS domain. Then all email links and OAuth
+  redirects will point to the correct host.
 
 
-──── STEP 7 · WIRE THE CRON JOBS ─────────────────────────────────
+──── STEP 5 · WIRE THE CRON JOBS ─────────────────────────────────
 
-  The app has 4 scheduled endpoints, protected by CRON_SECRET.
-  Add these under Coolify → your app → Scheduled Tasks.
+  The app has four scheduled endpoints protected by CRON_SECRET
+  (auto-generated in step 3 — you can copy it from the app's
+  Environment Variables tab).
 
-  All use the same template:
+  In Coolify → your app → Scheduled Tasks, add four entries.
+  All use the same command template:
+
     curl -sS -H "Authorization: Bearer $CRON_SECRET" \
          https://your-domain.com/api/cron/<name>
 
@@ -170,17 +113,10 @@ Total setup time: ~15 minutes for a fresh install.
   │ digest       │            │ unpaid-invoices summary    │
   └──────────────┴────────────┴────────────────────────────┘
 
-  Coolify's scheduled task runner will inject the CRON_SECRET
-  env var into the shell, so the curl uses $CRON_SECRET
-  literally as written.
 
+──── STEP 6 · EMAIL DELIVERY (BREVO) ─────────────────────────────
 
-──── STEP 8 · EMAIL DELIVERY (BREVO) ─────────────────────────────
-
-  Transactional emails (welcome, password reset, verification,
-  document-to-client, digests) go through Brevo.
-
-  As a super_admin, visit:
+  Log in as your super_admin at:
     https://your-domain.com/admin/email
 
   Fill in:
@@ -189,10 +125,10 @@ Total setup time: ~15 minutes for a fresh install.
     Sender name      timologion
     Support address  support@timologion.gr
 
-  Test it from the same page — you'll get a live test email.
+  Send a test email from the same page to confirm delivery.
 
 
-──── STEP 9 · OAuth PROVIDERS (WHEN READY) ───────────────────────
+──── STEP 7 · OAuth PROVIDERS (WHEN READY) ───────────────────────
 
   Google:
     https://console.cloud.google.com → Credentials
@@ -203,61 +139,82 @@ Total setup time: ~15 minutes for a fresh install.
     https://developers.facebook.com/apps → Facebook Login → Web
     Redirect URI: https://your-domain.com/api/auth/fb/callback
 
-  Copy the client IDs / secrets into the Coolify env vars from
-  step 3 and redeploy.
+  Set GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET / FACEBOOK_APP_ID /
+  FACEBOOK_APP_SECRET in Coolify → Environment Variables and
+  redeploy. The buttons on the login/register pages will start
+  working immediately.
 
 
-──── STEP 10 · WRAPP INTEGRATION ─────────────────────────────────
+──── STEP 8 · WRAPP INTEGRATION ──────────────────────────────────
 
   When Wrapp gives you staging credentials:
 
-    1. Set WRAPP_API_KEY in Coolify env vars.
+    1. Set WRAPP_API_KEY in Coolify → Environment Variables.
     2. Redeploy.
-    3. Log in as a business, go to Ρυθμίσεις → Ηλεκτρονική έκδοση
-       and complete the activation flow.
+    3. Log in as a business owner, go to
+       Ρυθμίσεις → Ηλεκτρονική έκδοση and complete activation.
     4. Issue a test retail_receipt against Wrapp staging.
-    5. Verify MARK/UID/QR come back and display on the document
-       detail page.
+    5. Verify MARK / UID / QR come back on the document detail page.
 
   Then repeat for each DocumentType (invoice, service_invoice,
   credit_note, delivery_note, etc.).
 
 
+──── AUTO-GENERATED SECRETS (FYI) ────────────────────────────────
+
+  Coolify's magic env vars produce and persist these on first
+  deploy — you never touch them:
+
+    SESSION_SECRET             64-char, HMAC session tokens
+    CRON_SECRET                bearer token for /api/cron/*
+    MYSQL_ROOT_PASSWORD        healthchecks only
+    MYSQL_PASSWORD             app's DB user password
+    DATABASE_URL               composed automatically from above
+
+  You can view (but not regenerate) them from Coolify →
+  Environment Variables. If you ever want to rotate SESSION_SECRET,
+  delete just that variable in Coolify and redeploy — a new one
+  will be generated, invalidating all existing sessions.
+
+
 ──── OPERATIONAL NOTES ───────────────────────────────────────────
 
-  • Prisma migrations run on every container start. Safe to
-    redeploy anytime — Prisma tracks applied migrations in
-    _prisma_migrations.
+  • Prisma migrations run on every container start (idempotent).
+    Deploy without fear of duplicate applications.
 
-  • The app runs as a non-root user (uid 1001) inside the
-    container.
+  • first-boot.ts also runs on every start but only does work
+    when the DB is empty. Safe to trigger.
 
-  • Health-check hits /. If the app is unhealthy Coolify will
-    restart the container automatically.
+  • App runs as non-root user (uid 1001) inside the container.
 
-  • Backups: enable Coolify's built-in MySQL backup on the DB
-    resource. Recommended: daily + weekly retention.
+  • The MySQL data lives in the `mysql-data` named volume.
+    Coolify auto-includes it in its backup schedule when you
+    enable backups on the resource.
 
-  • Logs: Coolify streams stdout/stderr. Structured JSON logs
-    from src/lib/logger.ts are grep-friendly.
+  • Logs are structured JSON from src/lib/logger.ts — grep with
+    fields like `msg`, `level`, `businessId`, `documentId`.
 
 
 ──── ROLLBACK ────────────────────────────────────────────────────
 
-  If a deploy goes bad:
-    Coolify → your app → Deployments → find a previous green
-    deploy → Redeploy.
+  Coolify → your app → Deployments → pick a previous green
+  deploy → "Redeploy". Prisma will happily migrate forward again
+  on the next run.
 
-  If a migration goes bad — restore the DB from Coolify's last
-  automatic backup, then rebase locally and force-push.
+  For DB rollback: restore the mysql-data volume from Coolify's
+  last automatic backup, then redeploy the app image that
+  corresponds to that schema state.
+
+
+──── UPDATING ─────────────────────────────────────────────────────
+
+  Push to `main` on GitHub. If you enabled Coolify's automatic
+  deployment webhook, it re-deploys automatically. Otherwise
+  click "Deploy" manually in the Coolify UI.
 
 
 ──── DONE ────────────────────────────────────────────────────────
 
-  Your app is live at https://your-domain.com
-
-  Push updates by pushing to `main` on GitHub — Coolify auto-
-  deploys on push if you enabled the webhook in Coolify → your
-  app → Configuration → Automatic Deployment.
-
-  Questions or issues:  support@timologion.gr
+  App live at https://your-domain.com.
+  Admin panel at https://your-domain.com/admin.
+  Support inbox: support@timologion.gr.

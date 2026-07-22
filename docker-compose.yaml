@@ -1,0 +1,100 @@
+# ═══════════════════════════════════════════════════════════════════════
+#   timologion — one-click Coolify deployment
+# ═══════════════════════════════════════════════════════════════════════
+#
+# This compose file uses Coolify's "magic environment variables" so that
+# nothing needs to be manually configured on the first deploy:
+#
+#   SERVICE_FQDN_APP        → public HTTPS URL Coolify assigns to the app
+#   SERVICE_PASSWORD_*      → random 64-char password generated once and
+#                             persisted for the lifetime of the resource
+#   SERVICE_PASSWORD_64_*   → same, 64 characters explicitly
+#
+# Coolify substitutes these before the containers start. Values are stable
+# across restarts, so the DB password and session secret survive redeploys.
+#
+# Reference: https://coolify.io/docs/knowledge-base/docker/compose
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      # ─── Core ──────────────────────────────────────────────────────
+      # Points at the sibling MySQL container over the internal Docker
+      # network. Coolify auto-generates the password once and persists it.
+      - "DATABASE_URL=mysql://timologion:${SERVICE_PASSWORD_MYSQL}@mysql:3306/timologion"
+      - "SESSION_SECRET=${SERVICE_PASSWORD_64_SESSION}"
+      - "APP_BASE_URL=${SERVICE_FQDN_APP}"
+      - "NODE_ENV=production"
+
+      # ─── Initial admin (created on first boot only) ────────────────
+      # Set these in Coolify → Environment Variables to auto-create your
+      # super_admin account on the very first deploy. If INITIAL_ADMIN_PASSWORD
+      # is left empty, a random one is generated and printed to the logs.
+      - "INITIAL_ADMIN_EMAIL=${INITIAL_ADMIN_EMAIL:-}"
+      - "INITIAL_ADMIN_PASSWORD=${INITIAL_ADMIN_PASSWORD:-}"
+      - "INITIAL_ADMIN_NAME=${INITIAL_ADMIN_NAME:-Platform Admin}"
+
+      # ─── Cron ───────────────────────────────────────────────────────
+      - "CRON_SECRET=${SERVICE_PASSWORD_CRON}"
+
+      # ─── Wrapp — fill in when you have staging keys ────────────────
+      - "WRAPP_API_BASE_URL=https://wrapp.ai/api/v1"
+      - "WRAPP_API_KEY=${WRAPP_API_KEY:-}"
+
+      # ─── OAuth — leave empty to disable the buttons cleanly ───────
+      - "GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}"
+      - "GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}"
+      - "FACEBOOK_APP_ID=${FACEBOOK_APP_ID:-}"
+      - "FACEBOOK_APP_SECRET=${FACEBOOK_APP_SECRET:-}"
+
+      # ─── Observability ─────────────────────────────────────────────
+      - "SENTRY_DSN=${SENTRY_DSN:-}"
+
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - "CMD"
+        - "wget"
+        - "--no-verbose"
+        - "--tries=1"
+        - "--spider"
+        - "http://localhost:3000/"
+      interval: 15s
+      timeout: 10s
+      retries: 12
+      start_period: 60s
+
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      # Root credential — used only by the healthcheck, never exposed to
+      # the app. App connects with the least-privilege `timologion` user.
+      - "MYSQL_ROOT_PASSWORD=${SERVICE_PASSWORD_MYSQL_ROOT}"
+      - "MYSQL_DATABASE=timologion"
+      - "MYSQL_USER=timologion"
+      - "MYSQL_PASSWORD=${SERVICE_PASSWORD_MYSQL}"
+    volumes:
+      - "mysql-data:/var/lib/mysql"
+    healthcheck:
+      test:
+        - "CMD"
+        - "mysqladmin"
+        - "ping"
+        - "-h"
+        - "localhost"
+        - "-uroot"
+        - "-p${SERVICE_PASSWORD_MYSQL_ROOT}"
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 15s
+
+volumes:
+  mysql-data:

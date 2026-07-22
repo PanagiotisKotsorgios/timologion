@@ -2,7 +2,11 @@
 // See README.md for context. All tenant-owned tables carry business_id.
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  // Build client for the local dev target AND for the Alpine (musl) runtime
+  // that the production Dockerfile ships, so the same schema builds cleanly
+  // on both a Windows dev machine and the deployed container.
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
