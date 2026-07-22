@@ -59,16 +59,14 @@ services:
         condition: service_healthy
     healthcheck:
       test:
-        - "CMD"
-        - "wget"
-        - "--no-verbose"
-        - "--tries=1"
-        - "--spider"
-        - "http://localhost:3000/"
+        - "CMD-SHELL"
+        - "wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1"
       interval: 15s
       timeout: 10s
-      retries: 12
-      start_period: 60s
+      retries: 20
+      # First-boot has to migrate the schema + seed plans + create admin
+      # before Next.js starts listening. Give it plenty of runway.
+      start_period: 180s
 
   mysql:
     image: mysql:8.0
@@ -82,19 +80,21 @@ services:
       - "MYSQL_PASSWORD=${SERVICE_PASSWORD_MYSQL}"
     volumes:
       - "mysql-data:/var/lib/mysql"
+    # CMD-SHELL is required so `$$MYSQL_ROOT_PASSWORD` is expanded by the
+    # container's shell at healthcheck runtime (compose writes `$$` → `$`,
+    # then the shell reads the env var). Array form (CMD) doesn't do shell
+    # expansion, so the password would end up literal.
     healthcheck:
       test:
-        - "CMD"
-        - "mysqladmin"
-        - "ping"
-        - "-h"
-        - "localhost"
-        - "-uroot"
-        - "-p${SERVICE_PASSWORD_MYSQL_ROOT}"
+        - "CMD-SHELL"
+        - "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"
       interval: 5s
-      timeout: 5s
-      retries: 30
-      start_period: 15s
+      timeout: 10s
+      retries: 60
+      # MySQL 8 initdb + user creation on a fresh volume takes 20-40s on
+      # typical Coolify hosts. Generous headroom so slow disks don't fail
+      # the very first deploy.
+      start_period: 90s
 
 volumes:
   mysql-data:
