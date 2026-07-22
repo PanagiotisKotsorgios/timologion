@@ -72,22 +72,25 @@ services:
     image: mysql:8.0
     restart: unless-stopped
     environment:
-      # Root credential — used only by the healthcheck, never exposed to
-      # the app. App connects with the least-privilege `timologion` user.
-      - "MYSQL_ROOT_PASSWORD=${SERVICE_PASSWORD_MYSQL_ROOT}"
+      # Root credential. IMPORTANT: the magic-var name must not share a
+      # prefix with `SERVICE_PASSWORD_MYSQL` or Coolify's parser leaves it
+      # empty (treats them as duplicates). `SERVICE_PASSWORD_DBROOT` keeps
+      # the two variables distinct.
+      - "MYSQL_ROOT_PASSWORD=${SERVICE_PASSWORD_DBROOT}"
       - "MYSQL_DATABASE=timologion"
       - "MYSQL_USER=timologion"
       - "MYSQL_PASSWORD=${SERVICE_PASSWORD_MYSQL}"
     volumes:
       - "mysql-data:/var/lib/mysql"
-    # CMD-SHELL is required so `$$MYSQL_ROOT_PASSWORD` is expanded by the
-    # container's shell at healthcheck runtime (compose writes `$$` → `$`,
-    # then the shell reads the env var). Array form (CMD) doesn't do shell
-    # expansion, so the password would end up literal.
+    # Healthcheck uses the least-privilege `timologion` user instead of
+    # root — if the app user can connect, MySQL is healthy AND the app's
+    # credentials work, which is what actually matters for readiness.
+    # CMD-SHELL is required so `$$MYSQL_PASSWORD` is expanded by the
+    # container's shell at healthcheck runtime.
     healthcheck:
       test:
         - "CMD-SHELL"
-        - "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"
+        - "mysqladmin ping -h 127.0.0.1 -utimologion -p\"$$MYSQL_PASSWORD\" --silent"
       interval: 5s
       timeout: 10s
       retries: 60
