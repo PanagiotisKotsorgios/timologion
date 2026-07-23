@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Card, CardBody } from "@/components/ui/Card";
 import { LinkButton } from "@/components/ui/Button";
 import { checkActivationAction } from "../../activation-actions";
+import { ReturnPoller } from "./ReturnPoller";
 
 export const dynamic = "force-dynamic";
 
@@ -61,17 +62,15 @@ export default async function WrappReturnPage() {
                   <Clock size={32} />
                 </div>
                 <h1 className="mt-6 text-2xl font-bold text-brand-900 md:text-3xl">
-                  Επεξεργασία σε εξέλιξη
+                  Ολοκληρώνεται η ενεργοποίηση
                 </h1>
                 <p className="mt-4 text-base text-ink-700">
-                  Η Wrapp ολοκληρώνει την ενεργοποίηση του λογαριασμού σου.
-                  Αυτό συνήθως διαρκεί λίγα δευτερόλεπτα. Πάτα «Έλεγχος
-                  κατάστασης» για ανανέωση.
+                  Η Wrapp επιβεβαιώνει την πληρωμή και μας στέλνει τα
+                  διαπιστευτήρια. Θα σε προωθήσουμε αυτόματα μόλις είναι
+                  έτοιμο — μην κλείσεις τη σελίδα.
                 </p>
+                <ReturnPoller />
                 <div className="mt-8 flex flex-col items-center gap-3">
-                  <LinkButton href="/app/wrapp/return">
-                    Έλεγχος κατάστασης
-                  </LinkButton>
                   <LinkButton href="/app" variant="secondary">
                     Επιστροφή στο dashboard
                   </LinkButton>

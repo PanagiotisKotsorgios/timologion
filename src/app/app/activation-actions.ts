@@ -15,7 +15,18 @@ import { env } from "@/lib/env";
  * client for now — will do the real HTTP call once the provider integration
  * ships. Reads/writes the WrappConnection row for the current business.
  */
-export async function checkActivationAction() {
+/**
+ * Non-throwing activation status check.
+ *
+ * Returns the current connection status. Safe to call from a polling loop —
+ * never throws, never redirects, degrades to whatever's in the DB.
+ */
+export async function checkActivationAction(): Promise<{
+  active: boolean;
+  pending: boolean;
+  hasApiKey: boolean;
+  lastError: string | null;
+}> {
   const ctx = await requireTenant();
   assertCan(ctx.role, "wrapp:manage");
 
@@ -23,19 +34,21 @@ export async function checkActivationAction() {
     where: { businessId: ctx.businessId },
   });
 
-  // If the webhook has already flipped the connection to active, no need to
-  // hit Wrapp again — just refresh the "last verified" timestamp.
+  const hasApiKey = Boolean(existing?.encryptedApiKey);
+
   if (
     existing?.status === "active" &&
     existing.canIssueInvoice &&
-    existing.encryptedApiKey
+    hasApiKey
   ) {
-    await prisma.wrappConnection.update({
-      where: { businessId: ctx.businessId },
-      data: { lastVerifiedAt: new Date() },
-    });
+    await prisma.wrappConnection
+      .update({
+        where: { businessId: ctx.businessId },
+        data: { lastVerifiedAt: new Date() },
+      })
+      .catch(() => undefined);
     revalidatePath("/app", "layout");
-    return;
+    return { active: true, pending: false, hasApiKey: true, lastError: null };
   }
 
   try {
@@ -70,16 +83,86 @@ export async function checkActivationAction() {
       action: "wrapp.status.check",
       meta: { active },
     });
+
+    revalidatePath("/app", "layout");
+    return { active, pending: !active, hasApiKey, lastError: null };
   } catch (err) {
-    // Missing credentials or transient failure — record and keep the current
-    // status. Don't throw; the return-page and gate handle the visible state.
+    const message = err instanceof Error ? err.message : String(err);
     logger.warn("wrapp.status.check_failed", {
       businessId: ctx.businessId,
-      error: err instanceof Error ? err.message : String(err),
+      error: message,
     });
+    return {
+      active: existing?.status === "active" && existing.canIssueInvoice,
+      pending: existing?.status === "pending",
+      hasApiKey,
+      lastError: existing?.lastError ?? null,
+    };
+  }
+}
+
+/**
+ * Escape hatch: paste the tenant api_key straight from Wrapp when the
+ * webhook can't reach us (stale webhook_endpoint, DNS, etc.).
+ */
+export async function setWrappApiKeyManuallyAction(
+  formData: FormData,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const ctx = await requireTenant();
+  assertCan(ctx.role, "wrapp:manage");
+
+  const apiKey = String(formData.get("apiKey") ?? "").trim();
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+
+  if (apiKey.length < 8) {
+    return { ok: false, error: "Δώσε έγκυρο tenant api_key από τη Wrapp." };
+  }
+  if (!email) {
+    return {
+      ok: false,
+      error:
+        "Δώσε το email του λογαριασμού Wrapp (αυτό που ολοκλήρωσε το onboarding).",
+    };
   }
 
+  const { encryptSecret } = await import("@/lib/crypto");
+
+  await prisma.wrappConnection.upsert({
+    where: { businessId: ctx.businessId },
+    create: {
+      businessId: ctx.businessId,
+      status: "active",
+      hasPlan: true,
+      canIssueInvoice: true,
+      wrappEmail: email,
+      encryptedApiKey: encryptSecret(apiKey),
+      encryptedJwt: null,
+      jwtExpiresAt: null,
+      lastVerifiedAt: new Date(),
+      lastError: null,
+    },
+    update: {
+      status: "active",
+      hasPlan: true,
+      canIssueInvoice: true,
+      wrappEmail: email,
+      encryptedApiKey: encryptSecret(apiKey),
+      encryptedJwt: null,
+      jwtExpiresAt: null,
+      lastVerifiedAt: new Date(),
+      lastError: null,
+    },
+  });
+
+  await logAudit({
+    userId: ctx.userId,
+    businessId: ctx.businessId,
+    action: "wrapp.api_key.manual_set",
+    meta: { email },
+  });
+
   revalidatePath("/app", "layout");
+  return { ok: true };
 }
 
 /**
