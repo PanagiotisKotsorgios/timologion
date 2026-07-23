@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { decryptSecret, encryptSecret } from "@/lib/crypto";
 import { env } from "@/lib/env";
+import { getWrappSettings } from "@/lib/wrapp/settings";
 import { logger } from "@/lib/logger";
 import { logAudit } from "@/lib/audit";
 import {
@@ -60,9 +61,11 @@ async function verifySignature(
 > {
   if (!signature) return null;
 
+  const settings = await getWrappSettings();
+
   // Platform shared secret (optional override).
-  if (env.WRAPP_WEBHOOK_SECRET) {
-    const expected = createHmac("sha256", env.WRAPP_WEBHOOK_SECRET)
+  if (settings.webhookSecret) {
+    const expected = createHmac("sha256", settings.webhookSecret)
       .update(rawBody)
       .digest("hex");
     if (safeEqualHex(expected, signature)) {
@@ -71,8 +74,8 @@ async function verifySignature(
   }
 
   // Partner-signed events (onboarding). Signed with our Partners API key.
-  if (env.WRAPP_PARTNER_API_KEY) {
-    const expected = createHmac("sha256", env.WRAPP_PARTNER_API_KEY)
+  if (settings.partnerApiKey) {
+    const expected = createHmac("sha256", settings.partnerApiKey)
       .update(rawBody)
       .digest("hex");
     if (safeEqualHex(expected, signature)) {
@@ -96,8 +99,8 @@ async function verifySignature(
   }
 
   // Staging fallback tenant.
-  if (env.WRAPP_STAGING_TENANT_API_KEY) {
-    const expected = createHmac("sha256", env.WRAPP_STAGING_TENANT_API_KEY)
+  if (settings.stagingTenantApiKey) {
+    const expected = createHmac("sha256", settings.stagingTenantApiKey)
       .update(rawBody)
       .digest("hex");
     if (safeEqualHex(expected, signature)) {

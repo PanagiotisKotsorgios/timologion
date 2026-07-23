@@ -20,6 +20,7 @@ import {
   CreditCard,
   Package,
   Mail,
+  Zap,
   type LucideIcon,
 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
@@ -41,6 +42,7 @@ const PRIMARY: NavItem[] = [
 const SECONDARY: NavItem[] = [
   { href: "/admin/announcements", label: "Ανακοινώσεις", icon: Megaphone },
   { href: "/admin/email", label: "Ρυθμίσεις email", icon: Mail },
+  { href: "/admin/wrapp", label: "Ρυθμίσεις Wrapp", icon: Zap },
   { href: "/admin/system-settings", label: "Ρυθμίσεις πλατφόρμας", icon: Settings2 },
   { href: "/admin/admins", label: "Platform admins", icon: Shield },
 ];

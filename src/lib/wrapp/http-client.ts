@@ -1,8 +1,8 @@
 import "server-only";
 import { prisma } from "@/lib/db";
-import { env } from "@/lib/env";
 import { encryptSecret, decryptSecret } from "@/lib/crypto";
 import { logger } from "@/lib/logger";
+import { getWrappSettings } from "./settings";
 import {
   wrappLoginResponse,
   wrappTenantDetails,
@@ -85,25 +85,29 @@ async function resolveTenantCreds(businessId: string): Promise<TenantCreds | nul
 
   // Staging fallback: if the Business hasn't onboarded to Wrapp yet, allow
   // testing against the shared staging tenant so the full flow works
-  // end-to-end without going through external_login.
-  if (env.WRAPP_STAGING_TENANT_API_KEY && env.WRAPP_STAGING_TENANT_EMAIL) {
+  // end-to-end without going through external_login. Values come from
+  // AppSetting first (admin UI), then env vars.
+  const settings = await getWrappSettings();
+  if (settings.stagingTenantApiKey && settings.stagingTenantEmail) {
     return {
-      apiKey: env.WRAPP_STAGING_TENANT_API_KEY,
-      email: env.WRAPP_STAGING_TENANT_EMAIL,
+      apiKey: settings.stagingTenantApiKey,
+      email: settings.stagingTenantEmail,
     };
   }
   return null;
 }
 
 export class HttpWrappClient {
-  private base: string;
-
-  constructor(base: string) {
-    this.base = base.replace(/\/$/, "");
+  // Base URL is resolved per-request from AppSetting so admin edits take
+  // effect immediately without restarting the process.
+  private async resolveBase(): Promise<string> {
+    const settings = await getWrappSettings();
+    return settings.baseUrl.replace(/\/$/, "");
   }
 
   private async login(creds: TenantCreds): Promise<string> {
-    const res = await fetchWithTimeout(`${this.base}/login`, {
+    const base = await this.resolveBase();
+    const res = await fetchWithTimeout(`${base}/login`, {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -188,9 +192,10 @@ export class HttpWrappClient {
     retriedAfter401 = false,
   ): Promise<T> {
     const jwt = await this.ensureJwt(businessId);
+    const base = await this.resolveBase();
     let res: Response;
     try {
-      res = await fetchWithTimeout(`${this.base}${path}`, {
+      res = await fetchWithTimeout(`${base}${path}`, {
         method,
         headers: {
           authorization: `Bearer ${jwt}`,
@@ -564,25 +569,27 @@ export class WrappPartnerClient {
   }
 }
 
-// ─── Factory / singletons ────────────────────────────────────────────────
-
-let cachedTenant: HttpWrappClient | null = null;
-let cachedPartner: WrappPartnerClient | null = null;
+// ─── Factory ─────────────────────────────────────────────────────────────
+// No caching — settings can change at runtime (admin edits base URL / keys).
+// Both clients read the current AppSetting values on each construction; the
+// clients themselves hold no per-request state, so this is cheap.
 
 export function getWrappClient(): HttpWrappClient {
-  if (!cachedTenant) {
-    cachedTenant = new HttpWrappClient(env.WRAPP_API_BASE_URL);
-  }
-  return cachedTenant;
+  return new HttpWrappClient();
 }
 
-export function getWrappPartnerClient(): WrappPartnerClient | null {
-  if (!env.WRAPP_PARTNER_API_KEY) return null;
-  if (!cachedPartner) {
-    cachedPartner = new WrappPartnerClient(
-      env.WRAPP_API_BASE_URL,
-      env.WRAPP_PARTNER_API_KEY,
-    );
-  }
-  return cachedPartner;
+/**
+ * Get a partner client from the current AppSetting-backed configuration.
+ * Returns null when no partner API key is configured (in AppSetting or env).
+ */
+export async function getWrappPartnerClient(): Promise<WrappPartnerClient | null> {
+  const settings = await getWrappSettings();
+  if (!settings.partnerApiKey) return null;
+  return new WrappPartnerClient(settings.baseUrl, settings.partnerApiKey);
+}
+
+/** Whether the current process has partner credentials at all. */
+export async function hasPartnerCredentials(): Promise<boolean> {
+  const settings = await getWrappSettings();
+  return Boolean(settings.partnerApiKey);
 }

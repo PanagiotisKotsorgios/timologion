@@ -99,7 +99,7 @@ export async function startWrappActivationAction(): Promise<
   const ctx = await requireTenant();
   assertCan(ctx.role, "wrapp:manage");
 
-  const partner = getWrappPartnerClient();
+  const partner = await getWrappPartnerClient();
   if (!partner) {
     return {
       ok: false,
