@@ -5,7 +5,8 @@
 # This compose file uses Coolify's "magic environment variables" so that
 # nothing needs to be manually configured on the first deploy:
 #
-#   SERVICE_FQDN_APP        → public HTTPS URL Coolify assigns to the app
+#   SERVICE_FQDN_APP        → the hostname Coolify assigns (e.g. timologion.gr)
+#   SERVICE_URL_APP         → the full URL with scheme (e.g. https://timologion.gr)
 #   SERVICE_PASSWORD_*      → random 64-char password generated once and
 #                             persisted for the lifetime of the resource
 #   SERVICE_PASSWORD_64_*   → same, 64 characters explicitly
@@ -27,7 +28,9 @@ services:
       # network. Coolify auto-generates the password once and persists it.
       - "DATABASE_URL=mysql://timologion:${SERVICE_PASSWORD_MYSQL}@mysql:3306/timologion"
       - "SESSION_SECRET=${SERVICE_PASSWORD_64_SESSION}"
-      - "APP_BASE_URL=${SERVICE_FQDN_APP}"
+      # APP_BASE_URL needs the full scheme+host (env is validated with .url()).
+      # SERVICE_URL_APP includes the protocol; SERVICE_FQDN_APP does not.
+      - "APP_BASE_URL=${SERVICE_URL_APP}"
       - "NODE_ENV=production"
 
       # ─── Initial admin (created on first boot only) ────────────────
