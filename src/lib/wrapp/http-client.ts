@@ -527,8 +527,11 @@ export class WrappPartnerClient {
 
   async externalLogin(payload: {
     email: string;
+    phone: string;
     partner_user_id?: string;
     return_url?: string;
+    name?: string;
+    vat?: string;
   }): Promise<{ login_url: string }> {
     const res = await fetchWithTimeout(`${this.base}/external_login`, {
       method: "POST",

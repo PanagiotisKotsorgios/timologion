@@ -111,7 +111,13 @@ export async function startWrappActivationAction(): Promise<
   const [business, existing, member] = await Promise.all([
     prisma.business.findUnique({
       where: { id: ctx.businessId },
-      select: { email: true, legalName: true, id: true },
+      select: {
+        id: true,
+        email: true,
+        phone: true,
+        legalName: true,
+        vatNumber: true,
+      },
     }),
     prisma.wrappConnection.findUnique({
       where: { businessId: ctx.businessId },
@@ -133,7 +139,17 @@ export async function startWrappActivationAction(): Promise<
   if (!email) {
     return {
       ok: false,
-      error: "Δεν βρέθηκε έγκυρο email για την επιχείρηση. Συμπλήρωσε στοιχεία επικοινωνίας πρώτα.",
+      error:
+        "Δεν βρέθηκε έγκυρο email για την επιχείρηση. Συμπλήρωσε τα στοιχεία επικοινωνίας από Ρυθμίσεις → Επιχείρηση πρώτα.",
+    };
+  }
+
+  const phone = business?.phone?.trim() || null;
+  if (!phone) {
+    return {
+      ok: false,
+      error:
+        "Λείπει το τηλέφωνο της επιχείρησης — η Wrapp το απαιτεί για την ενεργοποίηση. Συμπλήρωσέ το από Ρυθμίσεις → Επιχείρηση και δοκίμασε ξανά.",
     };
   }
 
@@ -142,6 +158,9 @@ export async function startWrappActivationAction(): Promise<
   try {
     const res = await partner.externalLogin({
       email,
+      phone,
+      name: business?.legalName ?? undefined,
+      vat: business?.vatNumber ?? undefined,
       partner_user_id: ctx.businessId,
       return_url: returnUrl,
     });
