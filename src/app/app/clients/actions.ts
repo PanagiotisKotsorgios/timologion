@@ -152,7 +152,14 @@ export async function vatSearchAction(formData: FormData) {
     };
   }
 
-  const result = await getWrappClient().vatSearch(parsed.data.vat);
-  if (!result) return { ok: false as const, error: "Το ΑΦΜ δεν βρέθηκε." };
-  return { ok: true as const, result, source: "provider" as const };
+  try {
+    const result = await getWrappClient().vatSearch(
+      ctx.businessId,
+      parsed.data.vat,
+    );
+    if (!result) return { ok: false as const, error: "Το ΑΦΜ δεν βρέθηκε." };
+    return { ok: true as const, result, source: "provider" as const };
+  } catch {
+    return { ok: false as const, error: "Το ΑΦΜ δεν βρέθηκε." };
+  }
 }

@@ -316,40 +316,71 @@ export async function issuePlatformInvoiceAction(formData: FormData) {
   });
 
   try {
+    const netN = Number(inv.netAmount);
+    const vatN = Number(inv.vatAmount);
+    const totalN = Number(inv.totalAmount);
+    const vatRate = netN > 0 ? Math.round((vatN / netN) * 100) : 0;
+
     const res = await getWrappClient().issueInvoice(inv.businessId, {
-      type: "service_invoice",
-      series: inv.series ?? "PLATFORM",
-      client: {
+      invoice_type_code: "2.1",
+      billing_book_id: inv.series ?? "PLATFORM",
+      payment_method_type: 2,
+      net_total_amount: netN,
+      vat_total_amount: vatN,
+      total_amount: totalN,
+      payable_total_amount: totalN,
+      counterpart: {
+        name: inv.business.legalName,
+        country_code: "GR",
         vat: inv.business.vatNumber,
-        legal_name: inv.business.legalName,
-        country_code: "EL",
       },
-      issue_date: new Date().toISOString(),
-      idempotency_key: `platform-${inv.id}`,
-      lines: [
+      invoice_lines: [
         {
-          description: inv.description,
+          line_number: 1,
+          name: inv.description.slice(0, 200),
           quantity: 1,
-          unit_price: Number(inv.netAmount),
-          vat_rate:
-            Number(inv.netAmount) > 0
-              ? (Number(inv.vatAmount) / Number(inv.netAmount)) * 100
-              : 0,
+          quantity_type: 1,
+          unit_price: netN,
+          net_total_price: netN,
+          vat_rate: vatRate,
+          vat_total: vatN,
+          subtotal: totalN,
+          classification_category: "category1_3",
+          classification_type: "E3_561_001",
         },
       ],
     });
 
-    await prisma.platformInvoice.update({
-      where: { id },
-      data: {
-        status: "issued",
-        issuedAt: new Date(),
-        wrappInvoiceId: res.invoice_id,
-        wrappInvoiceUrl: res.invoice_url ?? null,
-        myDataMark: res.my_data_mark ?? null,
-        myDataUid: res.my_data_uid ?? null,
-      },
-    });
+    // Response shape can be issued/pending/error — narrow before use.
+    const asObj = res as Record<string, unknown>;
+    if (typeof asObj.id === "string") {
+      await prisma.platformInvoice.update({
+        where: { id },
+        data: {
+          status: "issued",
+          issuedAt: new Date(),
+          wrappInvoiceId: asObj.id,
+          wrappInvoiceUrl:
+            typeof asObj.wrapp_invoice_url === "string"
+              ? asObj.wrapp_invoice_url
+              : null,
+          myDataMark:
+            typeof asObj.my_data_mark === "string" ? asObj.my_data_mark : null,
+          myDataUid:
+            typeof asObj.my_data_uid === "string" ? asObj.my_data_uid : null,
+        },
+      });
+    } else if (
+      asObj.status === "pending" &&
+      typeof asObj.invoice_id === "string"
+    ) {
+      await prisma.platformInvoice.update({
+        where: { id },
+        data: { status: "sending", wrappInvoiceId: asObj.invoice_id },
+      });
+    } else {
+      throw new Error("Wrapp returned an error envelope for platform invoice.");
+    }
 
     await logAudit({
       userId: ctx.userId,
@@ -357,7 +388,6 @@ export async function issuePlatformInvoiceAction(formData: FormData) {
       action: "platform.invoice.issue.ok",
       entityType: "PlatformInvoice",
       entityId: id,
-      meta: { wrappInvoiceId: res.invoice_id },
     });
   } catch (err) {
     const message =

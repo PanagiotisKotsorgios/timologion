@@ -41,9 +41,13 @@ services:
       # ─── Cron ───────────────────────────────────────────────────────
       - "CRON_SECRET=${SERVICE_PASSWORD_CRON}"
 
-      # ─── Wrapp — fill in when you have staging keys ────────────────
-      - "WRAPP_API_BASE_URL=https://wrapp.ai/api/v1"
+      # ─── Wrapp — staging by default. Override URL for production. ─
+      - "WRAPP_API_BASE_URL=${WRAPP_API_BASE_URL:-https://staging.wrapp.ai/api/v1}"
       - "WRAPP_API_KEY=${WRAPP_API_KEY:-}"
+      - "WRAPP_PARTNER_API_KEY=${WRAPP_PARTNER_API_KEY:-}"
+      - "WRAPP_STAGING_TENANT_API_KEY=${WRAPP_STAGING_TENANT_API_KEY:-}"
+      - "WRAPP_STAGING_TENANT_EMAIL=${WRAPP_STAGING_TENANT_EMAIL:-}"
+      - "WRAPP_WEBHOOK_SECRET=${WRAPP_WEBHOOK_SECRET:-}"
 
       # ─── OAuth — leave empty to disable the buttons cleanly ───────
       - "GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}"

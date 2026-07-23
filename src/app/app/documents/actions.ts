@@ -9,7 +9,14 @@ import { assertCan } from "@/lib/rbac";
 import { logAudit } from "@/lib/audit";
 import { formatZodError } from "@/lib/zod-el";
 import { computeLine, computeDocument } from "@/lib/totals";
-import { NotImplementedInPhase1, getWrappClient } from "@/lib/wrapp/client";
+import {
+  NotImplementedInPhase1,
+  WrappApiError,
+  getWrappClient,
+  mapDocumentTypeToWrapp,
+  mapPaymentMethodToWrapp,
+  classificationFor,
+} from "@/lib/wrapp/client";
 import { reserveNextNumber } from "@/lib/numbering";
 import { logger } from "@/lib/logger";
 import { checkDocumentQuota } from "@/lib/quota";
@@ -391,27 +398,175 @@ export async function attemptIssueAction(documentId: string) {
     });
   }
 
-  try {
-    await getWrappClient().issueInvoice(ctx.businessId, {
-      type: doc.type,
-      series: reservedSeries ?? "A",
-      client: {
-        vat: doc.client?.vatNumber ?? undefined,
-        legal_name: doc.client?.legalName ?? "Λιανική",
-        country_code: "EL",
-        address: doc.client?.addressLine ?? undefined,
-      },
-      issue_date: doc.issueDate.toISOString(),
-      idempotency_key: doc.id,
-      lines: doc.lines.map((l) => ({
-        description: l.description,
-        quantity: Number(l.quantity),
-        unit_price: Number(l.unitPrice),
-        vat_rate: Number(l.vatRate),
-        discount_pct: Number(l.discountPct),
-      })),
+  // ─── Build the Wrapp invoice payload ─────────────────────────────────
+  const invoiceTypeCode = mapDocumentTypeToWrapp(doc.type);
+  if (!invoiceTypeCode) {
+    // Local-only types (proforma / quote / order): mark issued locally
+    // without hitting Wrapp; there's no myDATA channel for these.
+    await prisma.document.update({
+      where: { id: doc.id },
+      data: { status: "issued" },
     });
     return { ok: true as const, series: reservedSeries, number: reservedNumber };
+  }
+
+  if (!doc.billingBookId) {
+    await prisma.document
+      .update({ where: { id: doc.id }, data: { status: "draft" } })
+      .catch(() => undefined);
+    return {
+      ok: false as const,
+      error: "Λείπει σειρά παραστατικών (billing book). Συμπλήρωσε πριν την έκδοση.",
+    };
+  }
+
+  const book = await prisma.billingBook.findFirst({
+    where: { id: doc.billingBookId, businessId: ctx.businessId },
+    select: { wrappBookId: true },
+  });
+  if (!book?.wrappBookId) {
+    await prisma.document
+      .update({ where: { id: doc.id }, data: { status: "draft" } })
+      .catch(() => undefined);
+    return {
+      ok: false as const,
+      error:
+        "Η σειρά παραστατικών δεν είναι συγχρονισμένη με τη Wrapp. Συγχρόνισε από τις Ρυθμίσεις.",
+    };
+  }
+
+  const branch = doc.branchId
+    ? await prisma.branch.findUnique({
+        where: { id: doc.branchId },
+        select: { wrappBranchId: true },
+      })
+    : null;
+
+  const classification = classificationFor(doc.type);
+
+  const wrappPayload = {
+    invoice_type_code: invoiceTypeCode,
+    billing_book_id: book.wrappBookId,
+    branch: branch?.wrappBranchId ?? undefined,
+    payment_method_type: mapPaymentMethodToWrapp(
+      doc.paymentMethod as
+        | "cash"
+        | "card"
+        | "bank_transfer"
+        | "iris"
+        | "check"
+        | "credit"
+        | "other"
+        | null,
+    ),
+    net_total_amount: Number(doc.netTotalAmount),
+    vat_total_amount: Number(doc.vatTotalAmount),
+    total_amount: Number(doc.totalAmount),
+    payable_total_amount: Number(doc.payableTotalAmount),
+    notes: doc.notes ?? undefined,
+    num: reservedNumber ?? undefined,
+    counterpart: doc.client
+      ? {
+          name: doc.client.legalName,
+          country_code: doc.client.country ?? "GR",
+          vat: doc.client.vatNumber ?? undefined,
+          city: doc.client.city ?? undefined,
+          street: doc.client.addressLine ?? undefined,
+          number: undefined,
+          postal_code: doc.client.postalCode ?? undefined,
+          email: doc.client.email ?? undefined,
+        }
+      : undefined,
+    invoice_lines: doc.lines.map((l, i) => {
+      const net = Number(l.netAmount);
+      const vat = Number(l.vatAmount);
+      const total = Number(l.totalAmount);
+      return {
+        line_number: i + 1,
+        name: l.description.slice(0, 200),
+        code: undefined,
+        description: undefined,
+        quantity: Number(l.quantity),
+        quantity_type: 1,
+        unit_price: Number(l.unitPrice),
+        net_total_price: net,
+        vat_rate: Number(l.vatRate),
+        vat_total: vat,
+        subtotal: total,
+        classification_category: classification.category,
+        classification_type: classification.type,
+      };
+    }),
+  };
+
+  try {
+    const res = await getWrappClient().issueInvoice(ctx.businessId, wrappPayload);
+    const asObj = res as Record<string, unknown>;
+
+    if (typeof asObj.id === "string") {
+      // Immediate success — persist Wrapp fields.
+      await prisma.document.update({
+        where: { id: doc.id },
+        data: {
+          status: "issued",
+          wrappInvoiceId: asObj.id,
+          wrappInvoiceUrl:
+            typeof asObj.wrapp_invoice_url === "string"
+              ? asObj.wrapp_invoice_url
+              : null,
+          wrappInvoiceUrlEn:
+            typeof asObj.wrapp_invoice_url_en === "string"
+              ? asObj.wrapp_invoice_url_en
+              : null,
+          myDataMark:
+            typeof asObj.my_data_mark === "string" ? asObj.my_data_mark : null,
+          myDataUid:
+            typeof asObj.my_data_uid === "string" ? asObj.my_data_uid : null,
+          myDataQrUrl:
+            typeof asObj.my_data_qr_url === "string" ? asObj.my_data_qr_url : null,
+          lastWrappError: null,
+        },
+      });
+      await logAudit({
+        userId: ctx.userId,
+        businessId: ctx.businessId,
+        action: "document.issue.ok",
+        entityType: "Document",
+        entityId: doc.id,
+        meta: { mark: asObj.my_data_mark, wrapp_id: asObj.id },
+      });
+      return {
+        ok: true as const,
+        series: reservedSeries,
+        number: reservedNumber,
+      };
+    }
+
+    if (asObj.status === "pending" && typeof asObj.invoice_id === "string") {
+      // Wrapp accepted the request but myDATA transmission is queued.
+      // Store the wrappInvoiceId now; the webhook (or a poll) will fill MARK.
+      await prisma.document.update({
+        where: { id: doc.id },
+        data: {
+          status: "sending",
+          wrappInvoiceId: asObj.invoice_id,
+          lastWrappError: null,
+        },
+      });
+      return { ok: true as const, series: reservedSeries, number: reservedNumber };
+    }
+
+    // Structured error envelope.
+    const errors = Array.isArray(asObj.errors) ? asObj.errors : [];
+    const message = errors
+      .map((e: Record<string, unknown>) => e.title ?? e.message)
+      .filter(Boolean)
+      .join("; ")
+      .slice(0, 500);
+    throw new WrappApiError(message || "Η Wrapp επέστρεψε σφάλμα.", {
+      code: "wrapp.errors",
+      raw: res,
+    });
   } catch (err) {
     logger.error("wrapp.issue.failed", err, {
       businessId: ctx.businessId,
@@ -419,22 +574,18 @@ export async function attemptIssueAction(documentId: string) {
       documentId: doc.id,
       action: "document.issue",
     });
-    // Wrapp failure: keep the reserved number (gaps < duplicates) but flip
-    // the doc back to draft so the user can retry. Log the last error.
+    const message =
+      err instanceof Error ? err.message.slice(0, 500) : "Άγνωστο σφάλμα.";
     await prisma.document
       .update({
         where: { id: doc.id },
-        data: {
-          status: "draft",
-          lastWrappError:
-            err instanceof Error ? err.message.slice(0, 500) : "Άγνωστο σφάλμα.",
-        },
+        data: { status: "draft", lastWrappError: message },
       })
       .catch(() => undefined);
 
     if (err instanceof NotImplementedInPhase1) {
       return { ok: false as const, error: err.message };
     }
-    throw err;
+    return { ok: false as const, error: message };
   }
 }

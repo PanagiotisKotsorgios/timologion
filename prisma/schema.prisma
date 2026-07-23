@@ -543,12 +543,15 @@ model WrappConnection {
   businessId         String      @unique
   status             WrappStatus @default(inactive)
   wrappUserId        String?     @db.VarChar(120)
+  wrappEmail         String?     @db.VarChar(160)
   hasPlan            Boolean     @default(false)
   canIssueInvoice    Boolean     @default(false)
   encryptedApiKey    String?     @db.Text
+  encryptedJwt       String?     @db.Text
   jwtExpiresAt       DateTime?
   lastVerifiedAt     DateTime?
   lastError          String?     @db.Text
+  webhookEndpoint    String?     @db.VarChar(500)
   createdAt          DateTime    @default(now())
   updatedAt          DateTime    @updatedAt
 
