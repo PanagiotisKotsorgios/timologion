@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { decryptSecret } from "@/lib/crypto";
+import { decryptSecret, encryptSecret } from "@/lib/crypto";
 import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { logAudit } from "@/lib/audit";
@@ -40,22 +40,47 @@ function safeEqualHex(a: string, b: string): boolean {
   }
 }
 
-async function findMatchingBusiness(
+/**
+ * Verify the request signature.
+ *
+ * Tenant-scoped events (issued-invoice, pos-payment, invoice-pdf,
+ * thermal-print-pdf) are signed with the tenant's api_key. Partner-scoped
+ * events (onboarding callback) are signed with the platform's Partners API
+ * key. We try both and return which one matched so downstream handlers know
+ * the scope of the verified event.
+ */
+async function verifySignature(
   rawBody: string,
   signature: string,
-): Promise<{ businessId: string } | null> {
+): Promise<
+  | { scope: "platform"; businessId: null }
+  | { scope: "partner"; businessId: null }
+  | { scope: "tenant"; businessId: string }
+  | null
+> {
   if (!signature) return null;
 
-  // Optional platform-level shared secret takes precedence if set.
+  // Platform shared secret (optional override).
   if (env.WRAPP_WEBHOOK_SECRET) {
     const expected = createHmac("sha256", env.WRAPP_WEBHOOK_SECRET)
       .update(rawBody)
       .digest("hex");
     if (safeEqualHex(expected, signature)) {
-      return { businessId: "*" };
+      return { scope: "platform", businessId: null };
     }
   }
 
+  // Partner-signed events (onboarding). Signed with our Partners API key.
+  if (env.WRAPP_PARTNER_API_KEY) {
+    const expected = createHmac("sha256", env.WRAPP_PARTNER_API_KEY)
+      .update(rawBody)
+      .digest("hex");
+    if (safeEqualHex(expected, signature)) {
+      return { scope: "partner", businessId: null };
+    }
+  }
+
+  // Tenant-signed events. Linear scan over active connections.
   const rows = await prisma.wrappConnection.findMany({
     where: { encryptedApiKey: { not: null } },
     select: { businessId: true, encryptedApiKey: true },
@@ -65,15 +90,19 @@ async function findMatchingBusiness(
     const apiKey = decryptSecret(r.encryptedApiKey);
     if (!apiKey) continue;
     const expected = createHmac("sha256", apiKey).update(rawBody).digest("hex");
-    if (safeEqualHex(expected, signature)) return { businessId: r.businessId };
+    if (safeEqualHex(expected, signature)) {
+      return { scope: "tenant", businessId: r.businessId };
+    }
   }
 
-  // Staging fallback: also accept the shared staging tenant key.
+  // Staging fallback tenant.
   if (env.WRAPP_STAGING_TENANT_API_KEY) {
     const expected = createHmac("sha256", env.WRAPP_STAGING_TENANT_API_KEY)
       .update(rawBody)
       .digest("hex");
-    if (safeEqualHex(expected, signature)) return { businessId: "*" };
+    if (safeEqualHex(expected, signature)) {
+      return { scope: "tenant", businessId: "*" };
+    }
   }
   return null;
 }
@@ -87,10 +116,10 @@ export async function POST(req: Request) {
   // before the Wrapp side has the webhook_endpoint fully configured.
   const allowUnsigned = env.NODE_ENV !== "production" && !signature;
 
-  let matched: { businessId: string } | null = null;
+  let verified: Awaited<ReturnType<typeof verifySignature>> = null;
   if (!allowUnsigned) {
-    matched = await findMatchingBusiness(raw, signature);
-    if (!matched) {
+    verified = await verifySignature(raw, signature);
+    if (!verified) {
       logger.warn("wrapp.webhook.unauthorized", {
         action: eventType || "unknown",
       });
@@ -104,6 +133,76 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ error: "invalid json" }, { status: 400 });
   }
+
+  // ─── Partner-scoped events (onboarding callback) ─────────────────────
+  // Wrapp posts { api_key, partner_user_id, email, wrapp_user_id, ... } after
+  // successful external_login onboarding. We match `partner_user_id` (which
+  // we set = businessId when we called external_login) and persist the
+  // tenant's api_key so subsequent tenant-API calls can log in.
+  const looksLikeOnboarding =
+    typeof payload.api_key === "string" &&
+    typeof payload.partner_user_id === "string";
+
+  if (
+    looksLikeOnboarding &&
+    (allowUnsigned || verified?.scope === "partner" || verified?.scope === "platform")
+  ) {
+    const businessId = String(payload.partner_user_id);
+    const apiKey = String(payload.api_key);
+    const wrappUserId =
+      typeof payload.wrapp_user_id === "string" ? payload.wrapp_user_id : null;
+    const email =
+      typeof payload.email === "string" ? payload.email : null;
+
+    const biz = await prisma.business.findUnique({
+      where: { id: businessId },
+      select: { id: true },
+    });
+    if (biz) {
+      await prisma.wrappConnection.upsert({
+        where: { businessId },
+        create: {
+          businessId,
+          status: "active",
+          hasPlan: true,
+          canIssueInvoice: true,
+          wrappUserId,
+          wrappEmail: email,
+          encryptedApiKey: encryptSecret(apiKey),
+          encryptedJwt: null,
+          jwtExpiresAt: null,
+          lastVerifiedAt: new Date(),
+          lastError: null,
+        },
+        update: {
+          status: "active",
+          hasPlan: true,
+          canIssueInvoice: true,
+          wrappUserId,
+          wrappEmail: email ?? undefined,
+          encryptedApiKey: encryptSecret(apiKey),
+          encryptedJwt: null,
+          jwtExpiresAt: null,
+          lastVerifiedAt: new Date(),
+          lastError: null,
+        },
+      });
+      await logAudit({
+        businessId,
+        action: "wrapp.onboarding.completed",
+        meta: { wrappUserId, email },
+      });
+      logger.info("wrapp.onboarding.completed", { businessId });
+      return NextResponse.json({ ok: true, activated: true });
+    }
+    logger.warn("wrapp.onboarding.unknown_business", {
+      action: "wrapp.onboarding",
+    });
+    return NextResponse.json({ ok: true, ignored: true });
+  }
+
+  const matched = verified?.scope === "tenant" ? verified : null;
+  void matched; // referenced below only for logging context
 
   try {
     if (eventType === "issued-invoice") {

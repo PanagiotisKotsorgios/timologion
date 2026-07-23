@@ -1,16 +1,18 @@
 "use client";
 
-import { useEffect, useTransition } from "react";
-import { devSimulateActivationAction } from "./activation-actions";
-
-// Replace with the real Wrapp partner onboarding URL when the integration
-// lands. Meanwhile, this opens Wrapp's public partner information page.
-const PROVIDER_URL = "https://wrapp.ai/el/api/becomeapartner";
+import { useEffect, useState, useTransition } from "react";
+import {
+  devSimulateActivationAction,
+  startWrappActivationAction,
+  checkActivationAction,
+} from "./activation-actions";
 
 export function ActivationGate({ devMode }: { devMode: boolean }) {
   const [simulating, startSimulate] = useTransition();
+  const [starting, startStart] = useTransition();
+  const [checking, startCheck] = useTransition();
+  const [error, setError] = useState<string | null>(null);
 
-  // Lock body scroll while the gate is open.
   useEffect(() => {
     const original = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -18,6 +20,33 @@ export function ActivationGate({ devMode }: { devMode: boolean }) {
       document.body.style.overflow = original;
     };
   }, []);
+
+  function activate() {
+    setError(null);
+    startStart(async () => {
+      const res = await startWrappActivationAction();
+      if (res.ok) {
+        // Whole-tab navigation to Wrapp — return_url brings the user back.
+        window.location.href = res.loginUrl;
+        return;
+      }
+      if (res.alreadyActive) {
+        window.location.reload();
+        return;
+      }
+      setError(res.error);
+    });
+  }
+
+  function recheck() {
+    setError(null);
+    startCheck(async () => {
+      await checkActivationAction();
+      window.location.reload();
+    });
+  }
+
+  const busy = starting || checking;
 
   return (
     <div
@@ -63,45 +92,66 @@ export function ActivationGate({ devMode }: { devMode: boolean }) {
             Ολοκλήρωσε την ενεργοποίηση για να συνεχίσεις
           </h2>
           <p className="mt-5 text-lg leading-relaxed text-ink-700">
-            Για να μπορέσεις να εκδώσεις παραστατικά, πρέπει πρώτα να
-            ολοκληρώσεις την ενεργοποίηση της υπηρεσίας ηλεκτρονικής έκδοσης
-            μέσω του συνεργαζόμενου παρόχου. Η διαδικασία γίνεται μία φορά και
-            διαρκεί μερικά λεπτά.
+            Πάτα «Ενεργοποίηση τώρα» για να μεταβείς με ασφάλεια στη Wrapp και
+            να ολοκληρώσεις τη σύνδεση του λογαριασμού σου. Η διαδικασία
+            γίνεται μία φορά και διαρκεί λίγα λεπτά.
           </p>
 
           <ol className="mt-8 space-y-3 rounded-2xl border-2 border-ink-300 bg-ink-100 p-5 text-base text-ink-900">
-            <Step n="1" text="Μετάβαση στον πάροχο με το κουμπί παρακάτω." />
+            <Step
+              n="1"
+              text="Θα ανοίξει το ασφαλές portal της Wrapp με το email σου προσυμπληρωμένο."
+            />
             <Step
               n="2"
-              text="Υπογραφή σύμβασης και εξόφληση της συνδρομής του παρόχου."
+              text="Ολοκλήρωσε τη σύνδεση / ενεργοποίηση του λογαριασμού στη Wrapp."
             />
             <Step
               n="3"
-              text="Επιστροφή στο timologion — η υπηρεσία ενεργοποιείται αυτόματα."
+              text="Επιστρέφεις εδώ αυτόματα και μπορείς να ξεκινήσεις να εκδίδεις."
             />
           </ol>
 
-          <div className="mt-10">
-            <a
-              href={PROVIDER_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-lg bg-brand-700 px-6 text-lg font-semibold text-white transition-colors hover:bg-brand-800"
+          {error && (
+            <div className="mt-6 rounded-lg border-2 border-red-300 bg-red-50 p-4 text-sm font-medium text-red-800">
+              {error}
+            </div>
+          )}
+
+          <div className="mt-10 space-y-3">
+            <button
+              type="button"
+              onClick={activate}
+              disabled={busy}
+              className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-lg bg-brand-700 px-6 text-lg font-semibold text-white transition-colors hover:bg-brand-800 disabled:opacity-60"
             >
-              Ενεργοποίηση τώρα
-              <svg
-                viewBox="0 0 24 24"
-                className="h-5 w-5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden
-              >
-                <path d="M7 17 17 7M8 7h9v9" />
-              </svg>
-            </a>
+              {starting ? "Άνοιγμα Wrapp..." : "Ενεργοποίηση τώρα"}
+              {!starting && (
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-5 w-5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden
+                >
+                  <path d="M7 17 17 7M8 7h9v9" />
+                </svg>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={recheck}
+              disabled={busy}
+              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg border-2 border-ink-300 bg-white px-5 text-sm font-semibold text-ink-900 transition-colors hover:bg-ink-100 disabled:opacity-60"
+            >
+              {checking
+                ? "Έλεγχος..."
+                : "Έχω ήδη ενεργοποιηθεί — έλεγχος κατάστασης"}
+            </button>
           </div>
 
           {devMode && (
@@ -112,6 +162,7 @@ export function ActivationGate({ devMode }: { devMode: boolean }) {
                 onClick={() =>
                   startSimulate(async () => {
                     await devSimulateActivationAction();
+                    window.location.reload();
                   })
                 }
                 className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border-2 border-ink-500 bg-ink-100 px-5 text-sm font-semibold text-ink-900 transition-colors hover:bg-ink-300/50 disabled:opacity-50"
