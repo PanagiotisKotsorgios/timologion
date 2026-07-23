@@ -23,7 +23,6 @@ Required legal/product wording:
 
 ## External References
 
-- Timologic inspiration: https://timologic.gr/
 - Wrapp website: https://wrapp.ai/en
 - Wrapp API reference: https://wrapp.ai/api/documentation?locale=en
 - Wrapp AI-friendly API docs: https://wrapp.ai/api/documentation.md
