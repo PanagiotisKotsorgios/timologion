@@ -39,13 +39,22 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     memberships.find((m) => m.businessId === session.activeBusinessId) ??
     memberships[0]!;
 
-  // Wrapp activation status for the active business — drives the blocking gate.
-  const wrapp = await prisma.wrappConnection.findUnique({
-    where: { businessId: active.businessId },
-    select: { status: true },
-  });
+  // Wrapp activation status + business phone for the active business — drive
+  // the blocking gate. The phone is passed through so the gate can prompt for
+  // it inline when Wrapp's external_login would otherwise reject the request.
+  const [wrapp, activeBusiness] = await Promise.all([
+    prisma.wrappConnection.findUnique({
+      where: { businessId: active.businessId },
+      select: { status: true },
+    }),
+    prisma.business.findUnique({
+      where: { id: active.businessId },
+      select: { phone: true },
+    }),
+  ]);
 
   const needsActivation = (wrapp?.status ?? "inactive") !== "active";
+  const hasPhone = Boolean(activeBusiness?.phone?.trim());
 
   return (
     <div className="flex min-h-screen bg-ink-100">
@@ -69,7 +78,10 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       </div>
 
       {needsActivation && (
-        <ActivationGate devMode={env.NODE_ENV !== "production"} />
+        <ActivationGate
+          devMode={env.NODE_ENV !== "production"}
+          hasPhone={hasPhone}
+        />
       )}
     </div>
   );

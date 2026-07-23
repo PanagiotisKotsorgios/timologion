@@ -7,11 +7,18 @@ import {
   checkActivationAction,
 } from "./activation-actions";
 
-export function ActivationGate({ devMode }: { devMode: boolean }) {
+export function ActivationGate({
+  devMode,
+  hasPhone,
+}: {
+  devMode: boolean;
+  hasPhone: boolean;
+}) {
   const [simulating, startSimulate] = useTransition();
   const [starting, startStart] = useTransition();
   const [checking, startCheck] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [phone, setPhone] = useState("");
 
   useEffect(() => {
     const original = document.body.style.overflow;
@@ -23,8 +30,16 @@ export function ActivationGate({ devMode }: { devMode: boolean }) {
 
   function activate() {
     setError(null);
+    // If we don't have a phone on the Business record yet, the user needs to
+    // fill one in right here. Skip the round-trip if it's empty.
+    if (!hasPhone && !phone.trim()) {
+      setError("Συμπλήρωσε αριθμό τηλεφώνου για να συνεχίσεις.");
+      return;
+    }
     startStart(async () => {
-      const res = await startWrappActivationAction();
+      const res = await startWrappActivationAction(
+        !hasPhone ? { phone: phone.trim() } : {},
+      );
       if (res.ok) {
         // Whole-tab navigation to Wrapp — return_url brings the user back.
         window.location.href = res.loginUrl;
@@ -112,13 +127,44 @@ export function ActivationGate({ devMode }: { devMode: boolean }) {
             />
           </ol>
 
+          {!hasPhone && (
+            <div className="mt-8 rounded-2xl border-2 border-brand-200 bg-brand-50 p-5">
+              <label
+                htmlFor="activation-phone"
+                className="block text-sm font-bold text-brand-900"
+              >
+                Τηλέφωνο επιχείρησης
+                <span className="ml-1 text-red-700">*</span>
+              </label>
+              <p className="mt-1 text-xs text-brand-900/70">
+                Η Wrapp το χρειάζεται για την ενεργοποίηση. Θα αποθηκευτεί
+                στα στοιχεία της επιχείρησής σου.
+              </p>
+              <input
+                id="activation-phone"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                maxLength={30}
+                required
+                placeholder="π.χ. 6912345678"
+                value={phone}
+                onChange={(e) => {
+                  setPhone(e.target.value);
+                  if (error) setError(null);
+                }}
+                className="mt-3 h-12 w-full rounded-lg border-2 border-brand-300 bg-white px-4 text-base text-ink-900 focus:border-brand-700 focus:outline-none focus:ring-4 focus:ring-brand-500/15"
+              />
+            </div>
+          )}
+
           {error && (
             <div className="mt-6 rounded-lg border-2 border-red-300 bg-red-50 p-4 text-sm font-medium text-red-800">
               {error}
             </div>
           )}
 
-          <div className="mt-10 space-y-3">
+          <div className="mt-8 space-y-3">
             <button
               type="button"
               onClick={activate}

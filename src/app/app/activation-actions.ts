@@ -93,7 +93,9 @@ export async function checkActivationAction() {
  * missing), returns a helpful Greek error instead of redirecting to the
  * public partner info page — the previous behavior was misleading.
  */
-export async function startWrappActivationAction(): Promise<
+export async function startWrappActivationAction(
+  input: { phone?: string } = {},
+): Promise<
   { ok: true; loginUrl: string } | { ok: false; error: string; alreadyActive?: boolean }
 > {
   const ctx = await requireTenant();
@@ -144,13 +146,24 @@ export async function startWrappActivationAction(): Promise<
     };
   }
 
-  const phone = business?.phone?.trim() || null;
+  // Prefer the phone the user just typed in the activation modal, then fall
+  // back to whatever's already stored on the Business. If we got a new phone
+  // and the Business record is empty, persist it so the user doesn't have to
+  // re-enter it later.
+  const providedPhone = input.phone?.trim() || null;
+  const phone = providedPhone || business?.phone?.trim() || null;
   if (!phone) {
     return {
       ok: false,
       error:
-        "Λείπει το τηλέφωνο της επιχείρησης — η Wrapp το απαιτεί για την ενεργοποίηση. Συμπλήρωσέ το από Ρυθμίσεις → Επιχείρηση και δοκίμασε ξανά.",
+        "Λείπει το τηλέφωνο της επιχείρησης — η Wrapp το απαιτεί για την ενεργοποίηση.",
     };
+  }
+  if (providedPhone && !business?.phone && business) {
+    await prisma.business.update({
+      where: { id: business.id },
+      data: { phone: providedPhone.slice(0, 30) },
+    });
   }
 
   const returnUrl = `${env.APP_BASE_URL.replace(/\/$/, "")}/app/wrapp/return?bid=${ctx.businessId}`;
