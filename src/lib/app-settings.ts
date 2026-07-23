@@ -10,7 +10,6 @@ export type AppSettingKey =
   | "starter_monthly_document_limit"
   | "support_email"
   | "brand_short_name"
-  | "provider_partner_url"
   | "signup_open";
 
 export type SettingType = "number" | "string" | "boolean";
@@ -50,14 +49,6 @@ export const APP_SETTING_CATALOG: {
     description: "Χρησιμοποιείται σε τίτλους και μηνύματα συστήματος.",
     type: "string",
     default: "timologion",
-  },
-  {
-    key: "provider_partner_url",
-    label: "URL παρόχου έκδοσης",
-    description:
-      "URL που ανοίγει το κουμπί «Ενεργοποίηση τώρα» στο modal ενεργοποίησης.",
-    type: "string",
-    default: "https://wrapp.ai/el/api/becomeapartner",
   },
   {
     key: "signup_open",
