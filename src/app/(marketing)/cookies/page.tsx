@@ -119,9 +119,9 @@ export default function CookiesPage() {
               Ερωτήσεις για την πολιτική cookies:{" "}
               <a
                 className="font-semibold text-brand-800 underline"
-                href="mailto:privacy@timologion.gr"
+                href="mailto:support@timologion.gr"
               >
-                privacy@timologion.gr
+                support@timologion.gr
               </a>
               .
             </p>

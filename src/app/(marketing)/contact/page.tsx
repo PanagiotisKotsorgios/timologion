@@ -39,16 +39,8 @@ export default function ContactPage() {
 
                 <div className="mt-10 space-y-8">
                   <Channel
-                    label="Email υποστήριξης"
+                    label="Email"
                     value="support@timologion.gr"
-                  />
-                  <Channel
-                    label="Συνεργασίες"
-                    value="partners@timologion.gr"
-                  />
-                  <Channel
-                    label="Νομικά / privacy"
-                    value="privacy@timologion.gr"
                   />
                 </div>
               </div>

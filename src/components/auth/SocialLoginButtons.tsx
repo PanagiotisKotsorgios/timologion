@@ -1,11 +1,25 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
 /**
  * SVG-based Google and Facebook logos with brand colors. Rendered inline so we
- * don't add another icon dependency. Both buttons always render; if the
- * provider isn't configured in env, the /start route redirects back with an
- * `oauth_disabled` error banner.
+ * don't add another icon dependency. Google navigates through the OAuth flow;
+ * Facebook shows a "coming soon" popup because the FB app is still pending
+ * review.
  */
 export function SocialLoginButtons({ mode }: { mode: "login" | "register" }) {
   const verb = mode === "login" ? "Σύνδεση" : "Εγγραφή";
+  const [showFbNotice, setShowFbNotice] = useState(false);
+
+  useEffect(() => {
+    if (!showFbNotice) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShowFbNotice(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showFbNotice]);
 
   return (
     <div className="space-y-3">
@@ -26,14 +40,73 @@ export function SocialLoginButtons({ mode }: { mode: "login" | "register" }) {
           <GoogleIcon />
           {verb} με Google
         </a>
-        <a
-          href="/api/auth/fb/start"
+        <button
+          type="button"
+          onClick={() => setShowFbNotice(true)}
           style={{ backgroundColor: "#1877F2", color: "#ffffff" }}
           className="inline-flex h-14 items-center justify-center gap-3 rounded-full font-semibold transition-transform hover:-translate-y-0.5 hover:opacity-95"
         >
           <FacebookIcon />
           {verb} με Facebook
-        </a>
+        </button>
+      </div>
+
+      {showFbNotice && (
+        <FacebookComingSoonModal onClose={() => setShowFbNotice(false)} />
+      )}
+    </div>
+  );
+}
+
+function FacebookComingSoonModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="fb-coming-soon-title"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+    >
+      <button
+        type="button"
+        aria-label="Κλείσιμο"
+        onClick={onClose}
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+      />
+      <div className="relative w-full max-w-md rounded-3xl border-2 border-black/10 bg-white p-8 shadow-2xl">
+        <div
+          className="mx-auto grid h-16 w-16 place-items-center rounded-full"
+          style={{ backgroundColor: "#1877F2" }}
+        >
+          <span className="text-white">
+            <FacebookIcon />
+          </span>
+        </div>
+        <h2
+          id="fb-coming-soon-title"
+          className="mt-6 text-center text-2xl font-extrabold text-brand-900"
+        >
+          Έρχεται σύντομα
+        </h2>
+        <p className="mt-4 text-center text-base text-black/70">
+          Η σύνδεση μέσω Facebook δεν είναι ακόμη διαθέσιμη για τους χρήστες.
+          Χρησιμοποίησε προσωρινά τη Σύνδεση με Google ή το email σου.
+        </p>
+        <p className="mt-4 text-center text-sm text-black/60">
+          Θα σε ενημερώσουμε μόλις ενεργοποιηθεί. Για βοήθεια:{" "}
+          <a
+            href="mailto:support@timologion.gr"
+            className="font-semibold text-brand-900 underline underline-offset-4"
+          >
+            support@timologion.gr
+          </a>
+        </p>
+        <button
+          type="button"
+          onClick={onClose}
+          className="mt-8 inline-flex h-14 w-full items-center justify-center rounded-full bg-brand-900 text-base font-semibold text-white transition-transform hover:-translate-y-0.5"
+        >
+          Εντάξει, το κατάλαβα
+        </button>
       </div>
     </div>
   );

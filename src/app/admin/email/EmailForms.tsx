@@ -62,7 +62,7 @@ export function ConfigForm({
             type="email"
             defaultValue={initial.senderEmail}
             required
-            placeholder="noreply@timologion.gr"
+            placeholder="support@timologion.gr"
           />
         </Field>
         <Field label="Όνομα αποστολέα" htmlFor="senderName">

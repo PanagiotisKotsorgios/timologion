@@ -49,9 +49,9 @@ export default function PrivacyPage() {
               διεύθυνση{" "}
               <a
                 className="font-semibold text-brand-800 underline"
-                href="mailto:privacy@timologion.gr"
+                href="mailto:support@timologion.gr"
               >
-                privacy@timologion.gr
+                support@timologion.gr
               </a>
               .
             </p>
@@ -213,14 +213,8 @@ export default function PrivacyPage() {
 
           <Section title="11. Επικοινωνία">
             <p>
-              Για ερωτήματα σχετικά με προσωπικά δεδομένα:{" "}
-              <a
-                className="font-semibold text-brand-800 underline"
-                href="mailto:privacy@timologion.gr"
-              >
-                privacy@timologion.gr
-              </a>
-              . Για υποστήριξη υπηρεσίας:{" "}
+              Για ερωτήματα σχετικά με προσωπικά δεδομένα ή για υποστήριξη
+              υπηρεσίας:{" "}
               <a
                 className="font-semibold text-brand-800 underline"
                 href="mailto:support@timologion.gr"

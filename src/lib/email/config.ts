@@ -33,7 +33,7 @@ export async function getEmailConfig(): Promise<EmailConfig> {
 
   return {
     apiKey,
-    senderEmail: map.get(K_SENDER_EMAIL) ?? "noreply@timologion.gr",
+    senderEmail: map.get(K_SENDER_EMAIL) ?? "support@timologion.gr",
     senderName: map.get(K_SENDER_NAME) ?? "timologion",
     replyTo: map.get(K_REPLY_TO) ?? null,
     hasApiKey: Boolean(apiKey),

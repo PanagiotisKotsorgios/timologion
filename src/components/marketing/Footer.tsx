@@ -53,9 +53,7 @@ const COLUMNS = [
 ];
 
 const CONTACT = [
-  { label: "Υποστήριξη", value: "support@timologion.gr" },
-  { label: "Συνεργασίες", value: "partners@timologion.gr" },
-  { label: "Νομικά / privacy", value: "privacy@timologion.gr" },
+  { label: "Email", value: "support@timologion.gr" },
   { label: "Τηλέφωνο", value: "+30 2631 028971" },
   { label: "Ωράριο", value: "Δευτ – Παρ · 09:00–18:00 (EET)" },
 ];
@@ -121,7 +119,7 @@ export function MarketingFooter() {
 
       {/* Contact band */}
       <Container className="border-b border-white/10 py-10 md:py-16">
-        <div className="grid grid-cols-2 gap-6 md:grid-cols-5 md:gap-10">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-3 md:gap-10">
           {CONTACT.map((c) => (
             <div key={c.label}>
               <p className="eyebrow text-white/50">{c.label}</p>
