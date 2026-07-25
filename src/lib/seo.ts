@@ -11,18 +11,34 @@ import { env } from "@/lib/env";
  * τιμολόγιον, ηλεκτρονική τιμολόγηση, myDATA, ΑΑΔΕ, παραστατικά, ΦΠΑ, ΓΓΠΣ.
  */
 
+const PRODUCTION_URL = "https://timologion.gr";
+
+/**
+ * Absolute site URL for canonicals, OG tags and JSON-LD. Never uses a
+ * localhost fallback because leaking `http://localhost:3000` into meta tags
+ * poisons Google's canonical resolution and OG image previews. If APP_BASE_URL
+ * isn't a real production URL, we force the known production host.
+ */
+function resolveSiteUrl(): string {
+  const raw = env.APP_BASE_URL?.replace(/\/$/, "") ?? "";
+  if (!raw || raw.startsWith("http://localhost") || raw.startsWith("http://127.")) {
+    return PRODUCTION_URL;
+  }
+  return raw;
+}
+
 export const SITE = {
   name: "Τιμολόγιον",
   altName: "timologion",
   domain: "timologion.gr",
-  url: env.APP_BASE_URL.replace(/\/$/, "") || "https://timologion.gr",
+  url: resolveSiteUrl(),
   locale: "el_GR",
   language: "el",
-  defaultTitle: "Τιμολόγιον | Ηλεκτρονική Τιμολόγηση για Ελληνικές Επιχειρήσεις",
-  titleTemplate: "%s | Τιμολόγιον — Ηλεκτρονική Τιμολόγηση",
-  shortTagline: "Ηλεκτρονική τιμολόγηση για επιχειρήσεις",
+  defaultTitle: "Τιμολόγιον | Πρόγραμμα Ηλεκτρονικής Τιμολόγησης myDATA",
+  titleTemplate: "%s | Τιμολόγιον",
+  shortTagline: "Πρόγραμμα ηλεκτρονικής τιμολόγησης myDATA",
   defaultDescription:
-    "Τιμολόγιον: ελληνική εφαρμογή ηλεκτρονικής τιμολόγησης με myDATA, πελατολόγιο, παραστατικά, POS και CRM. Ξεκίνα δωρεάν — χωρίς κάρτα, χωρίς δέσμευση.",
+    "Τιμολόγιον: ελληνικό online πρόγραμμα ηλεκτρονικής τιμολόγησης με άμεση σύνδεση στο myDATA της ΑΑΔΕ. Έκδοση παραστατικών, αναζήτηση ΑΦΜ, πελατολόγιο, POS, CRM. Ξεκίνα δωρεάν — χωρίς κάρτα.",
   contactEmail: "support@timologion.gr",
   phone: "+30 2631 028971",
   logoPath: "/logo.png",
@@ -68,8 +84,13 @@ const SOCIAL = {
 } as const;
 
 type PageMetadataInput = {
-  /** Just the page title fragment — the template adds the site suffix. */
+  /** Page title fragment. Combined with the layout template unless `absoluteTitle` is true. */
   title: string;
+  /**
+   * If true, `title` is emitted as-is with no site-name suffix — use on the
+   * home page and on any page whose title already includes "Τιμολόγιον".
+   */
+  absoluteTitle?: boolean;
   /** Falls back to the site default. Aim for 140–170 chars, keyword-rich. */
   description?: string;
   /** Absolute path (e.g. "/pricing"). Used for canonical + OG url. */
@@ -94,7 +115,7 @@ export function pageMetadata(input: PageMetadataInput): Metadata {
   const keywords = [...SITE_KEYWORDS, ...(input.keywords ?? [])];
 
   return {
-    title: input.title,
+    title: input.absoluteTitle ? { absolute: input.title } : input.title,
     description,
     keywords: [...keywords],
     alternates: {
