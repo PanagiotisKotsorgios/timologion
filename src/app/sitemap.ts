@@ -1,9 +1,12 @@
 import type { MetadataRoute } from "next";
-import { env } from "@/lib/env";
+import { SITE } from "@/lib/seo";
 import { GUIDES } from "./(marketing)/guides/content";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const base = env.APP_BASE_URL.replace(/\/$/, "");
+  // SITE.url is guarded against localhost fallbacks so the sitemap can never
+  // emit `http://localhost:3000` URLs (which Search Console rejects as
+  // "Μη επιτρεπτή διεύθυνση URL").
+  const base = SITE.url;
   const now = new Date();
 
   const staticRoutes: MetadataRoute.Sitemap = [
