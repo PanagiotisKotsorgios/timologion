@@ -1,5 +1,14 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { pageMetadata } from "@/lib/seo";
 import { ForgotForm } from "./ForgotForm";
+
+export const metadata: Metadata = pageMetadata({
+  title: "Ανάκτηση Κωδικού",
+  description: "Ξέχασες τον κωδικό σου στο Τιμολόγιον; Ζήτησε νέο σύνδεσμο επαναφοράς.",
+  path: "/forgot-password",
+  noIndex: true,
+});
 
 export default function ForgotPasswordPage() {
   return (

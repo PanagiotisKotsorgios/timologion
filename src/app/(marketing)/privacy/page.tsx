@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { Container } from "@/components/marketing/Container";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Πολιτική απορρήτου · timologion",
+export const metadata: Metadata = pageMetadata({
+  title: "Πολιτική Απορρήτου (GDPR)",
   description:
-    "Πώς συλλέγουμε, χρησιμοποιούμε και προστατεύουμε τα δεδομένα σου στο timologion. Ενημέρωση σύμφωνα με GDPR.",
-};
+    "Πώς συλλέγει, χρησιμοποιεί και προστατεύει το Τιμολόγιον τα δεδομένα σου. Πλήρης συμμόρφωση με GDPR, Argon2id passwords και AES-256 για ευαίσθητα διαπιστευτήρια.",
+  path: "/privacy",
+});
 
 export default function PrivacyPage() {
   return (
@@ -78,9 +80,9 @@ export default function PrivacyPage() {
                 Cookies).
               </li>
               <li>
-                <strong>Δεδομένα OAuth:</strong> εφόσον συνδεθείς μέσω Google
-                ή Facebook, λαμβάνουμε όνομα, email, μοναδικό αναγνωριστικό
-                παρόχου — τίποτε παραπάνω.
+                <strong>Δεδομένα OAuth:</strong> εφόσον συνδεθείς μέσω Google,
+                λαμβάνουμε όνομα, email, μοναδικό αναγνωριστικό παρόχου —
+                τίποτε παραπάνω.
               </li>
             </ul>
           </Section>

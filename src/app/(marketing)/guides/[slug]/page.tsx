@@ -9,6 +9,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { Container } from "@/components/marketing/Container";
+import { pageMetadata } from "@/lib/seo";
 import { GUIDES, getGuide, nextGuide, prevGuide } from "../content";
 
 export async function generateStaticParams() {
@@ -22,11 +23,20 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const g = getGuide(slug);
-  if (!g) return { title: "Οδηγός · timologion" };
-  return {
-    title: `${g.title} · Οδηγοί · timologion`,
+  if (!g) {
+    return pageMetadata({
+      title: "Οδηγός δεν βρέθηκε",
+      path: `/guides/${slug}`,
+      noIndex: true,
+    });
+  }
+  return pageMetadata({
+    title: `${g.title} — Οδηγός Ηλεκτρονικής Τιμολόγησης`,
     description: g.intro,
-  };
+    path: `/guides/${slug}`,
+    ogType: "article",
+    keywords: ["οδηγός τιμολόγησης", "myDATA", g.title.toLowerCase()],
+  });
 }
 
 export default async function GuidePage({

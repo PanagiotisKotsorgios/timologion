@@ -1,12 +1,22 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Container } from "@/components/marketing/Container";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Χαρακτηριστικά · timologion",
+export const metadata: Metadata = pageMetadata({
+  title: "Χαρακτηριστικά — Παραστατικά, Πελατολόγιο, POS & CRM",
   description:
-    "Παραστατικά, πελατολόγιο, POS, CRM, αναφορές — όλα σε ένα καθαρό dashboard.",
-};
+    "Ανακάλυψε όλα τα χαρακτηριστικά του Τιμολόγιον: ηλεκτρονική τιμολόγηση myDATA, αναζήτηση ΑΦΜ ΓΓΠΣ, πελατολόγιο, είδη, πληρωμές, POS, CRM, αναφορές και ομαδικοί ρόλοι.",
+  path: "/features",
+  keywords: [
+    "χαρακτηριστικά τιμολόγηση",
+    "λειτουργίες myDATA",
+    "POS εστιατορίου",
+    "CRM leads",
+    "πελατολόγιο επιχείρησης",
+    "θερμική εκτύπωση απόδειξης",
+  ],
+});
 
 const MODULES: {
   id: string;
@@ -87,14 +97,13 @@ const MODULES: {
   {
     id: "crm",
     index: "06",
-    title: "CRM & Marketing",
+    title: "CRM",
     intro:
       "Leads, ευκαιρίες, εργασίες follow-up και επικοινωνία πελατών — χωρίς άλλο εργαλείο.",
     bullets: [
       "Leads και ευκαιρίες με 5 στάδια pipeline",
       "Εργασίες με ημερομηνία λήξης & υπενθυμίσεις",
       "Ιστορικό επικοινωνίας ανά πελάτη",
-      "Καμπάνιες email σε προχωρημένα πακέτα (σε επόμενη φάση)",
     ],
   },
   {

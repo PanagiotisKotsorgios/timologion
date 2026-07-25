@@ -1,6 +1,21 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { pageMetadata } from "@/lib/seo";
 import { RegisterForm } from "./RegisterForm";
 import { SocialLoginButtons } from "@/components/auth/SocialLoginButtons";
+
+export const metadata: Metadata = pageMetadata({
+  title: "Δημιουργία Λογαριασμού — Δωρεάν Εγγραφή",
+  description:
+    "Ξεκίνα δωρεάν στο Τιμολόγιον σε ένα λεπτό. Ηλεκτρονική τιμολόγηση με myDATA, χωρίς κάρτα, χωρίς δέσμευση. Δωρεάν δοκιμή 14 ημερών.",
+  path: "/register",
+  keywords: [
+    "εγγραφή τιμολόγιον",
+    "δωρεάν τιμολόγηση",
+    "δοκιμή τιμολόγιο",
+    "δημιουργία λογαριασμού myDATA",
+  ],
+});
 
 export default function RegisterPage() {
   return (

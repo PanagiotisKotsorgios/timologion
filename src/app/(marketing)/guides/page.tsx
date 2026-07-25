@@ -2,13 +2,21 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, Clock } from "lucide-react";
 import { Container } from "@/components/marketing/Container";
+import { pageMetadata } from "@/lib/seo";
 import { GUIDES } from "./content";
 
-export const metadata: Metadata = {
-  title: "Οδηγίες · timologion",
+export const metadata: Metadata = pageMetadata({
+  title: "Οδηγοί Ηλεκτρονικής Τιμολόγησης",
   description:
-    "Πρακτικοί οδηγοί για εγγραφή, ενεργοποίηση, έκδοση παραστατικών.",
-};
+    "Πρακτικοί οδηγοί για ηλεκτρονική τιμολόγηση με myDATA: εγγραφή, ενεργοποίηση παρόχου, έκδοση παραστατικών, αναζήτηση ΑΦΜ και βέλτιστες πρακτικές τιμολόγησης.",
+  path: "/guides",
+  keywords: [
+    "οδηγός τιμολόγησης",
+    "myDATA οδηγίες",
+    "πώς να εκδώσω τιμολόγιο",
+    "οδηγός ΑΑΔΕ",
+  ],
+});
 
 export default function GuidesPage() {
   return (

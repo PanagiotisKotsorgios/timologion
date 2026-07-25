@@ -1,10 +1,19 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { CheckCircle2, XCircle, RefreshCcw, LogIn } from "lucide-react";
+import { pageMetadata } from "@/lib/seo";
 import { consumeVerificationToken } from "@/lib/auth/email-verify";
 import { getSession } from "@/lib/auth/session";
 import { ResendButton } from "./ResendButton";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = pageMetadata({
+  title: "Επιβεβαίωση Email",
+  description: "Επιβεβαίωσε τη διεύθυνση email του λογαριασμού σου στο Τιμολόγιον.",
+  path: "/verify-email",
+  noIndex: true,
+});
 
 export default async function VerifyEmailPage({
   searchParams,

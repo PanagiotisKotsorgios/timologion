@@ -1,7 +1,21 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { CheckCircle2, AlertCircle } from "lucide-react";
+import { pageMetadata } from "@/lib/seo";
 import { LoginForm } from "./LoginForm";
 import { SocialLoginButtons } from "@/components/auth/SocialLoginButtons";
+
+export const metadata: Metadata = pageMetadata({
+  title: "Σύνδεση στον Λογαριασμό σου",
+  description:
+    "Σύνδεση στο Τιμολόγιον — ελληνικό online πρόγραμμα ηλεκτρονικής τιμολόγησης με myDATA. Πρόσβαση στο dashboard, στα παραστατικά και το πελατολόγιο.",
+  path: "/login",
+  keywords: [
+    "σύνδεση τιμολόγιον",
+    "login τιμολόγιο",
+    "είσοδος myDATA πρόγραμμα",
+  ],
+});
 
 const OAUTH_ERRORS: Record<string, string> = {
   oauth_disabled: "Η σύνδεση με αυτόν τον πάροχο δεν είναι διαθέσιμη.",

@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { Container } from "@/components/marketing/Container";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Πολιτική Cookies · timologion",
+export const metadata: Metadata = pageMetadata({
+  title: "Πολιτική Cookies",
   description:
-    "Πώς και γιατί χρησιμοποιούμε cookies στο timologion και ποιες επιλογές έχεις.",
-};
+    "Πώς και γιατί χρησιμοποιεί cookies το Τιμολόγιον για τη λειτουργία της ηλεκτρονικής τιμολόγησης και ποιες επιλογές έχεις για τη διαχείρισή τους.",
+  path: "/cookies",
+});
 
 export default function CookiesPage() {
   return (
@@ -107,10 +109,9 @@ export default function CookiesPage() {
 
           <Section title="4. Cookies τρίτων">
             <p>
-              Το login μέσω Google και Facebook μπορεί να προκαλέσει τη δημιουργία
-              cookies από τους αντίστοιχους παρόχους κατά τη διάρκεια της
-              διαδικασίας εξουσιοδότησης. Δες τις αντίστοιχες πολιτικές
-              απορρήτου τους για λεπτομέρειες.
+              Το login μέσω Google μπορεί να προκαλέσει τη δημιουργία cookies
+              από τον πάροχο κατά τη διάρκεια της διαδικασίας εξουσιοδότησης.
+              Δες την αντίστοιχη πολιτική απορρήτου του Google για λεπτομέρειες.
             </p>
           </Section>
 

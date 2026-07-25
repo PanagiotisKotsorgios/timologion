@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
@@ -8,6 +9,14 @@ import { Topbar } from "@/components/layout/Topbar";
 import { ImpersonationBanner } from "@/components/layout/ImpersonationBanner";
 import { VerifyEmailBanner } from "@/components/layout/VerifyEmailBanner";
 import { ActivationGate } from "./ActivationGate";
+
+export const metadata: Metadata = {
+  title: {
+    default: "Dashboard | Τιμολόγιον",
+    template: "%s | Τιμολόγιον",
+  },
+  robots: { index: false, follow: false, nocache: true },
+};
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const session = await getSession();

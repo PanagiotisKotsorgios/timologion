@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { Container } from "@/components/marketing/Container";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Όροι χρήσης · timologion",
+export const metadata: Metadata = pageMetadata({
+  title: "Όροι Χρήσης",
   description:
-    "Οι όροι υπό τους οποίους παρέχουμε την υπηρεσία timologion σε επιχειρήσεις και επαγγελματίες.",
-};
+    "Οι όροι υπό τους οποίους παρέχουμε την υπηρεσία Τιμολόγιον σε ελληνικές επιχειρήσεις, ελεύθερους επαγγελματίες και μικρές επιχειρήσεις.",
+  path: "/terms",
+});
 
 export default function TermsPage() {
   return (

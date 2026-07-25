@@ -1,7 +1,16 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { pageMetadata } from "@/lib/seo";
 import { ResetForm } from "./ResetForm";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = pageMetadata({
+  title: "Ορισμός Νέου Κωδικού",
+  description: "Όρισε τον νέο σου κωδικό στο Τιμολόγιον.",
+  path: "/reset-password",
+  noIndex: true,
+});
 
 export default async function ResetPasswordPage({
   searchParams,

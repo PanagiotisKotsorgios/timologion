@@ -35,8 +35,8 @@ const TIERS: Tier[] = [
       { text: "PDF, εκτύπωση & αποστολή email", included: true },
       { text: "Βασικές αναφορές εσόδων", included: true },
       { text: "1 χρήστης", included: true },
-      { text: "Έξοδα & προμηθευτές", included: false },
-      { text: "POS, CRM, ραντεβού", included: false },
+      { text: "Επαναλαμβανόμενα παραστατικά", included: false },
+      { text: "POS & CRM", included: false },
     ],
   },
   {
@@ -52,13 +52,12 @@ const TIERS: Tier[] = [
     highlight: "150 παραστατικά/μήνα",
     features: [
       { text: "Όλα του Starter", included: true },
-      { text: "Έξοδα, προμηθευτές, αγορές", included: true },
       { text: "Εισπράξεις & πληρωμές", included: true },
       { text: "Επαναλαμβανόμενα παραστατικά", included: true },
       { text: "Προηγμένες αναφορές & εξαγωγές", included: true },
       { text: "Έως 5 χρήστες με ρόλους", included: true },
-      { text: "Υποστήριξη προτεραιότητας", included: true },
-      { text: "POS, CRM, ραντεβού", included: false },
+      { text: "Email υποστήριξη", included: true },
+      { text: "POS & CRM", included: false },
     ],
   },
   {
@@ -74,12 +73,10 @@ const TIERS: Tier[] = [
     features: [
       { text: "Όλα του Business", included: true },
       { text: "Γρήγορη πώληση & POS", included: true },
-      { text: "Ραντεβού & ημερολόγιο", included: true },
-      { text: "CRM & καμπάνιες", included: true },
-      { text: "Απόθεμα & παραγγελίες", included: true },
-      { text: "AI βοηθός & αυτοματισμοί", included: true },
+      { text: "CRM: leads, ευκαιρίες, tasks", included: true },
+      { text: "Απόθεμα ειδών & προϊόντων", included: true },
       { text: "Απεριόριστοι χρήστες", included: true },
-      { text: "Dedicated onboarding", included: true },
+      { text: "Υποστήριξη με προτεραιότητα", included: true },
     ],
   },
 ];
@@ -154,7 +151,7 @@ export function PricingSwitcher() {
             >
               {isFeatured && (
                 <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-emerald-400 px-4 py-1 text-[11px] font-black uppercase tracking-widest text-emerald-950 shadow">
-                  Καλύτερη αξία
+                  Προτεινόμενο
                 </span>
               )}
 

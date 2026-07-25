@@ -12,24 +12,30 @@ import {
   FileText,
   UserRound,
   Search,
-  Receipt,
   Repeat,
   ShoppingCart,
   Megaphone,
-  CalendarClock,
-  Sparkles,
   Headphones,
   Star,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Container } from "@/components/marketing/Container";
+import { pageMetadata } from "@/lib/seo";
 import { PricingSwitcher } from "./PricingSwitcher";
 
-export const metadata: Metadata = {
-  title: "Κόστος · timologion",
+export const metadata: Metadata = pageMetadata({
+  title: "Κόστος & Πακέτα Ηλεκτρονικής Τιμολόγησης",
   description:
-    "Απλά, διάφανα πακέτα για ελεύθερους επαγγελματίες και μικρές επιχειρήσεις.",
-};
+    "Απλή, διάφανη τιμολόγηση για το Τιμολόγιον. Πακέτα Starter, Business και Advanced με ηλεκτρονική τιμολόγηση myDATA, POS και CRM. Ξεκίνα δωρεάν, χωρίς κάρτα.",
+  path: "/pricing",
+  keywords: [
+    "τιμές τιμολόγηση",
+    "κόστος πρόγραμμα τιμολόγησης",
+    "συνδρομή τιμολόγιο",
+    "πακέτα myDATA",
+    "τιμοκατάλογος ηλεκτρονικής τιμολόγησης",
+  ],
+});
 
 const REASSURANCES = [
   { icon: CheckCircle2, text: "Χωρίς κάρτα για εγγραφή" },
@@ -78,19 +84,6 @@ const COMPARE_GROUPS: {
         business: true,
         advanced: true,
       },
-    ],
-  },
-  {
-    title: "Οικονομικά & αγορές",
-    icon: Receipt,
-    rows: [
-      {
-        icon: Receipt,
-        label: "Έξοδα & προμηθευτές",
-        starter: false,
-        business: true,
-        advanced: true,
-      },
       {
         icon: Repeat,
         label: "Επαναλαμβανόμενα παραστατικά",
@@ -113,21 +106,7 @@ const COMPARE_GROUPS: {
       },
       {
         icon: Megaphone,
-        label: "CRM & Καμπάνιες",
-        starter: false,
-        business: false,
-        advanced: true,
-      },
-      {
-        icon: CalendarClock,
-        label: "Ραντεβού & ημερολόγιο",
-        starter: false,
-        business: false,
-        advanced: true,
-      },
-      {
-        icon: Sparkles,
-        label: "AI βοηθός",
+        label: "CRM (leads, ευκαιρίες, tasks)",
         starter: false,
         business: false,
         advanced: true,
@@ -142,8 +121,8 @@ const COMPARE_GROUPS: {
         icon: Headphones,
         label: "Επίπεδο υποστήριξης",
         starter: "Email",
-        business: "Email + chat",
-        advanced: "Dedicated",
+        business: "Email",
+        advanced: "Email",
       },
     ],
   },
@@ -249,7 +228,7 @@ export default function PricingPage() {
                   <ThHead
                     name="Business"
                     featured
-                    badge={{ icon: Star, label: "Καλύτερη αξία" }}
+                    badge={{ icon: Star, label: "Προτεινόμενο" }}
                   />
                   <ThHead name="Advanced" />
                 </tr>

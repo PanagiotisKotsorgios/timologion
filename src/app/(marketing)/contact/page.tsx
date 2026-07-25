@@ -1,12 +1,20 @@
 import type { Metadata } from "next";
 import { Container } from "@/components/marketing/Container";
+import { pageMetadata } from "@/lib/seo";
 import { ContactForm } from "./ContactForm";
 
-export const metadata: Metadata = {
-  title: "Επικοινωνία · timologion",
+export const metadata: Metadata = pageMetadata({
+  title: "Επικοινωνία & Υποστήριξη",
   description:
-    "Επικοινώνησε με την ομάδα του timologion για ερωτήσεις, υποστήριξη ή συνεργασία.",
-};
+    "Χρειάζεσαι βοήθεια με το Τιμολόγιον; Στείλε μας μήνυμα στο support@timologion.gr ή τηλεφώνησε. Απαντάμε την ίδια εργάσιμη ημέρα — από άνθρωπο, όχι από bot.",
+  path: "/contact",
+  keywords: [
+    "επικοινωνία τιμολόγιον",
+    "υποστήριξη τιμολόγηση",
+    "support τιμολόγιο",
+    "τηλέφωνο τιμολόγιον",
+  ],
+});
 
 export default function ContactPage() {
   return (

@@ -1,0 +1,18 @@
+{
+  "name": "Τιμολόγιον — Ηλεκτρονική Τιμολόγηση",
+  "short_name": "Τιμολόγιον",
+  "description": "Ελληνική εφαρμογή ηλεκτρονικής τιμολόγησης με myDATA, πελατολόγιο, παραστατικά, POS και CRM.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0B1B3A",
+  "lang": "el-GR",
+  "dir": "ltr",
+  "categories": ["business", "finance", "productivity"],
+  "orientation": "any",
+  "icons": [
+    { "src": "/logo.png", "sizes": "any", "type": "image/png", "purpose": "any" },
+    { "src": "/logo.png", "sizes": "any", "type": "image/png", "purpose": "maskable" }
+  ]
+}

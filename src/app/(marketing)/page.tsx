@@ -1,6 +1,30 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { Container } from "@/components/marketing/Container";
+import {
+  pageMetadata,
+  organizationJsonLd,
+  softwareAppJsonLd,
+  websiteJsonLd,
+} from "@/lib/seo";
+
+export const metadata: Metadata = pageMetadata({
+  title: "Τιμολόγιον — Ηλεκτρονική Τιμολόγηση για Ελληνικές Επιχειρήσεις",
+  description:
+    "Τιμολόγιον: ελληνική εφαρμογή ηλεκτρονικής τιμολόγησης με myDATA, ΑΑΔΕ, αναζήτηση ΑΦΜ, πελατολόγιο, παραστατικά, POS και CRM. Ξεκίνα δωρεάν — χωρίς κάρτα, χωρίς δέσμευση.",
+  path: "/",
+  keywords: [
+    "τιμολογιο online",
+    "εφαρμογή τιμολόγησης",
+    "τιμολόγηση δωρεάν",
+    "myDATA πρόγραμμα",
+    "τιμολόγηση ΑΑΔΕ",
+    "τιμολόγιο για ελεύθερους επαγγελματίες",
+    "πρόγραμμα έκδοσης παραστατικών",
+    "greek invoicing software",
+  ],
+});
 
 const BULLETS = [
   "Ρύθμιση σε 5 λεπτά",
@@ -62,6 +86,16 @@ const STATS = [
 export default function LandingPage() {
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify([
+            organizationJsonLd(),
+            softwareAppJsonLd(),
+            websiteJsonLd(),
+          ]),
+        }}
+      />
       {/* ─── HERO ─── */}
       <section
         className="relative"

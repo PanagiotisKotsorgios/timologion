@@ -1,7 +1,16 @@
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { requireAdmin } from "@/lib/admin";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminTopbar } from "@/components/admin/AdminTopbar";
+
+export const metadata: Metadata = {
+  title: {
+    default: "Admin | Τιμολόγιον",
+    template: "%s | Admin · Τιμολόγιον",
+  },
+  robots: { index: false, follow: false, nocache: true },
+};
 
 export default async function AdminLayout({
   children,
