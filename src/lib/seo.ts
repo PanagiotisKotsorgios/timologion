@@ -34,7 +34,8 @@ export const SITE = {
   url: resolveSiteUrl(),
   locale: "el_GR",
   language: "el",
-  defaultTitle: "Τιμολόγιον | Πρόγραμμα Ηλεκτρονικής Τιμολόγησης myDATA",
+  defaultTitle:
+    "timologion | Πρόγραμμα Ηλεκτρονικής Τιμολόγησης Για Μικρομεσαίες Επιχειρήσεις",
   titleTemplate: "%s | Τιμολόγιον",
   shortTagline: "Πρόγραμμα ηλεκτρονικής τιμολόγησης myDATA",
   defaultDescription:
