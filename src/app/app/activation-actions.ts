@@ -10,6 +10,8 @@ import { logAudit } from "@/lib/audit";
 import { logger } from "@/lib/logger";
 import { env } from "@/lib/env";
 import { SITE } from "@/lib/seo";
+import { getWrappSettings } from "@/lib/wrapp/settings";
+import { encryptSecret } from "@/lib/crypto";
 
 /**
  * Ask the provider whether the current tenant is active. Wired to the stub
@@ -180,21 +182,14 @@ export async function setWrappApiKeyManuallyAction(
 export async function startWrappActivationAction(
   input: { phone?: string } = {},
 ): Promise<
-  { ok: true; loginUrl: string } | { ok: false; error: string; alreadyActive?: boolean }
+  | { ok: true; mode: "redirect"; loginUrl: string }
+  | { ok: true; mode: "staging_activated" }
+  | { ok: false; error: string; alreadyActive?: boolean }
 > {
   const ctx = await requireTenant();
   assertCan(ctx.role, "wrapp:manage");
 
-  const partner = await getWrappPartnerClient();
-  if (!partner) {
-    return {
-      ok: false,
-      error:
-        "Ο λογαριασμός συνεργάτη δεν έχει ρυθμιστεί. Επικοινώνησε με την υποστήριξη.",
-    };
-  }
-
-  const [business, existing, member] = await Promise.all([
+  const [business, existing, member, wrappSettings] = await Promise.all([
     prisma.business.findUnique({
       where: { id: ctx.businessId },
       select: {
@@ -212,6 +207,7 @@ export async function startWrappActivationAction(
       where: { businessId: ctx.businessId, role: { in: ["owner", "admin"] } },
       include: { user: { select: { email: true, fullName: true } } },
     }),
+    getWrappSettings(),
   ]);
 
   if (existing?.status === "active" && existing.canIssueInvoice) {
@@ -230,6 +226,70 @@ export async function startWrappActivationAction(
     };
   }
 
+  // ─── Staging shortcut ────────────────────────────────────────────────
+  // In staging, the provider gave us shared tenant credentials that are
+  // already fully onboarded on their side, so external_login just hits a
+  // login screen and returns without any wizard. Detect this by presence
+  // of both stagingTenantApiKey + stagingTenantEmail in the platform
+  // settings, and short-circuit: mark the WrappConnection active using
+  // those shared credentials. No redirect, no webhook needed.
+  const stagingMode = Boolean(
+    wrappSettings.stagingTenantApiKey?.trim() &&
+      wrappSettings.stagingTenantEmail?.trim(),
+  );
+  if (stagingMode) {
+    await prisma.wrappConnection.upsert({
+      where: { businessId: ctx.businessId },
+      create: {
+        businessId: ctx.businessId,
+        status: "active",
+        hasPlan: true,
+        canIssueInvoice: true,
+        wrappEmail: wrappSettings.stagingTenantEmail,
+        encryptedApiKey: encryptSecret(wrappSettings.stagingTenantApiKey),
+        encryptedJwt: null,
+        jwtExpiresAt: null,
+        lastVerifiedAt: new Date(),
+        lastError: null,
+      },
+      update: {
+        status: "active",
+        hasPlan: true,
+        canIssueInvoice: true,
+        wrappEmail: wrappSettings.stagingTenantEmail,
+        encryptedApiKey: encryptSecret(wrappSettings.stagingTenantApiKey),
+        encryptedJwt: null,
+        jwtExpiresAt: null,
+        lastVerifiedAt: new Date(),
+        lastError: null,
+      },
+    });
+
+    await logAudit({
+      userId: ctx.userId,
+      businessId: ctx.businessId,
+      action: "wrapp.activation.staging_shortcut",
+      meta: { email: wrappSettings.stagingTenantEmail },
+    });
+    logger.info("wrapp.activation.staging_shortcut", {
+      businessId: ctx.businessId,
+    });
+
+    revalidatePath("/app", "layout");
+    return { ok: true, mode: "staging_activated" };
+  }
+
+  // ─── Production flow ─────────────────────────────────────────────────
+
+  const partner = await getWrappPartnerClient();
+  if (!partner) {
+    return {
+      ok: false,
+      error:
+        "Ο λογαριασμός συνεργάτη δεν έχει ρυθμιστεί. Επικοινώνησε με την υποστήριξη.",
+    };
+  }
+
   // Prefer the phone the user just typed in the activation modal, then fall
   // back to whatever's already stored on the Business. If we got a new phone
   // and the Business record is empty, persist it so the user doesn't have to
@@ -240,7 +300,7 @@ export async function startWrappActivationAction(
     return {
       ok: false,
       error:
-        "Λείπει το τηλέφωνο της επιχείρησης — η Wrapp το απαιτεί για την ενεργοποίηση.",
+        "Λείπει το τηλέφωνο της επιχείρησης — απαιτείται για την ενεργοποίηση.",
     };
   }
   if (providedPhone && !business?.phone && business) {
@@ -251,7 +311,7 @@ export async function startWrappActivationAction(
   }
 
   // SITE.url is the guarded production URL — never falls back to localhost,
-  // which would silently break Wrapp's server-to-server webhook callback.
+  // which would silently break the provider's server-to-server webhook callback.
   const baseUrl = SITE.url;
   const returnUrl = `${baseUrl}/app/wrapp/return?bid=${ctx.businessId}`;
   // Wrapp POSTs the tenant api_key back here once onboarding completes.
@@ -292,7 +352,7 @@ export async function startWrappActivationAction(
       meta: { email },
     });
 
-    return { ok: true, loginUrl: res.login_url };
+    return { ok: true, mode: "redirect", loginUrl: res.login_url };
   } catch (err) {
     logger.error("wrapp.activation.external_login_failed", err, {
       businessId: ctx.businessId,
