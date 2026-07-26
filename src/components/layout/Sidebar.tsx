@@ -115,7 +115,7 @@ export function Sidebar() {
           mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
         )}
       >
-        <div className="flex items-center justify-between border-b border-white/10 px-6 py-5">
+        <div className="flex items-center justify-between gap-4 border-b border-white/10 px-6 py-5 pr-3 md:pr-6">
           <Link
             href="/app"
             aria-label="timologion"
@@ -135,7 +135,7 @@ export function Sidebar() {
             type="button"
             aria-label="Κλείσιμο μενού"
             onClick={() => setMobileOpen(false)}
-            className="grid h-10 w-10 place-items-center rounded-lg bg-white/10 text-white md:hidden"
+            className="ml-3 grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-white/10 text-white hover:bg-white/20 md:hidden"
           >
             <X size={18} />
           </button>

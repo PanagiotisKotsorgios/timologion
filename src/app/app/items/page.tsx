@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ClickableRow } from "../ClickableRow";
 import { prisma } from "@/lib/db";
 import { requireTenant } from "@/lib/tenant";
 import { assertCan } from "@/lib/rbac";
@@ -116,7 +117,7 @@ export default async function ItemsPage({
               </thead>
               <tbody>
                 {rows.map((it) => (
-                  <tr key={it.id}>
+                  <ClickableRow key={it.id}>
                     <td>
                       <Badge tone={it.kind === "product" ? "brand" : "neutral"}>
                         {it.kind === "product" ? "Προϊόν" : "Υπηρεσία"}
@@ -126,6 +127,7 @@ export default async function ItemsPage({
                     <td>
                       <Link
                         href={`/app/items/${it.id}`}
+                        data-row-anchor
                         className="font-semibold text-brand-800 hover:text-brand-900"
                       >
                         {it.name}
@@ -138,7 +140,7 @@ export default async function ItemsPage({
                     <td className="text-right">
                       {it.vatRate.toString()}%
                     </td>
-                  </tr>
+                  </ClickableRow>
                 ))}
               </tbody>
             </table>

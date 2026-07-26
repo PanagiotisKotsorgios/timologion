@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
+import { ClickableRow } from "../ClickableRow";
 import { requireTenant } from "@/lib/tenant";
 import { assertCan } from "@/lib/rbac";
 import { UserPlus, Search, ArrowLeft, ArrowRight, Download } from "lucide-react";
@@ -154,10 +155,11 @@ export default async function ClientsPage({
               </thead>
               <tbody>
                 {rows.map((c) => (
-                  <tr key={c.id}>
+                  <ClickableRow key={c.id}>
                     <td>
                       <Link
                         href={`/app/clients/${c.id}`}
+                        data-row-anchor
                         className="font-semibold text-brand-800 hover:text-brand-900"
                       >
                         {c.legalName}
@@ -185,7 +187,7 @@ export default async function ClientsPage({
                     <td>{c.city ?? "—"}</td>
                     <td>{c.email ?? "—"}</td>
                     <td>{c.phone ?? "—"}</td>
-                  </tr>
+                  </ClickableRow>
                 ))}
               </tbody>
             </table>

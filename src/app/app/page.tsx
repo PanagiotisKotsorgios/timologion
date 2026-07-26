@@ -521,7 +521,18 @@ function PlanUsageStrip({
 }) {
   const hasCap = typeof cap === "number" && cap > 0;
   const remaining = hasCap ? Math.max(0, cap! - used) : null;
-  const pct = hasCap ? Math.min(100, Math.round((used / cap!) * 100)) : 0;
+  const pctRaw = hasCap ? Math.min(100, (used / cap!) * 100) : 0;
+  const pct = hasCap ? Math.min(100, Math.round(pctRaw)) : 0;
+  // Display precision: whole percent when ≥1 (round trip), one decimal
+  // when between 0 and 1 (so 4 / 1500 reads as "0,3%" not a misleading
+  // "0%"), and a clean "0%" only when there's actually nothing used yet.
+  const pctDisplay = !hasCap
+    ? "0%"
+    : used === 0
+      ? "0%"
+      : pctRaw >= 1
+        ? `${Math.round(pctRaw)}%`
+        : `${pctRaw.toFixed(1).replace(".", ",")}%`;
   const overWarn = hasCap && pct >= 90;
   const nearWarn = hasCap && !overWarn && pct >= 70;
 
@@ -624,7 +635,7 @@ function PlanUsageStrip({
                 />
               </div>
               <p className="mt-2 text-xs font-semibold text-ink-500">
-                {pct}% χρήση
+                {pctDisplay} χρήση
               </p>
               {overWarn && (
                 <p className="mt-2 text-sm font-semibold text-red-700">
