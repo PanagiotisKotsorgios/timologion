@@ -149,25 +149,26 @@ body {
 /* ─── Data table treatment (app + admin lists) ────────────────────────── */
 
 .data-table {
-  @apply w-full text-sm;
+  @apply w-full;
   border-collapse: separate;
   border-spacing: 0;
 }
 
 .data-table thead th {
-  @apply sticky top-0 z-10 border-b-2 border-brand-900/20 bg-brand-50 px-4 py-3 text-left text-[11px] font-bold uppercase tracking-widest text-brand-900;
+  @apply sticky top-0 z-10 border-b-2 border-brand-900/20 bg-brand-100 px-5 py-4 text-left text-[12px] font-black uppercase tracking-widest text-brand-900;
 }
 
 .data-table tbody tr {
   @apply border-b border-ink-300/60 bg-white transition-colors;
 }
 
+/* Higher-contrast zebra striping so rows are easier to scan at a glance. */
 .data-table tbody tr:nth-child(even) {
-  background-color: #fafbfd;
+  background-color: #eff3fa;
 }
 
 .data-table tbody tr:hover {
-  background-color: #eef3fb;
+  background-color: #dce7f7;
   box-shadow: inset 4px 0 0 0 #25457b;
 }
 
@@ -176,21 +177,21 @@ body {
 }
 
 .data-table tbody td {
-  @apply px-4 py-3.5 text-[15px] text-ink-900 align-middle;
+  @apply px-5 py-5 text-[17px] font-medium text-ink-900 align-middle;
 }
 
 .data-table tbody td.mono {
-  @apply font-mono text-[13px];
+  @apply font-mono text-[15px];
 }
 
 /* Tighter cells on small screens so the table doesn't force scroll unless
    really necessary. */
 @media (max-width: 640px) {
   .data-table thead th {
-    @apply px-2.5 py-2.5 text-[10px];
+    @apply px-3 py-3 text-[11px];
   }
   .data-table tbody td {
-    @apply px-2.5 py-3 text-sm;
+    @apply px-3 py-3.5 text-[15px];
   }
 }
 

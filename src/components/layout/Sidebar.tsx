@@ -125,10 +125,10 @@ export function Sidebar() {
             <Image
               src="/sidebar-logo.png"
               alt="timologion"
-              width={160}
-              height={44}
+              width={220}
+              height={64}
               priority
-              className="h-11 w-auto"
+              className="h-16 w-auto"
             />
           </Link>
           <button

@@ -18,7 +18,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { t } from "@/lib/i18n";
 import { money, date } from "@/lib/format";
 import { checkDocumentQuota } from "@/lib/quota";
-import { Sparkline } from "@/components/ui/Sparkline";
+import { SparklineInteractive } from "@/components/ui/SparklineInteractive";
 import { ClickableRow } from "./ClickableRow";
 
 export default async function DashboardPage() {
@@ -103,11 +103,19 @@ export default async function DashboardPage() {
   const wrappStatus = wrapp?.status ?? "inactive";
 
   // 14-day per-day series for the sparkline decorations. Even at zero volume
-  // we render a small flat baseline instead of an empty svg.
+  // we render a small flat baseline instead of an empty svg. Labels are
+  // formatted as `DD/MM` in Greek locale to appear in hover tooltips.
   const days = 14;
-  const dailyCounts = Array.from({ length: days }, () => 0);
-  const dailyIssuedAmount = Array.from({ length: days }, () => 0);
-  const dailyUnpaidAmount = Array.from({ length: days }, () => 0);
+  const dayFmt = new Intl.DateTimeFormat("el-GR", {
+    day: "2-digit",
+    month: "2-digit",
+  });
+  const dailyPoints: { date: Date; label: string; count: number; issued: number; unpaid: number }[] = [];
+  for (let i = 0; i < days; i++) {
+    const d = new Date(dayStart);
+    d.setDate(d.getDate() - (days - 1 - i));
+    dailyPoints.push({ date: d, label: dayFmt.format(d), count: 0, issued: 0, unpaid: 0 });
+  }
   for (const d of trendDocs) {
     const daysAgo = Math.floor(
       (dayStart.getTime() - new Date(d.issueDate.getFullYear(), d.issueDate.getMonth(), d.issueDate.getDate()).getTime()) /
@@ -115,13 +123,16 @@ export default async function DashboardPage() {
     );
     const idx = days - 1 - daysAgo;
     if (idx < 0 || idx >= days) continue;
-    dailyCounts[idx]! += 1;
+    dailyPoints[idx]!.count += 1;
     const amt = Number(d.totalAmount);
-    dailyIssuedAmount[idx]! += amt;
+    dailyPoints[idx]!.issued += amt;
     if (d.paymentStatus === "unpaid" || d.paymentStatus === "partial") {
-      dailyUnpaidAmount[idx]! += amt;
+      dailyPoints[idx]!.unpaid += amt;
     }
   }
+  const countSeries = dailyPoints.map((p) => ({ value: p.count, label: p.label }));
+  const issuedSeries = dailyPoints.map((p) => ({ value: p.issued, label: p.label }));
+  const unpaidSeries = dailyPoints.map((p) => ({ value: p.unpaid, label: p.label }));
 
   // Onboarding checklist stays visible until every step is actually done —
   // account created (implicit), provider active, first client, first item,
@@ -192,7 +203,8 @@ export default async function DashboardPage() {
           eyebrow="Σήμερα"
           value={String(todayCount)}
           label={todayCount === 1 ? "παραστατικό εκδόθηκε" : "παραστατικά εκδόθηκαν"}
-          sparkline={dailyCounts}
+          sparkline={countSeries}
+          sparklineFormat="count"
           accent="brand"
         />
         <StatCard
@@ -203,7 +215,8 @@ export default async function DashboardPage() {
               ? `από ${quotaLimit.toLocaleString("el-GR")} του πακέτου`
               : "εκδόσεις χωρίς όριο"
           }
-          sparkline={dailyIssuedAmount}
+          sparkline={issuedSeries}
+          sparklineFormat="money"
           accent="emerald"
           progress={
             quotaLimit && quotaLimit > 0
@@ -215,7 +228,8 @@ export default async function DashboardPage() {
           eyebrow="Ανεξόφλητα"
           value={money(unpaidAgg._sum.totalAmount ?? 0)}
           label={`σε ${unpaidAgg._count ?? 0} ${(unpaidAgg._count ?? 0) === 1 ? "παραστατικό" : "παραστατικά"}`}
-          sparkline={dailyUnpaidAmount}
+          sparkline={unpaidSeries}
+          sparklineFormat="money"
           accent="amber"
         />
       </div>
@@ -484,40 +498,50 @@ function StatCard({
   value,
   label,
   sparkline,
+  sparklineFormat,
   accent,
   progress,
 }: {
   eyebrow: string;
   value: string;
   label: string;
-  sparkline: number[];
+  sparkline: { value: number; label: string }[];
+  sparklineFormat: "money" | "count";
   accent: "brand" | "emerald" | "amber";
   progress?: number | null;
 }) {
   const tokens = ACCENT_TOKENS[accent];
+  const fmt =
+    sparklineFormat === "money"
+      ? (n: number) =>
+          n.toLocaleString("el-GR", {
+            style: "currency",
+            currency: "EUR",
+            maximumFractionDigits: 2,
+          })
+      : (n: number) =>
+          `${n.toLocaleString("el-GR")} ${n === 1 ? "παραστατικό" : "παραστατικά"}`;
   return (
     <Card className="overflow-hidden">
-      <CardBody className="p-6 md:p-7">
+      <CardBody className="p-6 md:p-8">
         <p
           className={
-            "text-[11px] font-black uppercase tracking-widest " +
-            tokens.tileText +
-            " opacity-80"
+            "text-[12px] font-black uppercase tracking-widest " + tokens.tileText
           }
         >
           {eyebrow}
         </p>
-        <div className="mt-3 flex items-end gap-3">
-          <p className="text-4xl font-extrabold leading-none tracking-tightest text-ink-900 md:text-5xl">
+        <div className="mt-4 flex items-end gap-3">
+          <p className="text-5xl font-extrabold leading-none tracking-tightest text-ink-900 md:text-6xl">
             {value}
           </p>
         </div>
-        <p className="mt-2 text-sm font-medium text-ink-700 md:text-base">
+        <p className="mt-3 text-base font-medium text-ink-700 md:text-lg">
           {label}
         </p>
 
         {progress != null && (
-          <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-ink-200">
+          <div className="mt-5 h-2 w-full overflow-hidden rounded-full bg-ink-200">
             <div
               className="h-full transition-all"
               style={{
@@ -529,8 +553,13 @@ function StatCard({
           </div>
         )}
 
-        <div className="mt-5 -mx-1 h-10 opacity-90">
-          <Sparkline values={sparkline} color={tokens.hex} height={40} />
+        <div className="mt-6 pt-2">
+          <SparklineInteractive
+            points={sparkline}
+            color={tokens.hex}
+            height={44}
+            format={fmt}
+          />
         </div>
       </CardBody>
     </Card>
