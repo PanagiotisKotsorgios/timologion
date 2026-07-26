@@ -43,7 +43,7 @@ const WRAPP_LATIN_NAME: Record<DocumentType, string> = {
   service_invoice: "Timologia Parochis",
   retail_receipt: "Apodeixeis Lianikis",
   service_receipt: "Apodeixeis Parochis",
-  credit_note: "Pistotika Correlated",
+  credit_note: "Pistotika NonCorrelated",
   proforma: "Protimologia",
   quote: "Prosfores",
   order: "Paraggelies",
@@ -133,11 +133,39 @@ export async function ensureWrappBillingBookSynced(
     },
   });
   if (!book) return { error: "Η σειρά παραστατικών δεν βρέθηκε." };
-  if (book.wrappBookId) {
-    return { wrappBookId: book.wrappBookId, created: false };
-  }
 
   const client = getWrappClient();
+
+  // Fast path: cache present AND the Wrapp book still exists at the expected
+  // invoice_type_code. The type check is what catches stale cache after
+  // enum mapping changes (e.g. credit_note flipped from 5.1 → 5.2 — any
+  // wrappBookId cached before that change now points to the wrong type
+  // and would 422 on the next issue).
+  if (book.wrappBookId) {
+    try {
+      const list = await client.listBillingBooks(businessId);
+      const cached = list.find((b) => b.id === book.wrappBookId);
+      if (cached && cached.invoice_type_code === invoiceTypeCode) {
+        return { wrappBookId: book.wrappBookId, created: false };
+      }
+      // Stale — clear locally and fall through to the reuse/create paths.
+      await prisma.billingBook.update({
+        where: { id: book.id },
+        data: { wrappBookId: null },
+      });
+      logger.info("wrapp.billing_book.cache_invalidated", {
+        businessId,
+        localBookId: book.id,
+        oldWrappBookId: book.wrappBookId,
+        wantedType: invoiceTypeCode,
+        actualType: cached?.invoice_type_code ?? "(missing)",
+      });
+    } catch {
+      // Wrapp listing failed — trust the cache, let the subsequent issue
+      // request surface the real error if there's a mismatch.
+      return { wrappBookId: book.wrappBookId, created: false };
+    }
+  }
 
   // Try to reuse an existing Wrapp book for the same type + series letter.
   try {

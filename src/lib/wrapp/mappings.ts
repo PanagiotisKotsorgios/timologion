@@ -20,7 +20,10 @@ export function mapDocumentTypeToWrapp(type: DocumentType): string | null {
     case "service_receipt":
       return "11.2"; // Απόδειξη Παροχής Υπηρεσιών
     case "credit_note":
-      return "5.1"; // Πιστωτικό Τιμολόγιο / Συσχετιζόμενο
+      // Non-correlated credit note. Correlated (5.1) would require the
+      // parent's myDATA MARK in `correlated_invoices`, which we don't
+      // always have — 5.2 is standalone and works everywhere.
+      return "5.2";
     case "delivery_note":
       return "9.3"; // Δελτίο Αποστολής
     case "proforma":
