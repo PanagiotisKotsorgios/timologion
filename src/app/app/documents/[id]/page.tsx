@@ -331,10 +331,12 @@ function ClientField({
 }) {
   return (
     <div className={className}>
-      <p className="text-xs font-semibold uppercase tracking-widest text-ink-500">
+      <p className="text-[11px] font-black uppercase tracking-widest text-brand-900/60">
         {label}
       </p>
-      <p className="mt-1 text-base font-semibold text-ink-900">{value}</p>
+      <p className="mt-2 rounded-lg border-2 border-ink-300/60 bg-ink-100 px-4 py-3 text-base font-semibold text-ink-900 md:text-lg">
+        {value}
+      </p>
     </div>
   );
 }

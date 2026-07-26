@@ -122,6 +122,17 @@ body {
   box-shadow: 0 0 0 4px rgba(15, 31, 57, 0.12);
 }
 
+/* Number inputs — extra right padding so the browser's native increment
+   arrows don't overlap the value. Applied globally to any type=number
+   input, wherever it lives (row-input in the Γραμμές table, standard
+   Input primitive, ad-hoc form fields). */
+input[type="number"] {
+  padding-right: 1.75rem !important;
+}
+input[type="number"].text-right {
+  padding-right: 1.75rem !important;
+}
+
 /* Row-level input for tables like Γραμμές. Bumped from h-9/text-sm to
    h-11/base so the invoice editor doesn't feel cramped next to the rest
    of the app's larger controls. */

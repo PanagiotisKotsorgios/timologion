@@ -86,6 +86,18 @@ export default async function DashboardPage() {
     checkDocumentQuota(ctx.businessId),
   ]);
 
+  // Active subscription — powers the plan-usage strip under the stat cards.
+  const activeSub = await prisma.businessSubscription
+    .findFirst({
+      where: {
+        businessId: ctx.businessId,
+        status: { in: ["active", "trialing", "past_due"] },
+      },
+      include: { plan: { select: { name: true, includedDocsMonth: true } } },
+      orderBy: { createdAt: "desc" },
+    })
+    .catch(() => null);
+
   const wrappStatus = wrapp?.status ?? "inactive";
 
 
@@ -182,6 +194,12 @@ export default async function DashboardPage() {
           accent="amber"
         />
       </div>
+
+      <PlanUsageStrip
+        planName={activeSub?.plan.name ?? null}
+        cap={activeSub?.plan.includedDocsMonth ?? null}
+        used={totalIssuedCount}
+      />
 
       <div className="mt-6 grid gap-6 md:grid-cols-4">
         <div className="md:col-span-3">
@@ -489,6 +507,95 @@ function StatCard({
         )}
       </CardBody>
     </Card>
+  );
+}
+
+function PlanUsageStrip({
+  planName,
+  cap,
+  used,
+}: {
+  planName: string | null;
+  cap: number | null;
+  used: number;
+}) {
+  if (!planName) return null;
+  const hasCap = typeof cap === "number" && cap > 0;
+  const remaining = hasCap ? Math.max(0, cap - used) : null;
+  const pct = hasCap ? Math.min(100, Math.round((used / cap) * 100)) : 0;
+  const overWarn = hasCap && pct >= 90;
+  const nearWarn = hasCap && !overWarn && pct >= 70;
+
+  return (
+    <div className="mt-6">
+      <Card>
+        <CardBody className="p-5 md:p-6">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+            <div className="min-w-0">
+              <p className="text-[11px] font-black uppercase tracking-widest text-brand-900/60">
+                Πακέτο συνδρομής
+              </p>
+              <p className="mt-1 text-2xl font-extrabold text-brand-900 md:text-3xl">
+                {planName}
+              </p>
+            </div>
+            {hasCap ? (
+              <div className="text-right">
+                <p className="text-[11px] font-black uppercase tracking-widest text-brand-900/60">
+                  Παραστατικά
+                </p>
+                <p className="mt-1 text-2xl font-extrabold text-brand-900 md:text-3xl">
+                  {used.toLocaleString("el-GR")}
+                  <span className="text-lg font-bold text-ink-500">
+                    {" "}
+                    / {cap.toLocaleString("el-GR")}
+                  </span>
+                </p>
+                <p className="mt-1 text-sm font-semibold text-ink-700">
+                  Μένουν {remaining!.toLocaleString("el-GR")}
+                </p>
+              </div>
+            ) : (
+              <div className="text-right">
+                <p className="text-[11px] font-black uppercase tracking-widest text-brand-900/60">
+                  Χωρίς όριο
+                </p>
+                <p className="mt-1 text-2xl font-extrabold text-brand-900">
+                  Απεριόριστα
+                </p>
+              </div>
+            )}
+          </div>
+
+          {hasCap && (
+            <div className="mt-4">
+              <div className="h-3 w-full overflow-hidden rounded-full bg-ink-200">
+                <div
+                  className={
+                    "h-full transition-all " +
+                    (overWarn
+                      ? "bg-red-600"
+                      : nearWarn
+                        ? "bg-amber-500"
+                        : "bg-brand-900")
+                  }
+                  style={{ width: `${pct}%` }}
+                  aria-valuenow={pct}
+                  role="progressbar"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                />
+              </div>
+              {overWarn && (
+                <p className="mt-2 text-sm font-semibold text-red-700">
+                  Πλησιάζεις το όριο του πακέτου — σκέψου αναβάθμιση.
+                </p>
+              )}
+            </div>
+          )}
+        </CardBody>
+      </Card>
+    </div>
   );
 }
 

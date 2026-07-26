@@ -34,15 +34,29 @@ export default async function NewDocumentPage({
   // the type the user is about to work on. Idempotent, safe on every load.
   await ensureDefaultBillingBook(ctx.businessId, initialType);
 
+  // `defaultDocumentNotes` is a recent schema column; guard against a
+  // running container that hasn't picked up the migration yet.
+  async function loadBusiness() {
+    try {
+      return await prisma.business.findUniqueOrThrow({
+        where: { id: ctx.businessId },
+        select: {
+          legalName: true,
+          tradeName: true,
+          defaultDocumentNotes: true,
+        },
+      });
+    } catch {
+      const b = await prisma.business.findUniqueOrThrow({
+        where: { id: ctx.businessId },
+        select: { legalName: true, tradeName: true },
+      });
+      return { ...b, defaultDocumentNotes: null as string | null };
+    }
+  }
+
   const [business, clients, items, branches, books] = await Promise.all([
-    prisma.business.findUniqueOrThrow({
-      where: { id: ctx.businessId },
-      select: {
-        legalName: true,
-        tradeName: true,
-        defaultDocumentNotes: true,
-      },
-    }),
+    loadBusiness(),
     prisma.client.findMany({
       where: { businessId: ctx.businessId },
       orderBy: { legalName: "asc" },
