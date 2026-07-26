@@ -37,12 +37,12 @@ export default async function SubscriptionSettingsPage() {
     }),
   ]);
 
+  // Wrapp offers annual-only, so all active subscriptions are yearly. We
+  // still respect `priceOverride` for grandfathered custom pricing.
   const activePrice =
     subscription?.priceOverride != null
       ? Number(subscription.priceOverride)
-      : subscription?.billingCycle === "monthly"
-        ? Number(subscription?.plan.priceMonthly ?? 0)
-        : Number(subscription?.plan.priceYearly ?? 0);
+      : Number(subscription?.plan.priceYearly ?? 0);
 
   const quota = await checkDocumentQuota(ctx.businessId);
   const quotaUsed = quota.ok ? quota.used : quota.used;
@@ -85,9 +85,7 @@ export default async function SubscriptionSettingsPage() {
                   {money(activePrice)}
                 </p>
                 <p className="mt-1 text-sm text-brand-200">
-                  {subscription.billingCycle === "monthly"
-                    ? "/ μήνα"
-                    : "/ έτος"}
+                  / έτος (συμπ. ΦΠΑ)
                 </p>
               </div>
             </div>
@@ -120,7 +118,7 @@ export default async function SubscriptionSettingsPage() {
 
             <div className="border-t border-ink-200 pt-4">
               <p className="text-[11px] font-black uppercase tracking-widest text-ink-500">
-                Χρήση μηνός · Παραστατικά
+                Χρήση περιόδου · Παραστατικά
               </p>
               {quotaLimit && quotaLimit > 0 ? (
                 <>

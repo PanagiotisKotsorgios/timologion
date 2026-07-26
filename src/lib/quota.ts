@@ -6,27 +6,32 @@ export type QuotaCheck =
   | { ok: false; used: number; limit: number; error: string };
 
 /**
- * Enforce the current subscription's monthly document allowance.
+ * Enforce the current subscription's ANNUAL document allowance.
+ *
+ * The provider (Wrapp) sells annual packages with a per-period quota that
+ * resets on renewal, so we count documents issued within the active
+ * subscription period (`currentPeriodStart` → `currentPeriodEnd`), not
+ * calendar month. `PlatformPlan.includedDocsMonth` stores the annual cap
+ * (historical column name, kept to avoid a schema migration).
  *
  * Rules:
  * - No active subscription → hard block with a signup CTA message.
- * - Plan with `includedDocsMonth === 0` → unlimited (return ok).
- * - Otherwise → count documents issued this calendar month against the limit.
+ * - Plan with cap === 0 → unlimited (return ok).
+ * - Otherwise → count issued documents in the current period against the cap.
  *
  * Non-issued documents (drafts, cancelled, failed) do not count.
  */
 export async function checkDocumentQuota(
   businessId: string,
 ): Promise<QuotaCheck> {
-  const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-
   const sub = await prisma.businessSubscription.findFirst({
     where: {
       businessId,
       status: { in: ["active", "trialing"] },
     },
-    include: { plan: { select: { includedDocsMonth: true, name: true } } },
+    include: {
+      plan: { select: { includedDocsMonth: true, name: true } },
+    },
     orderBy: { createdAt: "desc" },
   });
 
@@ -49,7 +54,7 @@ export async function checkDocumentQuota(
     where: {
       businessId,
       status: "issued",
-      issueDate: { gte: monthStart },
+      issueDate: { gte: sub.currentPeriodStart, lte: sub.currentPeriodEnd },
     },
   });
 
@@ -58,7 +63,7 @@ export async function checkDocumentQuota(
       ok: false,
       used,
       limit,
-      error: `Έφτασες το όριο του πακέτου "${sub.plan.name}" για αυτόν τον μήνα (${limit} παραστατικά). Αναβάθμισε από τις Ρυθμίσεις → Συνδρομή.`,
+      error: `Έφτασες το όριο του πακέτου "${sub.plan.name}" για την τρέχουσα ετήσια περίοδο (${limit.toLocaleString("el-GR")} παραστατικά). Αναβάθμισε από τις Ρυθμίσεις → Συνδρομή.`,
     };
   }
 

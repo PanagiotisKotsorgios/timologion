@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { CheckCircle2, ArrowRightLeft } from "lucide-react";
+import { CheckCircle2, ArrowRightLeft, Calendar } from "lucide-react";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody } from "@/components/ui/Card";
@@ -24,13 +24,11 @@ const fmt = new Intl.NumberFormat("el-GR", {
 export function ChangePlanForm({
   plans,
   currentPlanId,
-  currentCycle,
 }: {
   plans: Plan[];
   currentPlanId: string | null;
-  currentCycle: "monthly" | "yearly" | null;
+  currentCycle?: "monthly" | "yearly" | null;
 }) {
-  const [yearly, setYearly] = useState<boolean>(currentCycle !== "monthly");
   const [selected, setSelected] = useState<string | null>(currentPlanId);
   const [state, setState] = useState<{
     error?: string;
@@ -42,7 +40,7 @@ export function ChangePlanForm({
     if (!selected) return;
     const fd = new FormData();
     fd.set("planId", selected);
-    fd.set("billingCycle", yearly ? "yearly" : "monthly");
+    fd.set("billingCycle", "yearly");
     start(async () => {
       const res = await changePlanAction(undefined, fd);
       setState(res ?? {});
@@ -54,44 +52,10 @@ export function ChangePlanForm({
       {state?.error && <Alert tone="danger">{state.error}</Alert>}
       {state?.success && <Alert tone="success">{state.success}</Alert>}
 
-      {/* Cycle toggle */}
-      <div className="flex items-center justify-center">
-        <div className="inline-flex rounded-full border-2 border-brand-900/20 bg-white p-1">
-          <button
-            type="button"
-            onClick={() => setYearly(false)}
-            className={
-              "rounded-full px-6 py-2 text-sm font-bold transition-colors " +
-              (!yearly
-                ? "bg-brand-900 text-white"
-                : "text-brand-900/60 hover:text-brand-900")
-            }
-          >
-            Μηνιαία
-          </button>
-          <button
-            type="button"
-            onClick={() => setYearly(true)}
-            className={
-              "flex items-center gap-2 rounded-full px-6 py-2 text-sm font-bold transition-colors " +
-              (yearly
-                ? "bg-brand-900 text-white"
-                : "text-brand-900/60 hover:text-brand-900")
-            }
-          >
-            Ετήσια
-            <span
-              className={
-                "rounded-full px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest " +
-                (yearly
-                  ? "bg-emerald-400 text-emerald-950"
-                  : "bg-emerald-100 text-emerald-800")
-              }
-            >
-              −25%
-            </span>
-          </button>
-        </div>
+      {/* Annual-only note */}
+      <div className="mx-auto flex max-w-md items-center justify-center gap-2 rounded-full border-2 border-brand-900/20 bg-brand-50 px-5 py-2.5 text-sm font-semibold text-brand-900">
+        <Calendar size={14} aria-hidden />
+        <span>Ετήσια χρέωση (συμπ. ΦΠΑ 24%)</span>
       </div>
 
       {/* Plan cards */}
@@ -99,9 +63,8 @@ export function ChangePlanForm({
         {plans.map((p) => {
           const isSelected = selected === p.id;
           const isCurrent = currentPlanId === p.id;
-          const price = yearly
-            ? Number(p.priceYearly) / 12
-            : Number(p.priceMonthly);
+          const yearlyPrice = Number(p.priceYearly);
+          const monthlyEquiv = yearlyPrice / 12;
           return (
             <button
               key={p.id}
@@ -127,14 +90,12 @@ export function ChangePlanForm({
               )}
               <p className="mt-4 flex items-baseline gap-1">
                 <span className="text-4xl font-extrabold text-brand-900">
-                  {fmt.format(price)}€
+                  {fmt.format(yearlyPrice)}€
                 </span>
-                <span className="text-sm text-ink-500">/μήνα</span>
+                <span className="text-sm text-ink-500">/έτος</span>
               </p>
               <p className="mt-1 text-xs text-ink-500">
-                {yearly
-                  ? `Χρέωση ${fmt.format(Number(p.priceYearly))}€ ετησίως`
-                  : "Χωρίς δέσμευση"}
+                Ισοδυναμεί με {fmt.format(monthlyEquiv)}€/μήνα
               </p>
               {p.features.length > 0 && (
                 <ul className="mt-4 space-y-2 text-sm">

@@ -24,80 +24,131 @@ const ARGON2 = {
   parallelism: 1,
 } as const;
 
+/**
+ * Plans mirror the provider's (Wrapp) partner tiers 1:1 — same yearly document
+ * cap, same annual price (VAT-inclusive), no monthly billing option (provider
+ * doesn't offer monthly). The `includedDocsMonth` column now stores the
+ * ANNUAL cap (schema keeps the historical name; quota logic counts against
+ * the subscription period, not a calendar month). `priceMonthly` is left at 0
+ * to signal "not offered monthly".
+ *
+ * B2G (Business-to-Government) is a +€37.20/year add-on quoted separately by
+ * the provider and is not part of any base tier.
+ */
 const DEFAULT_PLANS: Array<{
   code: string;
   name: string;
   description: string;
   priceMonthly: number;
   priceYearly: number;
-  includedDocsMonth: number;
+  includedDocsMonth: number; // stores annual cap; see note above
   features: string;
   sortOrder: number;
 }> = [
   {
-    code: "free",
-    name: "Δωρεάν",
-    description: "Για δοκιμή της πλατφόρμας.",
+    code: "basic",
+    name: "Basic",
+    description: "Χαμηλού όγκου έκδοση παραστατικών — ιδανικό σημείο εκκίνησης.",
     priceMonthly: 0,
-    priceYearly: 0,
-    includedDocsMonth: 10,
+    priceYearly: 35.96,
+    includedDocsMonth: 1500,
     features:
-      "Έως 10 παραστατικά/μήνα · 1 επιχείρηση · Βασική υποστήριξη email",
+      "1.500 παραστατικά/έτος · Ηλεκτρονική τιμολόγηση myDATA · Πελατολόγιο & αναζήτηση ΑΦΜ · Email υποστήριξη",
     sortOrder: 10,
   },
   {
-    code: "starter",
-    name: "Starter",
-    description: "Για ελεύθερους επαγγελματίες.",
-    priceMonthly: 9,
-    priceYearly: 90,
-    includedDocsMonth: 100,
+    code: "growth",
+    name: "Growth",
+    description: "Για μικρές επιχειρήσεις με σταθερή ροή εκδόσεων.",
+    priceMonthly: 0,
+    priceYearly: 122.76,
+    includedDocsMonth: 6000,
     features:
-      "Έως 100 παραστατικά/μήνα · 1 επιχείρηση · Πληρωμές & αναφορές ΦΠΑ · Προτεραιότητα υποστήριξης",
+      "6.000 παραστατικά/έτος · Επαναλαμβανόμενα παραστατικά · Πληρωμές & εισπράξεις · Προηγμένες αναφορές · Email υποστήριξη",
     sortOrder: 20,
+  },
+  {
+    code: "scale",
+    name: "Scale",
+    description: "Για ώριμες επιχειρήσεις με ομάδα και μεγαλύτερο όγκο.",
+    priceMonthly: 0,
+    priceYearly: 209.56,
+    includedDocsMonth: 18000,
+    features:
+      "18.000 παραστατικά/έτος · POS & CRM · Απόθεμα ειδών · Έως 5 χρήστες με ρόλους · Υποστήριξη προτεραιότητας",
+    sortOrder: 30,
   },
   {
     code: "pro",
     name: "Pro",
-    description: "Για μικρές επιχειρήσεις που θέλουν περισσότερα.",
-    priceMonthly: 19,
-    priceYearly: 190,
-    includedDocsMonth: 500,
+    description: "Για επιχειρήσεις υψηλού όγκου συναλλαγών.",
+    priceMonthly: 0,
+    priceYearly: 296.36,
+    includedDocsMonth: 200000,
     features:
-      "Έως 500 παραστατικά/μήνα · 3 επιχειρήσεις · CRM · POS · Επαναλαμβανόμενα · Ζώνες τιμών",
-    sortOrder: 30,
+      "200.000 παραστατικά/έτος · Απεριόριστοι χρήστες · Όλες οι λειτουργίες Scale · Υποστήριξη προτεραιότητας",
+    sortOrder: 40,
   },
   {
-    code: "business",
-    name: "Business",
-    description: "Για ομάδες και εμπορικές επιχειρήσεις.",
-    priceMonthly: 39,
-    priceYearly: 390,
-    includedDocsMonth: 0, // 0 = unlimited
+    code: "enterprise",
+    name: "Enterprise",
+    description: "Για επιχειρήσεις μεγάλης κλίμακας.",
+    priceMonthly: 0,
+    priceYearly: 680.76,
+    includedDocsMonth: 750000,
     features:
-      "Απεριόριστα παραστατικά · Απεριόριστες επιχειρήσεις · Πολλαπλοί χρήστες με ρόλους · Απόθεμα · Ολα τα modules",
-    sortOrder: 40,
+      "750.000 παραστατικά/έτος · Όλες οι λειτουργίες Pro · SLA · Dedicated account manager",
+    sortOrder: 50,
+  },
+  {
+    code: "corporate",
+    name: "Corporate",
+    description: "Για πολύ μεγάλες επιχειρήσεις και ομίλους.",
+    priceMonthly: 0,
+    priceYearly: 2478.76,
+    includedDocsMonth: 4000000,
+    features:
+      "4.000.000 παραστατικά/έτος · Custom SLA · Priority engineering support",
+    sortOrder: 60,
   },
 ];
 
+/**
+ * Idempotent plan seed. Upserts by `code` so existing deployments pick up
+ * price/quota changes on the next redeploy. Old plans that no longer exist
+ * in the canonical list are deactivated (not deleted, because live
+ * BusinessSubscription rows may still reference them).
+ */
 async function seedPlans(): Promise<number> {
-  const existing = await prisma.platformPlan.count();
-  if (existing > 0) {
-    console.log(
-      JSON.stringify({
-        level: "info",
-        msg: "first-boot.plans.skip",
-        existing,
-      }),
-    );
-    return 0;
+  for (const plan of DEFAULT_PLANS) {
+    await prisma.platformPlan.upsert({
+      where: { code: plan.code },
+      create: { ...plan, active: true },
+      update: {
+        name: plan.name,
+        description: plan.description,
+        priceMonthly: plan.priceMonthly,
+        priceYearly: plan.priceYearly,
+        includedDocsMonth: plan.includedDocsMonth,
+        features: plan.features,
+        sortOrder: plan.sortOrder,
+        active: true,
+      },
+    });
   }
-  await prisma.platformPlan.createMany({ data: DEFAULT_PLANS });
+
+  const canonicalCodes = DEFAULT_PLANS.map((p) => p.code);
+  const deactivated = await prisma.platformPlan.updateMany({
+    where: { code: { notIn: canonicalCodes }, active: true },
+    data: { active: false },
+  });
+
   console.log(
     JSON.stringify({
       level: "info",
-      msg: "first-boot.plans.seeded",
-      count: DEFAULT_PLANS.length,
+      msg: "first-boot.plans.upserted",
+      upserted: DEFAULT_PLANS.length,
+      deactivated: deactivated.count,
     }),
   );
   return DEFAULT_PLANS.length;
