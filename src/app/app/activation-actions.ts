@@ -237,6 +237,13 @@ export async function startWrappActivationAction(
     wrappSettings.stagingTenantApiKey?.trim() &&
       wrappSettings.stagingTenantEmail?.trim(),
   );
+  logger.info("wrapp.activation.mode_check", {
+    businessId: ctx.businessId,
+    stagingMode,
+    hasStagingKey: Boolean(wrappSettings.stagingTenantApiKey?.trim()),
+    hasStagingEmail: Boolean(wrappSettings.stagingTenantEmail?.trim()),
+    baseUrl: wrappSettings.baseUrl,
+  });
   if (stagingMode) {
     await prisma.wrappConnection.upsert({
       where: { businessId: ctx.businessId },

@@ -550,15 +550,27 @@ export class WrappPartnerClient {
     name?: string;
     vat?: string;
   }): Promise<{ login_url: string }> {
-    const res = await fetchWithTimeout(`${this.base}/external_login`, {
-      method: "POST",
-      headers: this.headers(),
-      body: JSON.stringify(payload),
-    });
+    const url = `${this.base}/external_login`;
+    let res: Response;
+    try {
+      res = await fetchWithTimeout(url, {
+        method: "POST",
+        headers: this.headers(),
+        body: JSON.stringify(payload),
+      });
+    } catch (err) {
+      // Network-level failure (DNS, timeout, refused). Surface distinctly so
+      // logs don't blame Wrapp for an infrastructure problem on our side.
+      throw new WrappApiError(
+        `Partner external_login network error to ${url}: ${err instanceof Error ? err.message : String(err)}`,
+        { code: "wrapp.partner.external_login_network_error" },
+      );
+    }
     if (!res.ok) {
       const text = await res.text();
+      const contentType = res.headers.get("content-type") ?? "";
       throw new WrappApiError(
-        `Partner external_login failed: ${text.slice(0, 200)}`,
+        `Partner external_login failed [${res.status} ${res.statusText || "?"}] url=${url} ct=${contentType} body="${text.slice(0, 500)}"`,
         {
           code: "wrapp.partner.external_login_failed",
           httpStatus: res.status,
