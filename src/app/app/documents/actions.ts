@@ -85,7 +85,13 @@ export async function ensureBillingBookForTypeAction(
 const lineSchema = z.object({
   itemId: z.string().optional().or(z.literal("")),
   description: z.string().min(1).max(255),
-  quantity: z.coerce.number().gt(0),
+  // Credit-note drafts store negative quantities so the local ledger balances
+  // against the parent invoice. The wire-time Math.abs() in attemptIssueAction
+  // handles the provider's positives-only rule, so validation just needs to
+  // reject zero (a zero-quantity line has no meaning either way).
+  quantity: z.coerce.number().refine((n) => n !== 0, {
+    message: "Η ποσότητα δεν μπορεί να είναι 0",
+  }),
   unit: z.string().max(20).default("τμχ"),
   unitPrice: z.coerce.number().min(0),
   discountPct: z.coerce.number().min(0).max(100).default(0),
