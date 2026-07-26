@@ -1,20 +1,24 @@
-"use client";
+import { Check, Calendar } from "lucide-react";
 
-import { useState } from "react";
-import { Check } from "lucide-react";
+/**
+ * Annual-only pricing grid. The upstream provider (Wrapp) currently sells
+ * annual packages only, so we mirror that model instead of showing a monthly
+ * toggle that we couldn't actually honor. Document limits are also aligned
+ * to real Wrapp tier boundaries — every tier maps 1:1 to a package we can
+ * actually provision.
+ */
 
 type Tier = {
   key: string;
   name: string;
   tagline: string;
-  monthly: number;
-  yearly: number; // per-month equivalent when billed yearly
   yearlyTotal: number; // full-year price
+  perMonth: number; // display-only, yearlyTotal / 12
   featured?: boolean;
   cta: string;
   ctaHref: string;
   features: { text: string; included: boolean }[];
-  highlight?: string;
+  highlight: string;
 };
 
 const TIERS: Tier[] = [
@@ -22,12 +26,11 @@ const TIERS: Tier[] = [
     key: "starter",
     name: "Starter",
     tagline: "Για μονοπρόσωπες επιχειρήσεις και freelancers.",
-    monthly: 8.9,
-    yearly: 6.9,
     yearlyTotal: 82.8,
+    perMonth: 6.9,
     cta: "Ξεκίνα δωρεάν",
     ctaHref: "/register",
-    highlight: "25 παραστατικά/μήνα",
+    highlight: "1.500 παραστατικά / έτος",
     features: [
       { text: "Έκδοση τιμολογίων & αποδείξεων μέσω myDATA", included: true },
       { text: "Πελατολόγιο με αναζήτηση ΑΦΜ (ΓΓΠΣ)", included: true },
@@ -43,13 +46,12 @@ const TIERS: Tier[] = [
     key: "business",
     name: "Business",
     tagline: "Για μικρές & μεσαίες επιχειρήσεις με ομάδα.",
-    monthly: 19.9,
-    yearly: 14.9,
     yearlyTotal: 178.8,
+    perMonth: 14.9,
     featured: true,
     cta: "Ξεκίνα δωρεάν",
     ctaHref: "/register",
-    highlight: "150 παραστατικά/μήνα",
+    highlight: "6.000 παραστατικά / έτος",
     features: [
       { text: "Όλα του Starter", included: true },
       { text: "Εισπράξεις & πληρωμές", included: true },
@@ -64,12 +66,11 @@ const TIERS: Tier[] = [
     key: "advanced",
     name: "Advanced",
     tagline: "Για ώριμες επιχειρήσεις με POS/CRM.",
-    monthly: 39.9,
-    yearly: 29.9,
     yearlyTotal: 358.8,
-    cta: "Επικοινώνησε μαζί μας",
-    ctaHref: "/contact",
-    highlight: "Απεριόριστα παραστατικά",
+    perMonth: 29.9,
+    cta: "Ξεκίνα δωρεάν",
+    ctaHref: "/register",
+    highlight: "18.000 παραστατικά / έτος",
     features: [
       { text: "Όλα του Business", included: true },
       { text: "Γρήγορη πώληση & POS", included: true },
@@ -87,57 +88,17 @@ const fmt = new Intl.NumberFormat("el-GR", {
 });
 
 export function PricingSwitcher() {
-  const [yearly, setYearly] = useState(true);
-
   return (
     <>
-      {/* Billing switch */}
-      <div className="mx-auto mb-12 flex justify-center">
-        <div className="inline-flex items-center rounded-full border-2 border-brand-900/20 bg-white p-1.5 shadow-sm">
-          <button
-            type="button"
-            onClick={() => setYearly(false)}
-            className={
-              "rounded-full px-6 py-2.5 text-sm font-bold transition-all md:px-8 md:text-base " +
-              (yearly
-                ? "text-brand-900/60 hover:text-brand-900"
-                : "bg-brand-900 text-white shadow-md")
-            }
-          >
-            Μηνιαία
-          </button>
-          <button
-            type="button"
-            onClick={() => setYearly(true)}
-            className={
-              "flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-bold transition-all md:px-8 md:text-base " +
-              (yearly
-                ? "bg-brand-900 text-white shadow-md"
-                : "text-brand-900/60 hover:text-brand-900")
-            }
-          >
-            Ετήσια
-            <span
-              className={
-                "rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wider " +
-                (yearly
-                  ? "bg-emerald-400 text-emerald-950"
-                  : "bg-emerald-100 text-emerald-800")
-              }
-            >
-              −25%
-            </span>
-          </button>
-        </div>
+      {/* Billing model note (annual only until upstream supports monthly) */}
+      <div className="mx-auto mb-12 flex max-w-lg items-center justify-center gap-3 rounded-full border-2 border-brand-900/20 bg-white px-6 py-3 text-sm font-semibold text-brand-900 shadow-sm">
+        <Calendar size={16} aria-hidden />
+        <span>Ετήσια χρέωση — μηνιαία προγράμματα σύντομα</span>
       </div>
 
       {/* Tier grid */}
       <div className="grid gap-4 md:grid-cols-3 lg:gap-6">
         {TIERS.map((t) => {
-          const priceLabel = yearly ? t.yearly : t.monthly;
-          const savings = yearly
-            ? ((t.monthly * 12 - t.yearlyTotal) / (t.monthly * 12)) * 100
-            : 0;
           const isFeatured = t.featured;
           return (
             <div
@@ -179,7 +140,7 @@ export function PricingSwitcher() {
                     (isFeatured ? "text-white" : "text-brand-900")
                   }
                 >
-                  {fmt.format(priceLabel)}€
+                  {fmt.format(t.yearlyTotal)}€
                 </span>
                 <span
                   className={
@@ -187,7 +148,7 @@ export function PricingSwitcher() {
                     (isFeatured ? "text-white/60" : "text-black/50")
                   }
                 >
-                  /μήνα
+                  /έτος
                 </span>
               </div>
 
@@ -197,36 +158,19 @@ export function PricingSwitcher() {
                   (isFeatured ? "text-white/60" : "text-black/50")
                 }
               >
-                {yearly
-                  ? `Χρέωση ${fmt.format(t.yearlyTotal)}€ ετησίως`
-                  : "Χωρίς δέσμευση"}
-                {yearly && savings > 0 && (
-                  <>
-                    {" · "}
-                    <span
-                      className={
-                        "font-bold " +
-                        (isFeatured ? "text-emerald-300" : "text-emerald-700")
-                      }
-                    >
-                      Κερδίζεις {Math.round(savings)}%
-                    </span>
-                  </>
-                )}
+                Ισοδυναμεί με {fmt.format(t.perMonth)}€ / μήνα
               </p>
 
-              {t.highlight && (
-                <div
-                  className={
-                    "mt-5 rounded-xl px-4 py-3 text-center text-[13px] font-bold " +
-                    (isFeatured
-                      ? "bg-white/10 text-white"
-                      : "bg-brand-50 text-brand-900")
-                  }
-                >
-                  {t.highlight}
-                </div>
-              )}
+              <div
+                className={
+                  "mt-5 rounded-xl px-4 py-3 text-center text-[13px] font-bold " +
+                  (isFeatured
+                    ? "bg-white/10 text-white"
+                    : "bg-brand-50 text-brand-900")
+                }
+              >
+                {t.highlight}
+              </div>
 
               <ul className="mt-6 flex-1 space-y-2.5 text-sm">
                 {t.features.map((f, i) => (

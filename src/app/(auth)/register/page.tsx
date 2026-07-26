@@ -7,7 +7,7 @@ import { SocialLoginButtons } from "@/components/auth/SocialLoginButtons";
 export const metadata: Metadata = pageMetadata({
   title: "Δημιουργία Λογαριασμού — Δωρεάν Εγγραφή",
   description:
-    "Ξεκίνα δωρεάν στο Τιμολόγιον σε ένα λεπτό. Ηλεκτρονική τιμολόγηση με myDATA, χωρίς κάρτα, χωρίς δέσμευση. Δωρεάν δοκιμή 14 ημερών.",
+    "Ξεκίνα δωρεάν στο Τιμολόγιον σε ένα λεπτό. Ηλεκτρονική τιμολόγηση με myDATA, χωρίς κάρτα, χωρίς δέσμευση. Πληρώνεις μόνο όταν εκδώσεις πρώτο παραστατικό.",
   path: "/register",
   keywords: [
     "εγγραφή τιμολόγιον",
