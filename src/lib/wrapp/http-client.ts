@@ -190,11 +190,16 @@ export class HttpWrappClient {
     path: string,
     body?: unknown,
     retriedAfter401 = false,
+    networkAttempt = 0,
   ): Promise<T> {
     const jwt = await this.ensureJwt(businessId);
     const base = await this.resolveBase();
     let res: Response;
     try {
+      // Idempotent GETs get a shorter per-attempt timeout so a stalled staging
+      // upstream doesn't keep the user waiting the full 30s. Non-idempotent
+      // methods keep the default because they may take longer to process.
+      const timeoutMs = method === "GET" ? 12_000 : DEFAULT_TIMEOUT_MS;
       res = await fetchWithTimeout(`${base}${path}`, {
         method,
         headers: {
@@ -203,11 +208,41 @@ export class HttpWrappClient {
           accept: "application/json",
         },
         body: body !== undefined ? JSON.stringify(body) : undefined,
+        timeoutMs,
       });
     } catch (err) {
-      logger.error("wrapp.network_error", err, { businessId, action: method + " " + path });
+      // Wrapp staging is intermittently flaky (AbortError / undici "fetch
+      // failed"). Retry idempotent GETs up to twice with short backoffs.
+      // Non-idempotent methods fail through so we don't accidentally double-
+      // create anything.
+      const maxRetries = method === "GET" ? 2 : 0;
+      if (networkAttempt < maxRetries) {
+        const backoffMs = 400 * Math.pow(2, networkAttempt);
+        logger.warn("wrapp.network_retry", {
+          businessId,
+          action: method + " " + path,
+          attempt: String(networkAttempt + 1),
+          backoffMs: String(backoffMs),
+        });
+        await new Promise((r) => setTimeout(r, backoffMs));
+        return this.request<T>(
+          businessId,
+          method,
+          path,
+          body,
+          retriedAfter401,
+          networkAttempt + 1,
+        );
+      }
+      logger.error("wrapp.network_error", err, {
+        businessId,
+        action: method + " " + path,
+        attempts: String(networkAttempt + 1),
+      });
       throw new WrappApiError(
-        "Αποτυχία επικοινωνίας με τη Wrapp. Δοκίμασε ξανά σε λίγο.",
+        method === "GET"
+          ? "Η Wrapp δεν αποκρίνεται αυτή τη στιγμή. Δοκίμασε ξανά σε λίγα δευτερόλεπτα."
+          : "Αποτυχία επικοινωνίας με τη Wrapp. Το παραστατικό δεν στάλθηκε — δοκίμασε ξανά.",
         { code: "wrapp.network_error" },
       );
     }
