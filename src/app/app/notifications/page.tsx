@@ -1,13 +1,25 @@
 import { requireTenant } from "@/lib/tenant";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { getPublishedAnnouncements } from "@/lib/announcements";
+import {
+  getPublishedAnnouncements,
+  getUserNotifications,
+  getSystemNotifications,
+} from "@/lib/announcements";
+import { getSession } from "@/lib/auth/session";
 import { NotificationsClient } from "./NotificationsClient";
 
 export const dynamic = "force-dynamic";
 
 export default async function NotificationsPage() {
   await requireTenant();
-  const items = await getPublishedAnnouncements();
+  const session = await getSession();
+  const [announcements, userNotifs, systemNotifs] = await Promise.all([
+    getPublishedAnnouncements(),
+    session ? getUserNotifications(session.userId) : Promise.resolve([]),
+    session ? getSystemNotifications(session.userId) : Promise.resolve([]),
+  ]);
+  // Same ordering as the Topbar bell so the two views stay consistent.
+  const items = [...systemNotifs, ...userNotifs, ...announcements];
 
   return (
     <>

@@ -57,3 +57,38 @@ export async function getUserNotifications(
     publishedAt: r.createdAt.toISOString(),
   }));
 }
+
+/**
+ * Synthetic system-generated notifications (unverified email, activation
+ * pending, etc.). These aren't stored in the DB — they're derived from the
+ * current user + business state, so they auto-disappear the moment the
+ * underlying condition clears (e.g. the user clicks the verification link
+ * and `emailVerifiedAt` becomes non-null).
+ *
+ * Both the bell popover and the full /app/notifications page consume these,
+ * so the two views stay in sync automatically.
+ */
+export async function getSystemNotifications(
+  userId: string,
+): Promise<Announcement[]> {
+  const user = await prisma.user
+    .findUnique({
+      where: { id: userId },
+      select: { email: true, emailVerifiedAt: true },
+    })
+    .catch(() => null);
+
+  const items: Announcement[] = [];
+  if (user && !user.emailVerifiedAt) {
+    items.push({
+      id: "sys:verify-email",
+      tone: "warning",
+      title: "Επιβεβαίωση email",
+      body: `Το email σου <strong>${user.email}</strong> δεν έχει επιβεβαιωθεί ακόμη. Σου έχουμε στείλει email επιβεβαίωσης — έλεγξε τα εισερχόμενά σου (και τον φάκελο ανεπιθύμητης αλληλογραφίας) και πάτησε τον σύνδεσμο.`,
+      href: "/verify-email",
+      cta: "Άνοιξε τη σελίδα επιβεβαίωσης",
+      publishedAt: new Date().toISOString(),
+    });
+  }
+  return items;
+}
