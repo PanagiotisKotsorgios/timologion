@@ -195,4 +195,8 @@ function DeleteAccountForm({ hasPassword }: { hasPassword: boolean }) {
   );
 }
 
-AccountForms.Delete = DeleteAccountForm;
+// Static properties on client-component boundaries aren't reliably preserved
+// through Next.js RSC serialization — the reference the server component holds
+// is a client-component descriptor, not the raw function, so
+// `AccountForms.Delete` disappears at render time. Export explicitly instead.
+export { DeleteAccountForm };

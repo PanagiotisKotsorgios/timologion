@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { Mail } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth/session";
+import { VerifyEmailBannerResend } from "./VerifyEmailBannerResend";
 
 /**
  * Server-rendered banner that appears above the topbar for users whose
@@ -28,12 +28,7 @@ export async function VerifyEmailBanner() {
             ακόμη.
           </span>
         </span>
-        <Link
-          href="/verify-email"
-          className="text-sm font-bold text-amber-900 underline underline-offset-2 hover:text-amber-800"
-        >
-          Στείλε ξανά το email
-        </Link>
+        <VerifyEmailBannerResend />
       </div>
     </div>
   );

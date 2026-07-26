@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { LinkButton } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { AccountForms } from "./AccountForms";
+import { AccountForms, DeleteAccountForm } from "./AccountForms";
 import { SessionsList } from "./SessionsList";
 import { listSessionsForCurrentUser } from "./actions";
 
@@ -136,7 +136,7 @@ export default async function AccountSettingsPage() {
               action={<AlertTriangle size={16} className="text-red-600" />}
             />
             <CardBody>
-              <AccountForms.Delete hasPassword={hasPassword} />
+              <DeleteAccountForm hasPassword={hasPassword} />
             </CardBody>
           </Card>
         </div>

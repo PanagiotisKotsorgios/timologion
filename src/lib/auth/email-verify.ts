@@ -2,6 +2,7 @@ import "server-only";
 import { randomBytes, createHmac } from "node:crypto";
 import { prisma } from "@/lib/db";
 import { env } from "@/lib/env";
+import { SITE } from "@/lib/seo";
 import { sendEmail } from "@/lib/email/send";
 import { emailVerifyTemplate } from "@/lib/email/templates";
 
@@ -31,7 +32,9 @@ export async function sendVerificationEmail(user: {
     data: { userId: user.id, tokenHash: tokenHash(raw), expiresAt },
   });
 
-  const url = `${env.APP_BASE_URL.replace(/\/$/, "")}/verify-email?token=${raw}`;
+  // Use the guarded production URL so email links never say localhost even
+  // if APP_BASE_URL misconfigures on Coolify.
+  const url = `${SITE.url}/verify-email?token=${raw}`;
   const { subject, html, text } = emailVerifyTemplate({
     name: user.fullName,
     url,
