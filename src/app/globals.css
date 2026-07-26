@@ -127,10 +127,17 @@ body {
    input, wherever it lives (row-input in the Γραμμές table, standard
    Input primitive, ad-hoc form fields). */
 input[type="number"] {
-  padding-right: 1.75rem !important;
+  padding-right: 2.5rem !important;
 }
 input[type="number"].text-right {
-  padding-right: 1.75rem !important;
+  padding-right: 2.5rem !important;
+}
+/* Push the spin buttons slightly off the border in webkit browsers so
+   the arrows don't touch the frame either. */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  margin-left: 0.35rem;
+  opacity: 0.7;
 }
 
 /* Row-level input for tables like Γραμμές. Bumped from h-9/text-sm to

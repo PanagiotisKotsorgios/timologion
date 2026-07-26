@@ -7,7 +7,6 @@ import { env } from "@/lib/env";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
 import { ImpersonationBanner } from "@/components/layout/ImpersonationBanner";
-import { VerifyEmailBanner } from "@/components/layout/VerifyEmailBanner";
 import { ToastProvider } from "@/components/ui/Toast";
 import { ActivationGate } from "./ActivationGate";
 
@@ -71,7 +70,6 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       <div className="flex min-h-screen bg-ink-100">
         <Sidebar />
         <div className="flex min-w-0 flex-1 flex-col">
-          <VerifyEmailBanner />
           <ImpersonationBanner />
           <Topbar
             userName={user.fullName || user.email}

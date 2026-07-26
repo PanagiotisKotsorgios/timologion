@@ -64,29 +64,31 @@ export default async function DocumentDetailPage({
                 Μεταβολή
               </LinkButton>
             )}
-            <LinkButton
-              href={`/app/documents/${doc.id}/print`}
-              variant="secondary"
-              icon={Eye}
-            >
-              Επισκόπηση
-            </LinkButton>
-            <LinkButton
-              href={`/app/documents/${doc.id}/print`}
-              variant="secondary"
-              icon={Printer}
-            >
-              Εκτύπωση
-            </LinkButton>
-            <a
-              href={`/app/documents/${doc.id}/pdf`}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex h-12 items-center gap-2 rounded-lg border-2 border-ink-300 bg-white px-5 text-base font-semibold text-ink-900 hover:border-ink-500 hover:bg-ink-100"
-            >
-              <FileDown size={18} aria-hidden />
-              Λήψη PDF
-            </a>
+            {/* Print + PDF live on the provider's side and only make sense
+                after the document has been transmitted to myDATA. Drafts
+                and failed attempts hide them entirely. */}
+            {isIssued && (
+              <>
+                <a
+                  href={`/app/documents/${doc.id}/pdf`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex h-12 items-center gap-2 rounded-lg border-2 border-ink-300 bg-white px-5 text-base font-semibold text-ink-900 hover:border-ink-500 hover:bg-ink-100"
+                >
+                  <Printer size={18} aria-hidden />
+                  Εκτύπωση
+                </a>
+                <a
+                  href={`/app/documents/${doc.id}/pdf`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex h-12 items-center gap-2 rounded-lg border-2 border-ink-300 bg-white px-5 text-base font-semibold text-ink-900 hover:border-ink-500 hover:bg-ink-100"
+                >
+                  <FileDown size={18} aria-hidden />
+                  Λήψη PDF
+                </a>
+              </>
+            )}
             {mailtoHref && (
               <LinkButton href={mailtoHref} variant="secondary" icon={Mail}>
                 Αποστολή Email
