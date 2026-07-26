@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
@@ -17,7 +18,6 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import { Logo } from "@/components/ui/Logo";
 import { t } from "@/lib/i18n";
 
 type NavItem = {
@@ -119,9 +119,17 @@ export function Sidebar() {
           <Link
             href="/app"
             aria-label="timologion"
-            className="inline-flex rounded-2xl bg-white p-3"
+            className="inline-flex items-center"
           >
-            <Logo size="md" />
+            {/* Sidebar-specific mark — do not reuse elsewhere. */}
+            <Image
+              src="/sidebar-logo.png"
+              alt="timologion"
+              width={160}
+              height={44}
+              priority
+              className="h-11 w-auto"
+            />
           </Link>
           <button
             type="button"
