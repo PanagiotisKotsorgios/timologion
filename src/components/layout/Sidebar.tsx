@@ -128,7 +128,7 @@ export function Sidebar() {
               width={220}
               height={64}
               priority
-              className="h-16 w-auto"
+              className="h-16 w-auto rounded-xl"
             />
           </Link>
           <button
