@@ -20,6 +20,7 @@ import { t } from "@/lib/i18n";
 import {
   createDraftAction,
   updateDraftAction,
+  ensureBillingBookForTypeAction,
   type DraftInput,
 } from "./actions";
 
@@ -141,9 +142,10 @@ export function DraftEditor({
   const [branchId, setBranchId] = useState(
     () => editing?.branchId || branches.find((b) => b.isDefault)?.id || "",
   );
+  const [dynamicBooks, setDynamicBooks] = useState<BookOption[]>(books);
   const availableBooks = useMemo(
-    () => books.filter((b) => b.documentType === type),
-    [books, type],
+    () => dynamicBooks.filter((b) => b.documentType === type),
+    [dynamicBooks, type],
   );
   const [billingBookId, setBillingBookId] = useState(
     () =>
@@ -156,6 +158,21 @@ export function DraftEditor({
       setBillingBookId(availableBooks.find((b) => b.isDefault)?.id ?? "");
     }
   }, [availableBooks, billingBookId]);
+
+  // If the user switches to a document type that has no billing book yet,
+  // silently auto-create the default series so the "Σειρά" dropdown is
+  // never empty on first use.
+  useEffect(() => {
+    if (availableBooks.length > 0) return;
+    let cancelled = false;
+    ensureBillingBookForTypeAction(type).then((res) => {
+      if (cancelled || !res.ok) return;
+      setDynamicBooks(res.books);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [type, availableBooks.length]);
 
   const [issueDate, setIssueDate] = useState(
     () => editing?.issueDate || new Date().toISOString().slice(0, 10),

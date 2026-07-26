@@ -19,6 +19,8 @@ import {
 } from "@/lib/wrapp/client";
 import { reserveNextNumber } from "@/lib/numbering";
 import { logger } from "@/lib/logger";
+import { ensureDefaultBillingBook } from "@/lib/billing-books";
+import type { DocumentType } from "@prisma/client";
 
 const DOCUMENT_TYPES = [
   "invoice",
@@ -31,6 +33,51 @@ const DOCUMENT_TYPES = [
   "order",
   "delivery_note",
 ] as const;
+
+/**
+ * Lazy billing-book creation for the type the editor is switching to.
+ * Returns the freshly-visible list of books so the client can update its
+ * dropdown without a full page reload.
+ */
+export async function ensureBillingBookForTypeAction(
+  documentType: DocumentType,
+): Promise<
+  | {
+      ok: true;
+      books: {
+        id: string;
+        series: string;
+        label: string | null;
+        documentType: DocumentType;
+        branchId: string | null;
+        isDefault: boolean;
+        nextNumber: number;
+      }[];
+    }
+  | { ok: false; error: string }
+> {
+  const ctx = await requireTenant();
+  assertCan(ctx.role, "document:write");
+  await ensureDefaultBillingBook(ctx.businessId, documentType);
+  const books = await prisma.billingBook.findMany({
+    where: { businessId: ctx.businessId },
+    orderBy: [
+      { documentType: "asc" },
+      { isDefault: "desc" },
+      { series: "asc" },
+    ],
+    select: {
+      id: true,
+      series: true,
+      label: true,
+      documentType: true,
+      branchId: true,
+      isDefault: true,
+      nextNumber: true,
+    },
+  });
+  return { ok: true, books };
+}
 
 const lineSchema = z.object({
   itemId: z.string().optional().or(z.literal("")),

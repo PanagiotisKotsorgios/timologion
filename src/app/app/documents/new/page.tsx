@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { requireTenant } from "@/lib/tenant";
 import { assertCan } from "@/lib/rbac";
+import { ensureDefaultBillingBook } from "@/lib/billing-books";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { DraftEditor } from "../DraftEditor";
 import type { DocumentType } from "@prisma/client";
@@ -28,6 +29,10 @@ export default async function NewDocumentPage({
   const { type } = await searchParams;
   const initialType = (VALID_TYPES.find((t) => t === type) ??
     "invoice") as DocumentType;
+
+  // First-use auto-seed: guarantee at least one billing book (series) for
+  // the type the user is about to work on. Idempotent, safe on every load.
+  await ensureDefaultBillingBook(ctx.businessId, initialType);
 
   const [business, clients, items, branches, books] = await Promise.all([
     prisma.business.findUniqueOrThrow({

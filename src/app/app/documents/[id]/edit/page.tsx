@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireTenant } from "@/lib/tenant";
 import { assertCan } from "@/lib/rbac";
+import { ensureDefaultBillingBook } from "@/lib/billing-books";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { DraftEditor } from "../../DraftEditor";
 
@@ -25,6 +26,10 @@ export default async function EditDocumentPage({
     // back to the detail view instead of showing them a dead editor.
     redirect(`/app/documents/${doc.id}`);
   }
+
+  // Guarantee a billing book exists for this draft's type — covers drafts
+  // created before the auto-seed shipped, or manually cleared series.
+  await ensureDefaultBillingBook(ctx.businessId, doc.type);
 
   const [business, clients, items, branches, books] = await Promise.all([
     prisma.business.findUniqueOrThrow({
