@@ -19,7 +19,6 @@ import {
 } from "@/lib/wrapp/client";
 import { reserveNextNumber } from "@/lib/numbering";
 import { logger } from "@/lib/logger";
-import { checkDocumentQuota } from "@/lib/quota";
 
 const DOCUMENT_TYPES = [
   "invoice",
@@ -358,12 +357,8 @@ export async function attemptIssueAction(documentId: string) {
     };
   }
 
-  // Plan quota gate — blocks issue if the tenant has hit its monthly limit.
-  const quota = await checkDocumentQuota(ctx.businessId);
-  if (!quota.ok) {
-    return { ok: false as const, error: quota.error };
-  }
-
+  // Local quota is display-only — the certified provider is the real gate
+  // and will reject transmission if the tenant is over its yearly package.
   // Reserve the next number atomically from the billing book. Runs in its own
   // transaction so the number is committed even if the Wrapp call fails —
   // a small numbering gap is preferable to duplicate numbers under concurrency.
