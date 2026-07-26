@@ -87,16 +87,31 @@ function ToastCard({
   onDismiss: () => void;
 }) {
   useEffect(() => {
-    const t = window.setTimeout(onDismiss, 4200);
+    // Errors: stay pinned until the user clicks. Success/info: 8 seconds so
+    // there's time to actually notice them after a page navigation.
+    if (item.kind === "error") return;
+    const t = window.setTimeout(onDismiss, 8000);
     return () => window.clearTimeout(t);
-  }, [onDismiss]);
+  }, [item.kind, onDismiss]);
 
   const styles =
     item.kind === "success"
-      ? { bar: "bg-emerald-600", icon: CheckCircle2, iconColor: "text-emerald-100" }
+      ? {
+          bar: "bg-emerald-600 border-emerald-700",
+          icon: CheckCircle2,
+          iconColor: "text-emerald-100",
+        }
       : item.kind === "error"
-        ? { bar: "bg-red-600", icon: XCircle, iconColor: "text-red-100" }
-        : { bar: "bg-brand-900", icon: Info, iconColor: "text-brand-100" };
+        ? {
+            bar: "bg-red-600 border-red-700",
+            icon: XCircle,
+            iconColor: "text-red-100",
+          }
+        : {
+            bar: "bg-brand-900 border-brand-950",
+            icon: Info,
+            iconColor: "text-brand-100",
+          };
 
   const Icon = styles.icon;
 
@@ -104,19 +119,32 @@ function ToastCard({
     <div
       role="status"
       className={
-        "pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-xl px-4 py-3 text-white shadow-2xl animate-in slide-in-from-top-2 fade-in-0 duration-200 " +
+        "pointer-events-auto flex w-full max-w-md items-start gap-3 rounded-xl border-2 px-4 py-3.5 text-white shadow-2xl " +
         styles.bar
       }
       onClick={onDismiss}
     >
       <Icon
-        size={20}
+        size={22}
         className={"mt-0.5 shrink-0 " + styles.iconColor}
         aria-hidden
       />
       <p className="flex-1 text-[15px] font-semibold leading-snug">
         {item.message}
       </p>
+      <button
+        type="button"
+        aria-label="Κλείσιμο"
+        onClick={(e) => {
+          e.stopPropagation();
+          onDismiss();
+        }}
+        className="-mr-1 -mt-1 grid h-7 w-7 shrink-0 place-items-center rounded-md text-white/70 hover:bg-white/10 hover:text-white"
+      >
+        <span aria-hidden className="text-lg font-bold leading-none">
+          ×
+        </span>
+      </button>
     </div>
   );
 }

@@ -47,7 +47,15 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   typedRoutes: false,
-  serverExternalPackages: ["@node-rs/argon2", "@prisma/client"],
+  // pdfkit ships built-in fonts (Helvetica*.afm) via require.resolve; if it
+  // gets bundled, the loader can't find the .afm files at runtime and every
+  // /pdf request throws ENOENT. Keeping it external lets it read its own
+  // font files from node_modules like it expects.
+  serverExternalPackages: [
+    "@node-rs/argon2",
+    "@prisma/client",
+    "pdfkit",
+  ],
   async headers() {
     return [
       {

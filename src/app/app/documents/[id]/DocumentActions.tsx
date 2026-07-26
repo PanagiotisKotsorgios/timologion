@@ -22,8 +22,13 @@ export function CreditNoteButton({ documentId }: { documentId: string }) {
         start(async () => {
           const res = await issueCreditNoteAction(documentId);
           if (res.ok) {
-            toast.success("Δημιουργήθηκε πρόχειρο πιστωτικού.");
-            router.push(`/app/documents/${res.id}`);
+            toast.success(
+              "Πιστωτικό έτοιμο για επεξεργασία — επίλεξε αποθήκευση ή διαβίβαση.",
+            );
+            // Land on the editor so the user consciously picks between
+            // "Αποθήκευση ως πρόχειρο" and "Διαβίβαση στο myDATA" instead
+            // of a silent draft creation.
+            router.push(`/app/documents/${res.id}/edit`);
           } else {
             toast.error(res.error);
           }
