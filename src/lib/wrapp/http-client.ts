@@ -530,6 +530,13 @@ export class WrappPartnerClient {
     phone: string;
     partner_user_id?: string;
     return_url?: string;
+    /**
+     * Per-tenant webhook URL Wrapp POSTs the tenant `api_key` to once the
+     * user finishes onboarding. Passed on every call because Wrapp does not
+     * store a partner-level webhook — missing/wrong value = api_key never
+     * reaches us and activation gets stuck.
+     */
+    webhook_endpoint?: string;
     name?: string;
     vat?: string;
   }): Promise<{ login_url: string }> {

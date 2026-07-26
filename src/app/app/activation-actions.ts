@@ -9,6 +9,7 @@ import { WrappApiError } from "@/lib/wrapp/http-client";
 import { logAudit } from "@/lib/audit";
 import { logger } from "@/lib/logger";
 import { env } from "@/lib/env";
+import { SITE } from "@/lib/seo";
 
 /**
  * Ask the provider whether the current tenant is active. Wired to the stub
@@ -249,7 +250,13 @@ export async function startWrappActivationAction(
     });
   }
 
-  const returnUrl = `${env.APP_BASE_URL.replace(/\/$/, "")}/app/wrapp/return?bid=${ctx.businessId}`;
+  // SITE.url is the guarded production URL — never falls back to localhost,
+  // which would silently break Wrapp's server-to-server webhook callback.
+  const baseUrl = SITE.url;
+  const returnUrl = `${baseUrl}/app/wrapp/return?bid=${ctx.businessId}`;
+  // Wrapp POSTs the tenant api_key back here once onboarding completes.
+  // Passed per call because Wrapp doesn't keep a partner-level webhook.
+  const webhookEndpoint = `${baseUrl}/api/wrapp/webhook`;
 
   try {
     const res = await partner.externalLogin({
@@ -259,6 +266,7 @@ export async function startWrappActivationAction(
       vat: business?.vatNumber ?? undefined,
       partner_user_id: ctx.businessId,
       return_url: returnUrl,
+      webhook_endpoint: webhookEndpoint,
     });
 
     await prisma.wrappConnection.upsert({
