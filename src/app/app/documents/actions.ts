@@ -399,6 +399,13 @@ export async function issueCreditNoteAction(
       error: "Πιστωτικό εκδίδεται μόνο για παραστατικά που έχουν εκδοθεί.",
     };
   }
+  if (src.type === "credit_note") {
+    return {
+      ok: false,
+      error:
+        "Δεν επιτρέπεται πιστωτικό πάνω σε άλλο πιστωτικό. Το πιστωτικό εκδίδεται μόνο πάνω σε τιμολόγιο ή απόδειξη.",
+    };
+  }
 
   const totals = { net: 0, vat: 0, tot: 0 };
   const credit = await prisma.$transaction(async (tx) => {

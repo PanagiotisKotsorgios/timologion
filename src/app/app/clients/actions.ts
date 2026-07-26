@@ -128,8 +128,19 @@ export async function vatSearchAction(formData: FormData) {
   const parsed = vatSearchSchema.safeParse({ vat: formData.get("vat") });
   if (!parsed.success) return { ok: false as const, error: "Μη έγκυρο ΑΦΜ." };
 
-  // Prefer AADE / ΓΓΠΣ when the business has stored credentials; fall back to
-  // the provider stub. Both shapes match the WrappVatSearchResult type.
+  // ΑΑΔΕ lookup is the rich data source (ΔΟΥ, δραστηριότητα, address, ...).
+  // If the business hasn't stored ΓΓΠΣ credentials yet, we can still try
+  // the provider's `vat_search` (name + address only), but we surface a
+  // distinct "needs setup" hint so the user knows why fields come back
+  // sparse. In production we don't fabricate mock data.
+  const business = await prisma.business.findUnique({
+    where: { id: ctx.businessId },
+    select: { aadeUsername: true, aadePasswordEnc: true },
+  });
+  const hasAadeCreds = Boolean(
+    business?.aadeUsername && business?.aadePasswordEnc,
+  );
+
   const aadeResult = await lookupVatViaBusiness(
     ctx.businessId,
     parsed.data.vat,
@@ -159,9 +170,32 @@ export async function vatSearchAction(formData: FormData) {
       ctx.businessId,
       parsed.data.vat,
     );
-    if (!result) return { ok: false as const, error: "Το ΑΦΜ δεν βρέθηκε." };
-    return { ok: true as const, result, source: "provider" as const };
+    if (!result) {
+      if (!hasAadeCreds) {
+        return {
+          ok: false as const,
+          code: "aade_credentials_missing" as const,
+          error:
+            "Για ολοκληρωμένη αναζήτηση ΑΦΜ χρειάζονται τα διαπιστευτήρια ΓΓΠΣ. Ρύθμισέ τα από τις Ρυθμίσεις → ΓΓΠΣ / Αναζήτηση ΑΦΜ.",
+        };
+      }
+      return { ok: false as const, error: "Το ΑΦΜ δεν βρέθηκε." };
+    }
+    return {
+      ok: true as const,
+      result,
+      source: "provider" as const,
+      hasAadeCreds,
+    };
   } catch {
+    if (!hasAadeCreds) {
+      return {
+        ok: false as const,
+        code: "aade_credentials_missing" as const,
+        error:
+          "Για ολοκληρωμένη αναζήτηση ΑΦΜ χρειάζονται τα διαπιστευτήρια ΓΓΠΣ. Ρύθμισέ τα από τις Ρυθμίσεις → ΓΓΠΣ / Αναζήτηση ΑΦΜ.",
+      };
+    }
     return { ok: false as const, error: "Το ΑΦΜ δεν βρέθηκε." };
   }
 }

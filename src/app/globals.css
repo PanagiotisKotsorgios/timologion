@@ -122,22 +122,37 @@ body {
   box-shadow: 0 0 0 4px rgba(15, 31, 57, 0.12);
 }
 
-/* Number inputs — extra right padding so the browser's native increment
-   arrows don't overlap the value. Applied globally to any type=number
-   input, wherever it lives (row-input in the Γραμμές table, standard
-   Input primitive, ad-hoc form fields). */
+/* Number inputs — the browser's native increment arrows live at the right
+   edge and by default sit ON TOP of the numeric value. We give the value
+   generous right padding so it never gets under the arrows, and pin the
+   spin buttons hard against the right edge (with a soft opacity so they
+   don't dominate the frame). Applies globally to every input[type=number]
+   in the app. */
 input[type="number"] {
-  padding-right: 2.5rem !important;
+  padding-right: 3rem !important;
 }
 input[type="number"].text-right {
-  padding-right: 2.5rem !important;
+  padding-right: 3rem !important;
 }
-/* Push the spin buttons slightly off the border in webkit browsers so
-   the arrows don't touch the frame either. */
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
-  margin-left: 0.35rem;
-  opacity: 0.7;
+  -webkit-appearance: inner-spin-button;
+  appearance: inner-spin-button;
+  height: 100%;
+  margin: 0;
+  margin-left: 0.75rem;
+  opacity: 0.6;
+  cursor: pointer;
+}
+input[type="number"]:hover::-webkit-inner-spin-button,
+input[type="number"]:hover::-webkit-outer-spin-button {
+  opacity: 0.9;
+}
+/* Firefox uses a different appearance — normalize best we can. */
+@supports (-moz-appearance: none) {
+  input[type="number"] {
+    -moz-appearance: number-input;
+  }
 }
 
 /* Row-level input for tables like Γραμμές. Bumped from h-9/text-sm to

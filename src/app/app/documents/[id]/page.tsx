@@ -105,9 +105,11 @@ export default async function DocumentDetailPage({
                 Δημόσιος σύνδεσμος
               </a>
             )}
-            {isIssued && can(ctx.role, "document:write") && (
-              <CreditNoteButton documentId={doc.id} />
-            )}
+            {isIssued &&
+              doc.type !== "credit_note" &&
+              can(ctx.role, "document:write") && (
+                <CreditNoteButton documentId={doc.id} />
+              )}
             {isDraft && can(ctx.role, "document:issue") && (
               <IssueButton documentId={doc.id} />
             )}

@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useState, useTransition } from "react";
-import { Save, Plus, Search, Loader2 } from "lucide-react";
+import { Save, Plus, Search, Loader2, KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Textarea } from "@/components/ui/Input";
 import { Alert } from "@/components/ui/Alert";
@@ -60,6 +61,7 @@ export function ClientForm({
   });
 
   const [vatMessage, setVatMessage] = useState<string | null>(null);
+  const [vatNeedsAade, setVatNeedsAade] = useState(false);
   const [vatBusy, startVat] = useTransition();
 
   function set<K extends keyof typeof values>(
@@ -71,6 +73,7 @@ export function ClientForm({
 
   function handleVatLookup() {
     setVatMessage(null);
+    setVatNeedsAade(false);
     const vat = values.vatNumber?.trim();
     if (!vat) {
       setVatMessage("Πληκτρολόγησε πρώτα ΑΦΜ.");
@@ -82,6 +85,9 @@ export function ClientForm({
       const res = await vatSearchAction(fd);
       if (!res.ok) {
         setVatMessage(res.error);
+        if ("code" in res && res.code === "aade_credentials_missing") {
+          setVatNeedsAade(true);
+        }
         return;
       }
       setValues((s) => ({
@@ -164,7 +170,18 @@ export function ClientForm({
 
       {vatMessage && (
         <Alert tone={vatMessage.startsWith("Συμπ") ? "success" : "warning"}>
-          {vatMessage}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span>{vatMessage}</span>
+            {vatNeedsAade && (
+              <Link
+                href="/app/settings/aade"
+                className="inline-flex h-10 items-center gap-2 rounded-full bg-brand-900 px-4 text-sm font-bold text-white hover:bg-black"
+              >
+                <KeyRound size={14} aria-hidden />
+                Ρύθμιση ΓΓΠΣ
+              </Link>
+            )}
+          </div>
         </Alert>
       )}
 
