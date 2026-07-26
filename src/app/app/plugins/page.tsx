@@ -7,6 +7,7 @@ import {
   BarChart3,
   CalendarClock,
   Sparkles,
+  Wallet,
   Check,
   ArrowRight,
   type LucideIcon,
@@ -72,6 +73,22 @@ const PLUGINS: Plugin[] = [
       "Εξαγωγές για τον λογιστή σου",
     ],
     status: "available",
+  },
+  {
+    href: "#",
+    icon: Wallet,
+    name: "Διαχείριση Εξόδων",
+    tagline:
+      "Κατέγραψε έξοδα, προμηθευτές και πληρωμές — δες την πλήρη εικόνα της επιχείρησης.",
+    price: "6,90€ / μήνα",
+    perks: [
+      "Καταχώρηση εξόδων με παραστατικά & αποδείξεις",
+      "Πελατολόγιο προμηθευτών & υπόλοιπα",
+      "Καταγραφή πληρωμών προμηθευτών",
+      "Κατηγοριοποίηση εξόδων & μηνιαία σύνοψη",
+      "Εξαγωγή για τον λογιστή σε Excel/CSV",
+    ],
+    status: "coming_soon",
   },
   {
     href: "/app/documents/statistics",

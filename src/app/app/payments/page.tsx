@@ -9,7 +9,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { LinkButton, Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { money, date } from "@/lib/format";
-import { PaymentForm } from "./PaymentForm";
+import { NewPaymentButton } from "./NewPaymentButton";
 import { deletePaymentAction } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -65,17 +65,20 @@ export default async function PaymentsPage() {
         title="Πληρωμές & Εισπράξεις"
         subtitle="Καταγραφή εισπράξεων και παρακολούθηση υπολοίπων."
         actions={
-          <LinkButton
-            href={`/api/export/payments?format=csv`}
-            variant="secondary"
-            icon={Download}
-          >
-            Εξαγωγή CSV
-          </LinkButton>
+          <>
+            <NewPaymentButton />
+            <LinkButton
+              href={`/api/export/payments?format=csv`}
+              variant="secondary"
+              icon={Download}
+            >
+              Εξαγωγή CSV
+            </LinkButton>
+          </>
         }
       />
 
-      <div className="mb-6 grid gap-4 md:grid-cols-3">
+      <div className="mb-6 grid gap-4 md:grid-cols-2">
         <Card>
           <CardBody>
             <p className="text-xs font-bold uppercase tracking-widest text-ink-500">
@@ -100,15 +103,6 @@ export default async function PaymentsPage() {
             <p className="mt-1 text-sm text-ink-700">
               {unpaidAgg._count} παραστατικά ανοιχτά
             </p>
-          </CardBody>
-        </Card>
-        <Card>
-          <CardHeader
-            title="Νέα είσπραξη"
-            subtitle="Χωρίς σύνδεση με παραστατικό."
-          />
-          <CardBody>
-            <PaymentForm />
           </CardBody>
         </Card>
       </div>
