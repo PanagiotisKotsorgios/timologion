@@ -18,7 +18,6 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { t } from "@/lib/i18n";
 import { money, date } from "@/lib/format";
 import { checkDocumentQuota } from "@/lib/quota";
-import { SparklineInteractive } from "@/components/ui/SparklineInteractive";
 import { ClickableRow } from "./ClickableRow";
 
 export default async function DashboardPage() {
@@ -27,17 +26,12 @@ export default async function DashboardPage() {
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  // 14-day rolling window powers the sparkline decorations.
-  const trendWindowStart = new Date(now);
-  trendWindowStart.setDate(trendWindowStart.getDate() - 13);
-  trendWindowStart.setHours(0, 0, 0, 0);
 
   const [
     wrapp,
     monthCount,
     totalIssuedCount,
     todayCount,
-    trendDocs,
     recentDocs,
     draftCount,
     unpaidAgg,
@@ -70,14 +64,6 @@ export default async function DashboardPage() {
       },
     }),
     prisma.document.findMany({
-      where: {
-        businessId: ctx.businessId,
-        issueDate: { gte: trendWindowStart },
-        status: { in: ["issued", "sending"] },
-      },
-      select: { issueDate: true, totalAmount: true, paymentStatus: true },
-    }),
-    prisma.document.findMany({
       where: { businessId: ctx.businessId },
       orderBy: { createdAt: "desc" },
       take: 5,
@@ -102,37 +88,6 @@ export default async function DashboardPage() {
 
   const wrappStatus = wrapp?.status ?? "inactive";
 
-  // 14-day per-day series for the sparkline decorations. Even at zero volume
-  // we render a small flat baseline instead of an empty svg. Labels are
-  // formatted as `DD/MM` in Greek locale to appear in hover tooltips.
-  const days = 14;
-  const dayFmt = new Intl.DateTimeFormat("el-GR", {
-    day: "2-digit",
-    month: "2-digit",
-  });
-  const dailyPoints: { date: Date; label: string; count: number; issued: number; unpaid: number }[] = [];
-  for (let i = 0; i < days; i++) {
-    const d = new Date(dayStart);
-    d.setDate(d.getDate() - (days - 1 - i));
-    dailyPoints.push({ date: d, label: dayFmt.format(d), count: 0, issued: 0, unpaid: 0 });
-  }
-  for (const d of trendDocs) {
-    const daysAgo = Math.floor(
-      (dayStart.getTime() - new Date(d.issueDate.getFullYear(), d.issueDate.getMonth(), d.issueDate.getDate()).getTime()) /
-        (1000 * 60 * 60 * 24),
-    );
-    const idx = days - 1 - daysAgo;
-    if (idx < 0 || idx >= days) continue;
-    dailyPoints[idx]!.count += 1;
-    const amt = Number(d.totalAmount);
-    dailyPoints[idx]!.issued += amt;
-    if (d.paymentStatus === "unpaid" || d.paymentStatus === "partial") {
-      dailyPoints[idx]!.unpaid += amt;
-    }
-  }
-  const countSeries = dailyPoints.map((p) => ({ value: p.count, label: p.label }));
-  const issuedSeries = dailyPoints.map((p) => ({ value: p.issued, label: p.label }));
-  const unpaidSeries = dailyPoints.map((p) => ({ value: p.unpaid, label: p.label }));
 
   // Onboarding checklist stays visible until every step is actually done —
   // account created (implicit), provider active, first client, first item,
@@ -203,8 +158,6 @@ export default async function DashboardPage() {
           eyebrow="Σήμερα"
           value={String(todayCount)}
           label={todayCount === 1 ? "παραστατικό εκδόθηκε" : "παραστατικά εκδόθηκαν"}
-          sparkline={countSeries}
-          sparklineFormat="count"
           accent="brand"
         />
         <StatCard
@@ -215,8 +168,6 @@ export default async function DashboardPage() {
               ? `από ${quotaLimit.toLocaleString("el-GR")} του πακέτου`
               : "εκδόσεις χωρίς όριο"
           }
-          sparkline={issuedSeries}
-          sparklineFormat="money"
           accent="emerald"
           progress={
             quotaLimit && quotaLimit > 0
@@ -228,14 +179,12 @@ export default async function DashboardPage() {
           eyebrow="Ανεξόφλητα"
           value={money(unpaidAgg._sum.totalAmount ?? 0)}
           label={`σε ${unpaidAgg._count ?? 0} ${(unpaidAgg._count ?? 0) === 1 ? "παραστατικό" : "παραστατικά"}`}
-          sparkline={unpaidSeries}
-          sparklineFormat="money"
           accent="amber"
         />
       </div>
 
-      <div className="mt-6 grid gap-6 md:grid-cols-3">
-        <div className="md:col-span-2">
+      <div className="mt-6 grid gap-6 md:grid-cols-4">
+        <div className="md:col-span-3">
           <Card>
             <CardHeader
               title="Πρόσφατα παραστατικά"
@@ -315,9 +264,9 @@ export default async function DashboardPage() {
             </p>
             <LinkButton
               href="/app/documents?status=draft"
-              variant="ghost"
+              variant="secondary"
               size="md"
-              className="mt-5"
+              className="mt-5 border-2 border-ink-900 text-ink-900 hover:bg-ink-900 hover:text-white"
             >
               Άνοιξε τα πρόχειρα →
             </LinkButton>
@@ -497,16 +446,12 @@ function StatCard({
   eyebrow,
   value,
   label,
-  sparkline,
-  sparklineFormat,
   accent,
   progress,
 }: {
   eyebrow: string;
   value: string;
   label: string;
-  sparkline: { value: number; label: string }[];
-  sparklineFormat: "money" | "count";
   accent: "brand" | "emerald" | "amber";
   progress?: number | null;
 }) {
@@ -542,15 +487,6 @@ function StatCard({
             />
           </div>
         )}
-
-        <div className="mt-7 pt-2">
-          <SparklineInteractive
-            points={sparkline}
-            color={tokens.hex}
-            height={90}
-            formatKind={sparklineFormat}
-          />
-        </div>
       </CardBody>
     </Card>
   );
