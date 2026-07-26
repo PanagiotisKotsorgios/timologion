@@ -41,7 +41,7 @@ export const t = {
     passwordShort: "Ο κωδικός πρέπει να έχει τουλάχιστον 8 χαρακτήρες.",
   },
   nav: {
-    dashboard: "Πίνακας",
+    dashboard: "Πίνακας ελέγχου",
     documents: "Παραστατικά",
     clients: "Πελάτες",
     items: "Είδη & Υπηρεσίες",

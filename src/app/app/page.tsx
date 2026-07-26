@@ -18,6 +18,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { t } from "@/lib/i18n";
 import { money, date } from "@/lib/format";
 import { checkDocumentQuota } from "@/lib/quota";
+import { Sparkline } from "@/components/ui/Sparkline";
 import { ClickableRow } from "./ClickableRow";
 
 export default async function DashboardPage() {
@@ -25,11 +26,18 @@ export default async function DashboardPage() {
 
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  // 14-day rolling window powers the sparkline decorations.
+  const trendWindowStart = new Date(now);
+  trendWindowStart.setDate(trendWindowStart.getDate() - 13);
+  trendWindowStart.setHours(0, 0, 0, 0);
 
   const [
     wrapp,
     monthCount,
     totalIssuedCount,
+    todayCount,
+    trendDocs,
     recentDocs,
     draftCount,
     unpaidAgg,
@@ -53,6 +61,21 @@ export default async function DashboardPage() {
         businessId: ctx.businessId,
         status: { in: ["issued", "sending"] },
       },
+    }),
+    prisma.document.count({
+      where: {
+        businessId: ctx.businessId,
+        issueDate: { gte: dayStart },
+        status: { in: ["issued", "sending"] },
+      },
+    }),
+    prisma.document.findMany({
+      where: {
+        businessId: ctx.businessId,
+        issueDate: { gte: trendWindowStart },
+        status: { in: ["issued", "sending"] },
+      },
+      select: { issueDate: true, totalAmount: true, paymentStatus: true },
     }),
     prisma.document.findMany({
       where: { businessId: ctx.businessId },
@@ -78,6 +101,27 @@ export default async function DashboardPage() {
   ]);
 
   const wrappStatus = wrapp?.status ?? "inactive";
+
+  // 14-day per-day series for the sparkline decorations. Even at zero volume
+  // we render a small flat baseline instead of an empty svg.
+  const days = 14;
+  const dailyCounts = Array.from({ length: days }, () => 0);
+  const dailyIssuedAmount = Array.from({ length: days }, () => 0);
+  const dailyUnpaidAmount = Array.from({ length: days }, () => 0);
+  for (const d of trendDocs) {
+    const daysAgo = Math.floor(
+      (dayStart.getTime() - new Date(d.issueDate.getFullYear(), d.issueDate.getMonth(), d.issueDate.getDate()).getTime()) /
+        (1000 * 60 * 60 * 24),
+    );
+    const idx = days - 1 - daysAgo;
+    if (idx < 0 || idx >= days) continue;
+    dailyCounts[idx]! += 1;
+    const amt = Number(d.totalAmount);
+    dailyIssuedAmount[idx]! += amt;
+    if (d.paymentStatus === "unpaid" || d.paymentStatus === "partial") {
+      dailyUnpaidAmount[idx]! += amt;
+    }
+  }
 
   // Onboarding checklist stays visible until every step is actually done —
   // account created (implicit), provider active, first client, first item,
@@ -143,66 +187,37 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      <div className="grid gap-6 md:grid-cols-3">
-        <Card>
-          <CardHeader title="Ηλεκτρονική έκδοση" subtitle="Κατάσταση σύνδεσης" />
-          <CardBody>
-            <WrappStatusBadge status={wrappStatus} />
-            <p className="mt-3 text-xs text-ink-500">
-              {t.brand.providerNote}
-            </p>
-          </CardBody>
-        </Card>
-
-        <Card>
-          <CardHeader
-            title="Εκδοθέντα αυτόν τον μήνα"
-            subtitle={
-              quotaLimit && quotaLimit > 0
-                ? `Όριο πακέτου: ${quotaLimit}`
-                : "Απεριόριστα"
-            }
-          />
-          <CardBody>
-            <div className="text-3xl font-semibold text-ink-900">
-              {monthCount}
-              {quotaLimit && quotaLimit > 0 && (
-                <span className="ml-1 text-base font-normal text-ink-500">
-                  / {quotaLimit}
-                </span>
-              )}
-            </div>
-            {quotaLimit && quotaLimit > 0 && (
-              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-ink-200">
-                <div
-                  className={
-                    "h-full " +
-                    (quotaUsed / quotaLimit >= 0.9
-                      ? "bg-red-600"
-                      : quotaUsed / quotaLimit >= 0.7
-                        ? "bg-amber-500"
-                        : "bg-brand-700")
-                  }
-                  style={{
-                    width: `${Math.min(100, Math.round((quotaUsed / quotaLimit) * 100))}%`,
-                  }}
-                />
-              </div>
-            )}
-          </CardBody>
-        </Card>
-
-        <Card>
-          <CardHeader
-            title="Ανεξόφλητα"
-            subtitle={`${unpaidAgg._count ?? 0} παραστατικά`}
-          />
-          <CardBody>
-            <div className="text-3xl font-semibold text-ink-900">
-              {money(unpaidAgg._sum.totalAmount ?? 0)}
-            </div>
-          </CardBody>
-        </Card>
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
+        <StatCard
+          eyebrow="Σήμερα"
+          value={String(todayCount)}
+          label={todayCount === 1 ? "παραστατικό εκδόθηκε" : "παραστατικά εκδόθηκαν"}
+          sparkline={dailyCounts}
+          accent="brand"
+        />
+        <StatCard
+          eyebrow="Αυτόν τον μήνα"
+          value={String(monthCount)}
+          label={
+            quotaLimit && quotaLimit > 0
+              ? `από ${quotaLimit.toLocaleString("el-GR")} του πακέτου`
+              : "εκδόσεις χωρίς όριο"
+          }
+          sparkline={dailyIssuedAmount}
+          accent="emerald"
+          progress={
+            quotaLimit && quotaLimit > 0
+              ? Math.min(100, Math.round((quotaUsed / quotaLimit) * 100))
+              : null
+          }
+        />
+        <StatCard
+          eyebrow="Ανεξόφλητα"
+          value={money(unpaidAgg._sum.totalAmount ?? 0)}
+          label={`σε ${unpaidAgg._count ?? 0} ${(unpaidAgg._count ?? 0) === 1 ? "παραστατικό" : "παραστατικά"}`}
+          sparkline={dailyUnpaidAmount}
+          accent="amber"
+        />
       </div>
 
       <div className="mt-6 grid gap-6 md:grid-cols-3">
@@ -273,17 +288,22 @@ export default async function DashboardPage() {
           </Card>
         </div>
 
-        <Card>
-          <CardHeader title="Πρόχειρα" subtitle="Ανοιχτά προς επεξεργασία" />
-          <CardBody>
-            <div className="text-3xl font-semibold text-ink-900">
+        <Card className="overflow-hidden">
+          <CardBody className="p-6 md:p-7">
+            <p className="text-[11px] font-black uppercase tracking-widest text-ink-500">
+              Πρόχειρα
+            </p>
+            <p className="mt-3 text-5xl font-extrabold leading-none tracking-tightest text-ink-900 md:text-6xl">
               {draftCount}
-            </div>
+            </p>
+            <p className="mt-2 text-sm font-medium text-ink-700 md:text-base">
+              ανοιχτά προς επεξεργασία
+            </p>
             <LinkButton
               href="/app/documents?status=draft"
               variant="ghost"
-              size="sm"
-              className="mt-3"
+              size="md"
+              className="mt-5"
             >
               Άνοιξε τα πρόχειρα →
             </LinkButton>
@@ -430,17 +450,91 @@ function WelcomeChecklist({
   );
 }
 
-function WrappStatusBadge({ status }: { status: string }) {
-  switch (status) {
-    case "active":
-      return <Badge tone="success">{t.wrapp.active}</Badge>;
-    case "pending":
-      return <Badge tone="warning">{t.wrapp.pending}</Badge>;
-    case "error":
-      return <Badge tone="danger">{t.wrapp.error}</Badge>;
-    default:
-      return <Badge tone="muted">{t.wrapp.inactive}</Badge>;
+const ACCENT_TOKENS: Record<
+  "brand" | "emerald" | "amber",
+  {
+    label: string;
+    hex: string;
+    tileBg: string;
+    tileText: string;
   }
+> = {
+  brand: {
+    label: "brand-900",
+    hex: "#0B1B3A",
+    tileBg: "bg-brand-50",
+    tileText: "text-brand-900",
+  },
+  emerald: {
+    label: "emerald-700",
+    hex: "#047857",
+    tileBg: "bg-emerald-50",
+    tileText: "text-emerald-900",
+  },
+  amber: {
+    label: "amber-700",
+    hex: "#B45309",
+    tileBg: "bg-amber-50",
+    tileText: "text-amber-900",
+  },
+};
+
+function StatCard({
+  eyebrow,
+  value,
+  label,
+  sparkline,
+  accent,
+  progress,
+}: {
+  eyebrow: string;
+  value: string;
+  label: string;
+  sparkline: number[];
+  accent: "brand" | "emerald" | "amber";
+  progress?: number | null;
+}) {
+  const tokens = ACCENT_TOKENS[accent];
+  return (
+    <Card className="overflow-hidden">
+      <CardBody className="p-6 md:p-7">
+        <p
+          className={
+            "text-[11px] font-black uppercase tracking-widest " +
+            tokens.tileText +
+            " opacity-80"
+          }
+        >
+          {eyebrow}
+        </p>
+        <div className="mt-3 flex items-end gap-3">
+          <p className="text-4xl font-extrabold leading-none tracking-tightest text-ink-900 md:text-5xl">
+            {value}
+          </p>
+        </div>
+        <p className="mt-2 text-sm font-medium text-ink-700 md:text-base">
+          {label}
+        </p>
+
+        {progress != null && (
+          <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-ink-200">
+            <div
+              className="h-full transition-all"
+              style={{
+                width: `${progress}%`,
+                backgroundColor:
+                  progress >= 90 ? "#DC2626" : progress >= 70 ? "#D97706" : tokens.hex,
+              }}
+            />
+          </div>
+        )}
+
+        <div className="mt-5 -mx-1 h-10 opacity-90">
+          <Sparkline values={sparkline} color={tokens.hex} height={40} />
+        </div>
+      </CardBody>
+    </Card>
+  );
 }
 
 function DocStatusBadge({ status }: { status: string }) {
