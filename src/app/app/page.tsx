@@ -18,6 +18,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { t } from "@/lib/i18n";
 import { money, date } from "@/lib/format";
 import { checkDocumentQuota } from "@/lib/quota";
+import { ClickableRow } from "./ClickableRow";
 
 export default async function DashboardPage() {
   const ctx = await requireTenant();
@@ -228,17 +229,7 @@ export default async function DashboardPage() {
                   </thead>
                   <tbody>
                     {recentDocs.map((d) => (
-                      <tr
-                        key={d.id}
-                        onClick={(e) => {
-                          const anchor =
-                            e.currentTarget.querySelector<HTMLAnchorElement>(
-                              "a[data-row-anchor]",
-                            );
-                          anchor?.click();
-                        }}
-                        className="cursor-pointer"
-                      >
+                      <ClickableRow key={d.id}>
                         <td className="mono">
                           <Link
                             href={`/app/documents/${d.id}`}
@@ -256,7 +247,7 @@ export default async function DashboardPage() {
                         <td>
                           <DocStatusBadge status={d.status} />
                         </td>
-                      </tr>
+                      </ClickableRow>
                     ))}
                   </tbody>
                 </table>
