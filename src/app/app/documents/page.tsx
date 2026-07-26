@@ -14,6 +14,7 @@ import { date, money } from "@/lib/format";
 import type { DocumentStatus, DocumentType, Prisma } from "@prisma/client";
 import { RowActions } from "./RowActions";
 import { ClickableRow } from "../ClickableRow";
+import { Pagination } from "@/components/ui/Pagination";
 
 type Sort = "recent" | "oldest" | "amount_desc" | "amount_asc";
 
@@ -24,7 +25,10 @@ type SearchParams = {
   from?: string;
   to?: string;
   sort?: Sort;
+  page?: string;
 };
+
+const PAGE_SIZE = 10;
 
 const DOC_TYPES: DocumentType[] = [
   "invoice",
@@ -53,6 +57,7 @@ export default async function DocumentsPage({
   const from = params.from ?? "";
   const to = params.to ?? "";
   const sort = (params.sort ?? "recent") as Sort;
+  const currentPage = Math.max(1, Number(params.page ?? "1") || 1);
 
   const issueDate: Prisma.DateTimeFilter | undefined =
     from || to
@@ -87,20 +92,25 @@ export default async function DocumentsPage({
           ? { totalAmount: "asc" }
           : { issueDate: "desc" };
 
-  const rows = await prisma.document.findMany({
-    where,
-    orderBy,
-    take: 100,
-    include: { client: { select: { legalName: true } } },
-    // Pull the Wrapp URL so the row menu can offer "Δημόσιος σύνδεσμος".
-    // (wrappInvoiceUrl is on the base Document select — no join needed.)
-  });
+  const [rows, total] = await Promise.all([
+    prisma.document.findMany({
+      where,
+      orderBy,
+      take: PAGE_SIZE,
+      skip: (currentPage - 1) * PAGE_SIZE,
+      include: { client: { select: { legalName: true } } },
+      // Pull the Wrapp URL so the row menu can offer "Δημόσιος σύνδεσμος".
+      // (wrappInvoiceUrl is on the base Document select — no join needed.)
+    }),
+    prisma.document.count({ where }),
+  ]);
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
     <>
       <PageHeader
         title="Παραστατικά"
-        subtitle={`${rows.length} αποτελέσματα`}
+        subtitle={`${total.toLocaleString("el-GR")} ${total === 1 ? "αποτέλεσμα" : "αποτελέσματα"}`}
         actions={
           <>
             <LinkButton
@@ -203,6 +213,25 @@ export default async function DocumentsPage({
           </div>
         )}
       </Card>
+
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalCount={total}
+        pageSize={PAGE_SIZE}
+        buildHref={(p) =>
+          "/app/documents?" +
+          new URLSearchParams({
+            q: search,
+            status: status ?? "",
+            type: type ?? "",
+            from,
+            to,
+            sort,
+            page: String(p),
+          }).toString()
+        }
+      />
     </>
   );
 }

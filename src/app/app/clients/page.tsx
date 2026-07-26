@@ -3,13 +3,14 @@ import { prisma } from "@/lib/db";
 import { ClickableRow } from "../ClickableRow";
 import { requireTenant } from "@/lib/tenant";
 import { assertCan } from "@/lib/rbac";
-import { UserPlus, Search, ArrowLeft, ArrowRight, Download } from "lucide-react";
+import { UserPlus, Search, Download } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { LinkButton } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Input, Select, Field } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { Pagination } from "@/components/ui/Pagination";
 
 type Sort = "name" | "recent" | "vat";
 
@@ -22,7 +23,7 @@ type SearchParams = {
   page?: string;
 };
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 10;
 
 export default async function ClientsPage({
   searchParams,
@@ -195,11 +196,12 @@ export default async function ClientsPage({
         )}
       </Card>
 
-      {totalPages > 1 && (
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          buildHref={(p) =>
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalCount={total}
+        pageSize={PAGE_SIZE}
+        buildHref={(p) =>
             "/app/clients?" +
             new URLSearchParams({
               q: search,
@@ -211,7 +213,6 @@ export default async function ClientsPage({
             }).toString()
           }
         />
-      )}
     </>
   );
 }
@@ -296,42 +297,4 @@ function FilterBar({
   );
 }
 
-function Pagination({
-  currentPage,
-  totalPages,
-  buildHref,
-}: {
-  currentPage: number;
-  totalPages: number;
-  buildHref: (page: number) => string;
-}) {
-  return (
-    <nav className="mt-6 flex items-center justify-between text-sm">
-      <span className="text-ink-700">
-        Σελίδα <strong>{currentPage}</strong> από <strong>{totalPages}</strong>
-      </span>
-      <div className="flex gap-2">
-        {currentPage > 1 && (
-          <LinkButton
-            href={buildHref(currentPage - 1)}
-            variant="secondary"
-            size="sm"
-            icon={ArrowLeft}
-          >
-            Προηγούμενη
-          </LinkButton>
-        )}
-        {currentPage < totalPages && (
-          <LinkButton
-            href={buildHref(currentPage + 1)}
-            variant="secondary"
-            size="sm"
-            iconRight={ArrowRight}
-          >
-            Επόμενη
-          </LinkButton>
-        )}
-      </div>
-    </nav>
-  );
-}
+// Pagination extracted to @/components/ui/Pagination — used by every list.

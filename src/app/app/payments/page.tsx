@@ -11,6 +11,9 @@ import { Badge } from "@/components/ui/Badge";
 import { money, date } from "@/lib/format";
 import { NewPaymentButton } from "./NewPaymentButton";
 import { deletePaymentAction } from "./actions";
+import { Pagination } from "@/components/ui/Pagination";
+
+const PAGE_SIZE = 10;
 
 export const dynamic = "force-dynamic";
 
@@ -24,20 +27,29 @@ const METHOD_LABEL: Record<string, string> = {
   other: "Άλλο",
 };
 
-export default async function PaymentsPage() {
+export default async function PaymentsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const ctx = await requireTenant();
   assertCan(ctx.role, "document:read");
 
-  const [payments, unpaidAgg, monthAgg] = await Promise.all([
+  const params = await searchParams;
+  const currentPage = Math.max(1, Number(params.page ?? "1") || 1);
+
+  const [payments, totalPayments, unpaidAgg, monthAgg] = await Promise.all([
     prisma.payment.findMany({
       where: { businessId: ctx.businessId },
       orderBy: { receivedAt: "desc" },
-      take: 100,
+      take: PAGE_SIZE,
+      skip: (currentPage - 1) * PAGE_SIZE,
       include: {
         client: { select: { legalName: true } },
         document: { select: { id: true, series: true, number: true, type: true } },
       },
     }),
+    prisma.payment.count({ where: { businessId: ctx.businessId } }),
     prisma.document.aggregate({
       where: {
         businessId: ctx.businessId,
@@ -110,7 +122,7 @@ export default async function PaymentsPage() {
       <Card className="overflow-hidden">
         <CardHeader
           title="Ιστορικό εισπράξεων"
-          subtitle={`${payments.length} πρόσφατες καταχωρήσεις`}
+          subtitle={`${totalPayments.toLocaleString("el-GR")} συνολικές καταχωρήσεις`}
         />
         <CardBody className="p-0">
           {payments.length === 0 ? (
@@ -182,6 +194,14 @@ export default async function PaymentsPage() {
           )}
         </CardBody>
       </Card>
+
+      <Pagination
+        currentPage={currentPage}
+        totalPages={Math.max(1, Math.ceil(totalPayments / PAGE_SIZE))}
+        totalCount={totalPayments}
+        pageSize={PAGE_SIZE}
+        buildHref={(p) => `/app/payments?page=${p}`}
+      />
     </>
   );
 }

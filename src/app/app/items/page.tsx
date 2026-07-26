@@ -12,6 +12,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
 import { Input, Select, Field } from "@/components/ui/Input";
 import { money } from "@/lib/format";
+import { Pagination } from "@/components/ui/Pagination";
 
 type Sort = "name" | "recent" | "price_desc" | "price_asc";
 
@@ -20,7 +21,10 @@ type SearchParams = {
   kind?: "service" | "product";
   vat?: string;
   sort?: Sort;
+  page?: string;
 };
+
+const PAGE_SIZE = 10;
 
 export default async function ItemsPage({
   searchParams,
@@ -35,6 +39,7 @@ export default async function ItemsPage({
   const kind = params.kind;
   const vat = params.vat?.trim() ?? "";
   const sort = (params.sort ?? "name") as Sort;
+  const currentPage = Math.max(1, Number(params.page ?? "1") || 1);
 
   const where = {
     businessId: ctx.businessId,
@@ -59,11 +64,16 @@ export default async function ItemsPage({
           ? { defaultPrice: "asc" as const }
           : { name: "asc" as const };
 
-  const rows = await prisma.item.findMany({
-    where,
-    orderBy,
-    take: 200,
-  });
+  const [rows, total] = await Promise.all([
+    prisma.item.findMany({
+      where,
+      orderBy,
+      take: PAGE_SIZE,
+      skip: (currentPage - 1) * PAGE_SIZE,
+    }),
+    prisma.item.count({ where }),
+  ]);
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
     <>
@@ -147,6 +157,23 @@ export default async function ItemsPage({
           </div>
         )}
       </Card>
+
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalCount={total}
+        pageSize={PAGE_SIZE}
+        buildHref={(p) =>
+          "/app/items?" +
+          new URLSearchParams({
+            q: search,
+            kind: kind ?? "",
+            vat,
+            sort,
+            page: String(p),
+          }).toString()
+        }
+      />
     </>
   );
 }
