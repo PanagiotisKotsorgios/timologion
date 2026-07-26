@@ -120,14 +120,14 @@ export function NotificationsBell({
           ref={popRef}
           role="dialog"
           aria-label="Ειδοποιήσεις"
-          className="absolute right-0 top-full z-50 mt-3 w-[min(92vw,560px)] overflow-hidden rounded-2xl border border-ink-300/70 bg-white shadow-2xl md:w-[600px]"
+          className="absolute right-0 top-full z-50 mt-3 w-[min(96vw,720px)] overflow-hidden rounded-3xl border border-ink-300/70 bg-white shadow-2xl md:w-[760px]"
         >
-          <div className="flex items-center justify-between gap-3 border-b border-ink-300/60 bg-white px-6 py-4">
+          <div className="flex items-center justify-between gap-4 border-b border-ink-300/60 bg-white px-8 py-6">
             <div>
-              <p className="text-lg font-extrabold text-ink-900">
+              <p className="text-2xl font-extrabold tracking-tight text-ink-900 md:text-3xl">
                 Ειδοποιήσεις
               </p>
-              <p className="mt-0.5 text-xs text-ink-500">
+              <p className="mt-1 text-sm font-medium text-ink-500 md:text-base">
                 {greekCount(unreadCount)}
               </p>
             </div>
@@ -135,16 +135,16 @@ export function NotificationsBell({
               <button
                 type="button"
                 onClick={markAllRead}
-                className="rounded-lg px-3 py-1.5 text-xs font-bold text-brand-800 transition-colors hover:bg-brand-50 hover:text-brand-900"
+                className="rounded-xl px-4 py-2.5 text-sm font-bold text-brand-800 transition-colors hover:bg-brand-50 hover:text-brand-900"
               >
                 Σήμανση όλων
               </button>
             )}
           </div>
 
-          <ul className="max-h-[360px] divide-y divide-ink-300/50 overflow-y-auto">
+          <ul className="max-h-[520px] divide-y divide-ink-300/50 overflow-y-auto">
             {ANNOUNCEMENTS.length === 0 && (
-              <li className="p-10 text-center text-sm text-ink-500">
+              <li className="p-14 text-center text-base text-ink-500">
                 Χωρίς ειδοποιήσεις.
               </li>
             )}
@@ -154,17 +154,17 @@ export function NotificationsBell({
                 <li
                   key={a.id}
                   className={clsx(
-                    "border-l-[3px] px-5 py-3.5 transition-colors hover:bg-ink-50",
+                    "border-l-[4px] px-8 py-6 transition-colors hover:bg-ink-50",
                     toneStyles[a.tone],
                     isRead && "opacity-55",
                   )}
                 >
-                  <div className="flex items-start gap-3">
+                  <div className="flex items-start gap-4">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-3">
                         <p
                           className={clsx(
-                            "text-[15px] font-bold leading-tight",
+                            "text-xl font-extrabold leading-tight md:text-[22px]",
                             toneText[a.tone],
                           )}
                         >
@@ -175,14 +175,14 @@ export function NotificationsBell({
                             type="button"
                             onClick={() => markRead(a.id)}
                             aria-label="Σήμανση ως αναγνωσμένη"
-                            className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-ink-400 hover:bg-ink-100 hover:text-ink-900"
+                            className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-ink-400 hover:bg-ink-100 hover:text-ink-900"
                           >
-                            <X size={14} />
+                            <X size={18} />
                           </button>
                         )}
                       </div>
                       <div
-                        className="prose prose-sm mt-1.5 max-w-none text-[13.5px] leading-relaxed text-ink-800"
+                        className="prose prose-base mt-3 max-w-none text-[16px] leading-relaxed text-ink-800"
                         dangerouslySetInnerHTML={{ __html: a.body }}
                       />
                       {a.href && (
@@ -192,7 +192,7 @@ export function NotificationsBell({
                             markRead(a.id);
                             setOpen(false);
                           }}
-                          className="mt-2 inline-flex items-center gap-1 text-[13px] font-bold text-brand-800 hover:text-brand-900"
+                          className="mt-4 inline-flex h-11 items-center gap-2 rounded-full bg-brand-900 px-5 text-sm font-bold text-white transition-transform hover:-translate-y-0.5 hover:bg-black"
                         >
                           {a.cta ?? "Δείτε εδώ"}
                           <span aria-hidden>→</span>
@@ -205,11 +205,11 @@ export function NotificationsBell({
             })}
           </ul>
 
-          <div className="border-t border-ink-300/60 bg-ink-50 px-5 py-3 text-center">
+          <div className="border-t border-ink-300/60 bg-ink-50 px-6 py-4 text-center">
             <Link
               href="/app/notifications"
               onClick={() => setOpen(false)}
-              className="inline-flex text-[13px] font-bold text-brand-800 hover:text-brand-900"
+              className="inline-flex text-sm font-bold text-brand-800 hover:text-brand-900"
             >
               Όλες οι ειδοποιήσεις →
             </Link>
