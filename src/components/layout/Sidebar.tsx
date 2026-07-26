@@ -7,21 +7,11 @@ import clsx from "clsx";
 import {
   LayoutDashboard,
   FileText,
-  BarChart3,
-  Repeat,
-  Wallet,
-  FileSpreadsheet,
-  UtensilsCrossed,
-  Users2,
   Users,
   Package,
-  Building2,
-  MapPin,
-  Hash,
-  Send,
-  KeyRound,
-  CreditCard,
-  UserCog,
+  Wallet,
+  Puzzle,
+  Settings,
   UserCircle,
   Menu,
   X,
@@ -36,28 +26,26 @@ type NavItem = {
   icon: LucideIcon;
 };
 
+/**
+ * Sidebar deliberately kept short — noob users get overwhelmed by long
+ * left-rail menus. Specialist modules (POS, CRM, accountant reports,
+ * statistics, recurring documents) live behind the "Πρόσθετα" gateway page
+ * so the sidebar stays predictable regardless of package. Business config
+ * (branches, series, provider, users, VAT search) is grouped under a single
+ * "Ρυθμίσεις" hub instead of being spread across eight sidebar rows.
+ */
 const primary: NavItem[] = [
   { href: "/app", label: t.nav.dashboard, icon: LayoutDashboard },
   { href: "/app/documents", label: t.nav.documents, icon: FileText },
-  { href: "/app/documents/statistics", label: "Στατιστικά", icon: BarChart3 },
-  { href: "/app/documents/repeating", label: "Επαναλαμβανόμενα", icon: Repeat },
   { href: "/app/clients", label: t.nav.clients, icon: Users },
   { href: "/app/items", label: t.nav.items, icon: Package },
   { href: "/app/payments", label: "Πληρωμές", icon: Wallet },
-  { href: "/app/pos", label: "POS", icon: UtensilsCrossed },
-  { href: "/app/crm", label: "CRM", icon: Users2 },
-  { href: "/app/reports", label: "Αναφορές λογιστή", icon: FileSpreadsheet },
+  { href: "/app/plugins", label: "Πρόσθετα", icon: Puzzle },
 ];
 
 const secondary: NavItem[] = [
   { href: "/app/settings/account", label: "Ο λογαριασμός μου", icon: UserCircle },
-  { href: "/app/settings/business", label: t.nav.business, icon: Building2 },
-  { href: "/app/settings/subscription", label: "Συνδρομή", icon: CreditCard },
-  { href: "/app/settings/branches", label: "Υποκαταστήματα", icon: MapPin },
-  { href: "/app/settings/billing-books", label: "Σειρές παραστατικών", icon: Hash },
-  { href: "/app/settings/wrapp", label: "Ηλεκτρονική έκδοση", icon: Send },
-  { href: "/app/settings/aade", label: "ΓΓΠΣ / Αναζήτηση ΑΦΜ", icon: KeyRound },
-  { href: "/app/settings/users", label: t.nav.users, icon: UserCog },
+  { href: "/app/settings", label: t.nav.settings, icon: Settings },
 ];
 
 /** Hamburger rendered inside the topbar on mobile. */
@@ -146,9 +134,6 @@ export function Sidebar() {
         </div>
 
         <nav className="flex-1 overflow-y-auto px-4 py-6">
-          <p className="mb-3 px-4 text-[11px] font-bold uppercase tracking-[0.2em] text-white/50">
-            Πλατφόρμα
-          </p>
           <ul className="space-y-1.5">
             {primary.map((item) => (
               <NavLink
@@ -160,7 +145,7 @@ export function Sidebar() {
           </ul>
 
           <p className="mt-8 mb-3 px-4 text-[11px] font-bold uppercase tracking-[0.2em] text-white/50">
-            Ρυθμίσεις
+            Λογαριασμός
           </p>
           <ul className="space-y-1.5">
             {secondary.map((item) => (
