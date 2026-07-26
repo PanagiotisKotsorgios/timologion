@@ -244,6 +244,16 @@ export class HttpWrappClient {
 
   // ─── Public endpoints ─────────────────────────────────────────────────
 
+  /**
+   * Verify a raw (unstored) tenant api_key by attempting a login. Throws if
+   * Wrapp rejects the credentials. Used by the webhook receiver to confirm
+   * an unsigned onboarding payload actually came from Wrapp — a fabricated
+   * key can't pass this call.
+   */
+  async verifyRawApiKey(email: string, apiKey: string): Promise<void> {
+    await this.login({ email, apiKey });
+  }
+
   async getTenantDetails(businessId: string): Promise<WrappTenantDetails> {
     const json = await this.request<unknown>(businessId, "GET", "/tenant_details");
     return wrappTenantDetails.parse(json);

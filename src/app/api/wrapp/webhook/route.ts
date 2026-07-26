@@ -6,6 +6,7 @@ import { env } from "@/lib/env";
 import { getWrappSettings } from "@/lib/wrapp/settings";
 import { logger } from "@/lib/logger";
 import { logAudit } from "@/lib/audit";
+import { HttpWrappClient } from "@/lib/wrapp/http-client";
 import {
   wrappInvoiceIssuedWebhook,
   wrappPosPaymentWebhook,
@@ -120,14 +121,8 @@ export async function POST(req: Request) {
   const allowUnsigned = env.NODE_ENV !== "production" && !signature;
 
   let verified: Awaited<ReturnType<typeof verifySignature>> = null;
-  if (!allowUnsigned) {
+  if (signature) {
     verified = await verifySignature(raw, signature);
-    if (!verified) {
-      logger.warn("wrapp.webhook.unauthorized", {
-        action: eventType || "unknown",
-      });
-      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-    }
   }
 
   let payload: Record<string, unknown>;
@@ -137,18 +132,73 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "invalid json" }, { status: 400 });
   }
 
-  // ─── Partner-scoped events (onboarding callback) ─────────────────────
-  // Wrapp posts { api_key, partner_user_id, email, wrapp_user_id, ... } after
-  // successful external_login onboarding. We match `partner_user_id` (which
-  // we set = businessId when we called external_login) and persist the
-  // tenant's api_key so subsequent tenant-API calls can log in.
   const looksLikeOnboarding =
     typeof payload.api_key === "string" &&
     typeof payload.partner_user_id === "string";
 
+  // Onboarding webhook per Wrapp: `{ partner_user_id, api_key }`. Wrapp does
+  // NOT include a signature on this event (confirmed with them 2026-07). We
+  // accept it if any of the following hold:
+  //   1. signature present + verified (partner/platform key match)
+  //   2. dev mode, no signature at all
+  //   3. no signature, but partner_user_id maps to a Business that just went
+  //      through activation (WrappConnection in `pending`) AND the api_key
+  //      passes a live Wrapp verification round-trip. That last check
+  //      guarantees the api_key is real — a fabricated payload can't survive
+  //      an authenticated call to Wrapp.
+  let onboardingVerifiedByRoundtrip = false;
   if (
     looksLikeOnboarding &&
-    (allowUnsigned || verified?.scope === "partner" || verified?.scope === "platform")
+    !allowUnsigned &&
+    (verified?.scope !== "partner" && verified?.scope !== "platform")
+  ) {
+    const businessId = String(payload.partner_user_id);
+    const apiKey = String(payload.api_key);
+    const receivedEmail =
+      typeof payload.email === "string" ? payload.email : null;
+
+    const pending = await prisma.wrappConnection.findUnique({
+      where: { businessId },
+      select: { status: true, wrappEmail: true },
+    });
+    const emailForLogin = receivedEmail || pending?.wrappEmail || null;
+
+    if (pending?.status === "pending" && emailForLogin) {
+      try {
+        await new HttpWrappClient().verifyRawApiKey(emailForLogin, apiKey);
+        onboardingVerifiedByRoundtrip = true;
+        logger.info("wrapp.webhook.onboarding_verified_by_roundtrip", {
+          businessId,
+        });
+      } catch (err) {
+        logger.warn("wrapp.webhook.onboarding_roundtrip_failed", {
+          businessId,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+  }
+
+  // Non-onboarding, unsigned, prod → reject.
+  if (
+    !allowUnsigned &&
+    !onboardingVerifiedByRoundtrip &&
+    !verified
+  ) {
+    logger.warn("wrapp.webhook.unauthorized", {
+      action: eventType || "unknown",
+      hasSignature: signature ? "yes" : "no",
+      looksLikeOnboarding: looksLikeOnboarding ? "yes" : "no",
+    });
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  if (
+    looksLikeOnboarding &&
+    (allowUnsigned ||
+      onboardingVerifiedByRoundtrip ||
+      verified?.scope === "partner" ||
+      verified?.scope === "platform")
   ) {
     const businessId = String(payload.partner_user_id);
     const apiKey = String(payload.api_key);
