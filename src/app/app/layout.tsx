@@ -8,6 +8,7 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
 import { ImpersonationBanner } from "@/components/layout/ImpersonationBanner";
 import { VerifyEmailBanner } from "@/components/layout/VerifyEmailBanner";
+import { ToastProvider } from "@/components/ui/Toast";
 import { ActivationGate } from "./ActivationGate";
 
 export const metadata: Metadata = {
@@ -66,32 +67,34 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const hasPhone = Boolean(activeBusiness?.phone?.trim());
 
   return (
-    <div className="flex min-h-screen bg-ink-100">
-      <Sidebar />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <VerifyEmailBanner />
-        <ImpersonationBanner />
-        <Topbar
-          userName={user.fullName || user.email}
-          activeBusinessId={active.businessId}
-          businesses={memberships.map((m) => ({
-            id: m.businessId,
-            label: m.business.tradeName ?? m.business.legalName,
-          }))}
-        />
-        <main className="flex-1 overflow-x-hidden">
-          <div className="mx-auto w-full max-w-[1400px] px-3 py-5 sm:px-4 md:px-8 md:py-8">
-            {children}
-          </div>
-        </main>
-      </div>
+    <ToastProvider>
+      <div className="flex min-h-screen bg-ink-100">
+        <Sidebar />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <VerifyEmailBanner />
+          <ImpersonationBanner />
+          <Topbar
+            userName={user.fullName || user.email}
+            activeBusinessId={active.businessId}
+            businesses={memberships.map((m) => ({
+              id: m.businessId,
+              label: m.business.tradeName ?? m.business.legalName,
+            }))}
+          />
+          <main className="flex-1 overflow-x-hidden">
+            <div className="mx-auto w-full max-w-[1400px] px-3 py-5 sm:px-4 md:px-8 md:py-8">
+              {children}
+            </div>
+          </main>
+        </div>
 
-      {needsActivation && (
-        <ActivationGate
-          devMode={env.NODE_ENV !== "production"}
-          hasPhone={hasPhone}
-        />
-      )}
-    </div>
+        {needsActivation && (
+          <ActivationGate
+            devMode={env.NODE_ENV !== "production"}
+            hasPhone={hasPhone}
+          />
+        )}
+      </div>
+    </ToastProvider>
   );
 }

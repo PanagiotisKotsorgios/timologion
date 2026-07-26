@@ -449,6 +449,10 @@ model Business {
   aadeUsername      String?  @db.VarChar(120)
   aadePasswordEnc   String?  @db.Text
   aadeVerifiedAt    DateTime?
+  // Default notes text prepended to every new document draft. Users put
+  // things like bank IBAN, standard terms, footer disclaimers here so they
+  // don't have to retype on each invoice. Sent to the provider verbatim.
+  defaultDocumentNotes String? @db.Text
   suspendedAt       DateTime?
   suspendedReason   String?  @db.VarChar(255)
   createdAt         DateTime @default(now())

@@ -19,6 +19,7 @@ const schema = z.object({
   postalCode: z.string().max(20).optional().or(z.literal("")),
   phone: z.string().max(30).optional().or(z.literal("")),
   email: z.string().email().optional().or(z.literal("")),
+  defaultDocumentNotes: z.string().max(5000).optional().or(z.literal("")),
 });
 
 export type BusinessSettingsState =
@@ -52,6 +53,7 @@ export async function updateBusinessAction(
       postalCode: o(parsed.data.postalCode),
       phone: o(parsed.data.phone),
       email: o(parsed.data.email),
+      defaultDocumentNotes: o(parsed.data.defaultDocumentNotes),
     },
   });
 

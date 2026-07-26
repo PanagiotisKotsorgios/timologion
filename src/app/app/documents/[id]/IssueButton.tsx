@@ -1,28 +1,32 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { Send } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { Alert } from "@/components/ui/Alert";
+import { useToast } from "@/components/ui/Toast";
 import { attemptIssueAction } from "../actions";
 
 export function IssueButton({ documentId }: { documentId: string }) {
-  const [message, setMessage] = useState<string | null>(null);
+  const router = useRouter();
+  const toast = useToast();
   const [pending, start] = useTransition();
 
   function handle() {
-    setMessage(null);
     start(async () => {
       const res = await attemptIssueAction(documentId);
-      if (!res.ok) setMessage(res.error);
+      if (res.ok) {
+        toast.success("Το παραστατικό διαβιβάστηκε στο myDATA.");
+        router.refresh();
+      } else {
+        toast.error(res.error);
+      }
     });
   }
 
   return (
-    <div className="space-y-3">
-      <Button onClick={handle} disabled={pending}>
-        {pending ? "Επικοινωνία..." : "Επίσημη έκδοση"}
-      </Button>
-      {message && <Alert tone="warning">{message}</Alert>}
-    </div>
+    <Button onClick={handle} disabled={pending} icon={Send}>
+      {pending ? "Διαβίβαση..." : "Διαβίβαση στο myDATA"}
+    </Button>
   );
 }

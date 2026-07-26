@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import { Save } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { Field, Input } from "@/components/ui/Input";
+import { Field, Input, Textarea } from "@/components/ui/Input";
 import { Alert } from "@/components/ui/Alert";
 import { t } from "@/lib/i18n";
 import {
@@ -22,6 +22,7 @@ type BusinessLike = {
   postalCode?: string | null;
   phone?: string | null;
   email?: string | null;
+  defaultDocumentNotes?: string | null;
 };
 
 export function BusinessSettingsForm({ initial }: { initial: BusinessLike }) {
@@ -130,6 +131,41 @@ export function BusinessSettingsForm({ initial }: { initial: BusinessLike }) {
             maxLength={160}
           />
         </Field>
+      </section>
+
+      <section className="space-y-3 border-t-2 border-ink-300/60 pt-6">
+        <div>
+          <h3 className="text-lg font-extrabold text-ink-900">
+            Προεπιλεγμένες σημειώσεις παραστατικών
+          </h3>
+          <p className="mt-1 text-sm text-ink-700">
+            Εμφανίζονται προσυμπληρωμένα στο πεδίο «Σημειώσεις» κάθε νέου
+            πρόχειρου παραστατικού. Χρήσιμο για IBAN, γενικούς όρους,
+            υποσημειώσεις.
+          </p>
+        </div>
+        <Field label="Κείμενο" htmlFor="defaultDocumentNotes">
+          <Textarea
+            id="defaultDocumentNotes"
+            name="defaultDocumentNotes"
+            defaultValue={initial.defaultDocumentNotes ?? ""}
+            rows={5}
+            maxLength={5000}
+            placeholder={
+              "π.χ.\nΤράπεζα Πειραιώς — IBAN: GR12 3456 7890\nΠληρωμή εντός 30 ημερών.\nΕυχαριστούμε για τη συνεργασία."
+            }
+          />
+        </Field>
+        {initial.defaultDocumentNotes && (
+          <div className="rounded-xl border-2 border-ink-300/60 bg-ink-100 p-4">
+            <p className="mb-2 text-[11px] font-black uppercase tracking-widest text-ink-500">
+              Προεπισκόπηση
+            </p>
+            <p className="whitespace-pre-wrap text-sm text-ink-800">
+              {initial.defaultDocumentNotes}
+            </p>
+          </div>
+        )}
       </section>
 
       <div className="flex justify-end">

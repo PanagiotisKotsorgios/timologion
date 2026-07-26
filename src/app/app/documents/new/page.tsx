@@ -37,7 +37,11 @@ export default async function NewDocumentPage({
   const [business, clients, items, branches, books] = await Promise.all([
     prisma.business.findUniqueOrThrow({
       where: { id: ctx.businessId },
-      select: { legalName: true, tradeName: true },
+      select: {
+        legalName: true,
+        tradeName: true,
+        defaultDocumentNotes: true,
+      },
     }),
     prisma.client.findMany({
       where: { businessId: ctx.businessId },
@@ -103,6 +107,7 @@ export default async function NewDocumentPage({
       <DraftEditor
         initialType={initialType}
         businessName={business.tradeName ?? business.legalName}
+        defaultNotes={business.defaultDocumentNotes ?? ""}
         clients={clients.map((c) => ({
           id: c.id,
           label: c.tradeName ?? c.legalName,

@@ -18,7 +18,7 @@ import { LinkButton } from "@/components/ui/Button";
 import { t } from "@/lib/i18n";
 import { date, money } from "@/lib/format";
 import { IssueButton } from "./IssueButton";
-import { DuplicateButton, CreditNoteButton } from "./DocumentActions";
+import { CreditNoteButton } from "./DocumentActions";
 
 export default async function DocumentDetailPage({
   params,
@@ -102,9 +102,6 @@ export default async function DocumentDetailPage({
                 <ExternalLink size={18} aria-hidden />
                 Δημόσιος σύνδεσμος
               </a>
-            )}
-            {(isDraft || isIssued) && can(ctx.role, "document:write") && (
-              <DuplicateButton documentId={doc.id} />
             )}
             {isIssued && can(ctx.role, "document:write") && (
               <CreditNoteButton documentId={doc.id} />

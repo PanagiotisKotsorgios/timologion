@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Select, Textarea } from "@/components/ui/Input";
 import { Alert } from "@/components/ui/Alert";
+import { useToast } from "@/components/ui/Toast";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { t } from "@/lib/i18n";
 import {
@@ -126,6 +127,7 @@ export function DraftEditor({
   branches,
   books,
   editing,
+  defaultNotes = "",
 }: {
   initialType?: DraftInput["type"];
   businessName: string;
@@ -135,8 +137,11 @@ export function DraftEditor({
   books: BookOption[];
   /** Present when editing an existing draft. All form state is pre-filled. */
   editing?: DraftEditorInitial;
+  /** Business-wide default notes (bank info, terms) prepended to new drafts. */
+  defaultNotes?: string;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [type, setType] = useState<DraftInput["type"]>(
     editing?.type ?? initialType ?? "invoice",
   );
@@ -191,7 +196,7 @@ export function DraftEditor({
   const [additionalTaxes, setAdditionalTaxes] = useState(
     editing?.additionalTaxes ?? "",
   );
-  const [notes, setNotes] = useState(editing?.notes ?? "");
+  const [notes, setNotes] = useState(editing?.notes ?? defaultNotes);
   const [lines, setLines] = useState<Line[]>(
     editing?.lines?.length ? editing.lines : [emptyLine(0)],
   );
@@ -268,16 +273,20 @@ export function DraftEditor({
         : await createDraftAction(payload);
       if (!saveRes.ok) {
         setError(saveRes.error);
+        toast.error(saveRes.error);
         return;
       }
       if (mode === "issue") {
         const issueRes = await attemptIssueAction(saveRes.id);
         if (!issueRes.ok) {
           setError(issueRes.error);
-          // Draft is saved — send the user to it so they can retry or fix.
+          toast.error(issueRes.error);
           router.push(`/app/documents/${saveRes.id}`);
           return;
         }
+        toast.success("Το παραστατικό διαβιβάστηκε στο myDATA.");
+      } else {
+        toast.success(editing ? "Οι αλλαγές αποθηκεύτηκαν." : "Το πρόχειρο αποθηκεύτηκε.");
       }
       router.push(`/app/documents/${saveRes.id}`);
     });
