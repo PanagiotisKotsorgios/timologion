@@ -35,26 +35,32 @@ export function mapDocumentTypeToWrapp(type: DocumentType): string | null {
 /**
  * Map our PaymentMethod to Wrapp's `payment_method_type` integer.
  * 0=Cash 1=Credit 2=Local bank 3=Card 4=Cheque 5=Overseas bank 6=Web banking 7=IRIS
+ *
+ * `Document.paymentMethod` is stored as the free-form Greek label the user
+ * picked from the dropdown (there's no enum coercion on the column), so we
+ * normalize BOTH the English enum values and the Greek labels here. The
+ * old code casted `paymentMethod` to `PaymentMethod` at the call site, which
+ * silently missed every real value and fell through to the default.
  */
-export function mapPaymentMethodToWrapp(m: PaymentMethod | null | undefined): number {
-  switch (m) {
-    case "cash":
-      return 0;
-    case "credit":
-      return 1;
-    case "bank_transfer":
-      return 2;
-    case "card":
-      return 3;
-    case "check":
-      return 4;
-    case "iris":
-      return 7;
-    case "other":
-      return 0;
-    default:
-      return 0;
+export function mapPaymentMethodToWrapp(
+  m: PaymentMethod | string | null | undefined,
+): number {
+  if (!m) return 0;
+  const raw = String(m).trim().toLowerCase();
+  // English enum values
+  if (raw === "cash" || raw === "μετρητά" || raw === "μετρητα") return 0;
+  if (raw === "credit" || raw.includes("πιστώσει") || raw.includes("πιστωσει")) return 1;
+  if (
+    raw === "bank_transfer" ||
+    raw.includes("τραπεζ") ||
+    raw.includes("μεταφορ")
+  ) {
+    return 2;
   }
+  if (raw === "card" || raw.includes("κάρτα") || raw.includes("καρτα")) return 3;
+  if (raw === "check" || raw.includes("επιταγ")) return 4;
+  if (raw === "iris") return 7;
+  return 0;
 }
 
 /**

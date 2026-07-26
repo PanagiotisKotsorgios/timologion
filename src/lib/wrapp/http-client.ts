@@ -355,13 +355,47 @@ export class HttpWrappClient {
     payload: WrappInvoiceRequest,
   ): Promise<WrappInvoiceResponse> {
     const validated = wrappInvoiceRequest.parse(payload);
-    const json = await this.request<unknown>(
-      businessId,
-      "POST",
-      "/invoices",
-      validated,
-    );
-    return wrappInvoiceResponse.parse(json);
+    try {
+      const json = await this.request<unknown>(
+        businessId,
+        "POST",
+        "/invoices",
+        validated,
+      );
+      return wrappInvoiceResponse.parse(json);
+    } catch (err) {
+      // Include a redacted-but-diagnostic version of the payload in the
+      // logged error so operators can see WHICH field Wrapp rejected without
+      // fishing through client-side console dumps.
+      if (err instanceof WrappApiError) {
+        logger.warn("wrapp.invoice.rejected_payload", {
+          businessId,
+          error: err.message,
+          httpStatus: String(err.httpStatus ?? 0),
+          payload_summary: JSON.stringify({
+            invoice_type_code: validated.invoice_type_code,
+            billing_book_id: validated.billing_book_id,
+            payment_method_type: validated.payment_method_type,
+            has_counterpart: Boolean(validated.counterpart),
+            counterpart_keys: validated.counterpart
+              ? Object.keys(validated.counterpart)
+              : null,
+            counterpart_vat: validated.counterpart?.vat ?? null,
+            line_count: validated.invoice_lines.length,
+            first_line_classification: {
+              category: validated.invoice_lines[0]?.classification_category,
+              type: validated.invoice_lines[0]?.classification_type,
+            },
+            totals: {
+              net: validated.net_total_amount,
+              vat: validated.vat_total_amount,
+              total: validated.total_amount,
+            },
+          }).slice(0, 800),
+        });
+      }
+      throw err;
+    }
   }
 
   async getInvoiceStatus(

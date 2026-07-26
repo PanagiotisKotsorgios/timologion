@@ -591,46 +591,67 @@ export async function attemptIssueAction(documentId: string) {
 
   const classification = classificationFor(doc.type);
 
+  // myDATA-safe fallbacks: Wrapp's validator rejects empty/missing values on
+  // required customer fields with generic errors like "Account δεν πρέπει να
+  // είναι κενό". Match FishBill's audit-verified defaults (000000000 VAT,
+  // 00000 postal, generic strings for missing city/street) so the payload
+  // always validates even when the user hasn't fully filled in the client.
+  const parseStreet = (raw: string | null | undefined) => {
+    if (!raw) return { street: "-", number: "0" };
+    const m = raw.trim().match(/^(.*?)\s+(\S+)$/);
+    if (m) return { street: m[1] || "-", number: m[2] || "0" };
+    return { street: raw.trim() || "-", number: "0" };
+  };
+  const normalizePostal = (raw: string | null | undefined) => {
+    const digits = String(raw ?? "").replace(/\D/g, "");
+    if (digits.length === 5) return digits;
+    if (digits.length > 5) return digits.slice(0, 5);
+    return "00000";
+  };
+  const clientStreet = parseStreet(doc.client?.addressLine);
+
+  const counterpart = doc.client
+    ? {
+        name: doc.client.legalName?.trim() || "Πελάτης",
+        country_code: doc.client.country ?? "GR",
+        vat: doc.client.vatNumber?.replace(/\D/g, "") || "000000000",
+        city: doc.client.city?.trim() || "-",
+        street: clientStreet.street,
+        number: clientStreet.number,
+        postal_code: normalizePostal(doc.client.postalCode),
+        email: doc.client.email ?? undefined,
+      }
+    : {
+        // No client picked (retail receipts). Wrapp still wants a valid
+        // counterpart shape — send an anonymous consumer placeholder.
+        name: "Ιδιώτης καταναλωτής",
+        country_code: "GR",
+        vat: "000000000",
+        city: "-",
+        street: "-",
+        number: "0",
+        postal_code: "00000",
+      };
+
   const wrappPayload = {
     invoice_type_code: invoiceTypeCode,
     billing_book_id: book.wrappBookId,
     branch: branch?.wrappBranchId ?? undefined,
-    payment_method_type: mapPaymentMethodToWrapp(
-      doc.paymentMethod as
-        | "cash"
-        | "card"
-        | "bank_transfer"
-        | "iris"
-        | "check"
-        | "credit"
-        | "other"
-        | null,
-    ),
+    payment_method_type: mapPaymentMethodToWrapp(doc.paymentMethod),
     net_total_amount: Number(doc.netTotalAmount),
     vat_total_amount: Number(doc.vatTotalAmount),
     total_amount: Number(doc.totalAmount),
     payable_total_amount: Number(doc.payableTotalAmount),
     notes: doc.notes ?? undefined,
     num: reservedNumber ?? undefined,
-    counterpart: doc.client
-      ? {
-          name: doc.client.legalName,
-          country_code: doc.client.country ?? "GR",
-          vat: doc.client.vatNumber ?? undefined,
-          city: doc.client.city ?? undefined,
-          street: doc.client.addressLine ?? undefined,
-          number: undefined,
-          postal_code: doc.client.postalCode ?? undefined,
-          email: doc.client.email ?? undefined,
-        }
-      : undefined,
+    counterpart,
     invoice_lines: doc.lines.map((l, i) => {
       const net = Number(l.netAmount);
       const vat = Number(l.vatAmount);
       const total = Number(l.totalAmount);
       return {
         line_number: i + 1,
-        name: l.description.slice(0, 200),
+        name: (l.description?.trim() || "Είδος").slice(0, 200),
         code: undefined,
         description: undefined,
         quantity: Number(l.quantity),
