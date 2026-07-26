@@ -151,6 +151,108 @@ export async function createDraftAction(
 }
 
 /**
+ * Save changes to an existing DRAFT document. Issued documents can't be
+ * edited (myDATA rules: once transmitted, only credit notes reverse them).
+ * Replaces all lines atomically and recomputes totals.
+ */
+export async function updateDraftAction(
+  documentId: string,
+  input: DraftInput,
+): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  const ctx = await requireTenant();
+  assertCan(ctx.role, "document:write");
+
+  const parsed = draftSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: formatZodError(parsed.error) };
+  }
+
+  const existing = await prisma.document.findFirst({
+    where: { id: documentId, businessId: ctx.businessId },
+    select: { id: true, status: true },
+  });
+  if (!existing) return { ok: false, error: "Το παραστατικό δεν βρέθηκε." };
+  if (existing.status !== "draft") {
+    return {
+      ok: false,
+      error:
+        "Δεν επιτρέπεται επεξεργασία μη πρόχειρου παραστατικού. Εξέδωσε πιστωτικό για αντιλογισμό.",
+    };
+  }
+
+  const totals = computeDocument(parsed.data.lines);
+
+  await prisma.$transaction(async (tx) => {
+    let series = parsed.data.series || null;
+    let billingBookId: string | null = null;
+    if (parsed.data.billingBookId) {
+      const book = await tx.billingBook.findFirst({
+        where: { id: parsed.data.billingBookId, businessId: ctx.businessId },
+        select: { id: true, series: true },
+      });
+      if (book) {
+        billingBookId = book.id;
+        series = book.series;
+      }
+    }
+
+    await tx.document.update({
+      where: { id: documentId },
+      data: {
+        clientId: parsed.data.clientId || null,
+        branchId: parsed.data.branchId || null,
+        billingBookId,
+        type: parsed.data.type,
+        series,
+        issueDate: new Date(parsed.data.issueDate),
+        deliveryNoteRef: parsed.data.deliveryNoteRef || null,
+        paymentMethod: parsed.data.paymentMethod || null,
+        printLanguage: parsed.data.printLanguage,
+        additionalTaxes: parsed.data.additionalTaxes || null,
+        notes: parsed.data.notes || null,
+        netTotalAmount: totals.netTotal,
+        vatTotalAmount: totals.vatTotal,
+        totalAmount: totals.total,
+        payableTotalAmount: totals.total,
+      },
+    });
+
+    await tx.documentLine.deleteMany({ where: { documentId } });
+    await tx.documentLine.createMany({
+      data: parsed.data.lines.map((line, i) => {
+        const t = computeLine(line);
+        return {
+          documentId,
+          itemId: line.itemId || null,
+          ordinal: i,
+          description: line.description,
+          quantity: line.quantity,
+          unit: line.unit || "τμχ",
+          unitPrice: line.unitPrice,
+          discountPct: line.discountPct,
+          vatRate: line.vatRate,
+          netAmount: t.net,
+          vatAmount: t.vat,
+          totalAmount: t.total,
+        };
+      }),
+    });
+  });
+
+  await logAudit({
+    userId: ctx.userId,
+    businessId: ctx.businessId,
+    action: "document.draft.update",
+    entityType: "Document",
+    entityId: documentId,
+  });
+
+  revalidatePath(`/app/documents/${documentId}`);
+  revalidatePath("/app/documents");
+  return { ok: true, id: documentId };
+}
+
+/**
  * Duplicate an existing document into a fresh draft. Copies lines, client,
  * payment info, and notes; resets status to draft and issue-date to today.
  */

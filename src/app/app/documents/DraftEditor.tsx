@@ -17,7 +17,11 @@ import { Field, Input, Select, Textarea } from "@/components/ui/Input";
 import { Alert } from "@/components/ui/Alert";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { t } from "@/lib/i18n";
-import { createDraftAction, type DraftInput } from "./actions";
+import {
+  createDraftAction,
+  updateDraftAction,
+  type DraftInput,
+} from "./actions";
 
 type ClientOption = {
   id: string;
@@ -96,6 +100,21 @@ function emptyLine(key: number): Line {
   };
 }
 
+export type DraftEditorInitial = {
+  id: string;
+  type: DraftInput["type"];
+  clientId: string;
+  branchId: string;
+  billingBookId: string;
+  issueDate: string;
+  deliveryNoteRef: string;
+  paymentMethod: string;
+  printLanguage: "el" | "en";
+  additionalTaxes: string;
+  notes: string;
+  lines: Line[];
+};
+
 export function DraftEditor({
   initialType,
   businessName,
@@ -103,6 +122,7 @@ export function DraftEditor({
   items,
   branches,
   books,
+  editing,
 }: {
   initialType?: DraftInput["type"];
   businessName: string;
@@ -110,19 +130,26 @@ export function DraftEditor({
   items: ItemOption[];
   branches: BranchOption[];
   books: BookOption[];
+  /** Present when editing an existing draft. All form state is pre-filled. */
+  editing?: DraftEditorInitial;
 }) {
   const router = useRouter();
-  const [type, setType] = useState<DraftInput["type"]>(initialType ?? "invoice");
-  const [clientId, setClientId] = useState("");
+  const [type, setType] = useState<DraftInput["type"]>(
+    editing?.type ?? initialType ?? "invoice",
+  );
+  const [clientId, setClientId] = useState(editing?.clientId ?? "");
   const [branchId, setBranchId] = useState(
-    () => branches.find((b) => b.isDefault)?.id ?? "",
+    () => editing?.branchId || branches.find((b) => b.isDefault)?.id || "",
   );
   const availableBooks = useMemo(
     () => books.filter((b) => b.documentType === type),
     [books, type],
   );
   const [billingBookId, setBillingBookId] = useState(
-    () => availableBooks.find((b) => b.isDefault)?.id ?? "",
+    () =>
+      editing?.billingBookId ||
+      availableBooks.find((b) => b.isDefault)?.id ||
+      "",
   );
   useEffect(() => {
     if (!availableBooks.some((b) => b.id === billingBookId)) {
@@ -131,14 +158,24 @@ export function DraftEditor({
   }, [availableBooks, billingBookId]);
 
   const [issueDate, setIssueDate] = useState(
-    () => new Date().toISOString().slice(0, 10),
+    () => editing?.issueDate || new Date().toISOString().slice(0, 10),
   );
-  const [deliveryNoteRef, setDeliveryNoteRef] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("Μετρητά");
-  const [printLanguage, setPrintLanguage] = useState<"el" | "en">("el");
-  const [additionalTaxes, setAdditionalTaxes] = useState("");
-  const [notes, setNotes] = useState("");
-  const [lines, setLines] = useState<Line[]>([emptyLine(0)]);
+  const [deliveryNoteRef, setDeliveryNoteRef] = useState(
+    editing?.deliveryNoteRef ?? "",
+  );
+  const [paymentMethod, setPaymentMethod] = useState(
+    editing?.paymentMethod || "Μετρητά",
+  );
+  const [printLanguage, setPrintLanguage] = useState<"el" | "en">(
+    editing?.printLanguage ?? "el",
+  );
+  const [additionalTaxes, setAdditionalTaxes] = useState(
+    editing?.additionalTaxes ?? "",
+  );
+  const [notes, setNotes] = useState(editing?.notes ?? "");
+  const [lines, setLines] = useState<Line[]>(
+    editing?.lines?.length ? editing.lines : [emptyLine(0)],
+  );
   const [showMore, setShowMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -207,7 +244,9 @@ export function DraftEditor({
     };
 
     startTransition(async () => {
-      const res = await createDraftAction(payload);
+      const res = editing
+        ? await updateDraftAction(editing.id, payload)
+        : await createDraftAction(payload);
       if (!res.ok) {
         setError(res.error);
         return;
