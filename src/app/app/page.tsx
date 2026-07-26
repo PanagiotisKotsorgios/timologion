@@ -543,11 +543,11 @@ function StatCard({
           </div>
         )}
 
-        <div className="mt-6 pt-2">
+        <div className="mt-7 pt-2">
           <SparklineInteractive
             points={sparkline}
             color={tokens.hex}
-            height={44}
+            height={90}
             formatKind={sparklineFormat}
           />
         </div>

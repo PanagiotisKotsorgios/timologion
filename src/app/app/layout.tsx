@@ -80,7 +80,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           }))}
         />
         <main className="flex-1 overflow-x-hidden">
-          <div className="mx-auto max-w-6xl px-3 py-5 sm:px-4 md:px-6 md:py-8">
+          <div className="mx-auto w-full max-w-[1400px] px-3 py-5 sm:px-4 md:px-8 md:py-8">
             {children}
           </div>
         </main>

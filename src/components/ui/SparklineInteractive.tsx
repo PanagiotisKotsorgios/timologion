@@ -1,20 +1,12 @@
 "use client";
 
-import { useMemo, useRef, useState, type CSSProperties } from "react";
+import { useId, useMemo, useRef, useState, type CSSProperties } from "react";
 
 type Point = {
   value: number;
   label: string;
 };
 
-/**
- * Interactive sparkline — same visual footprint as the static Sparkline
- * primitive, plus hover interactions: crosshair guideline, filled point
- * marker, and a floating tooltip anchored to the nearest data point.
- *
- * Designed for stat cards. No external chart lib — pure SVG + one React
- * state hook. Works on touch by anchoring to `pointerdown`/`pointermove`.
- */
 export type SparklineFormatKind = "money" | "count" | "raw";
 
 function formatFor(kind: SparklineFormatKind, n: number): string {
@@ -31,11 +23,25 @@ function formatFor(kind: SparklineFormatKind, n: number): string {
   return n.toLocaleString("el-GR");
 }
 
+/**
+ * Smooth-line area chart primitive. Uses a cardinal/Catmull-Rom-ish cubic
+ * Bezier between points instead of a jagged polyline so short daily-count
+ * series read as a clean trend rather than a stair-step. Renders:
+ *
+ *   • A 3-line grid at 0/50/100% of the visible range (very faint).
+ *   • A soft gradient fill under the curve.
+ *   • The smooth curve itself.
+ *   • Hover crosshair, filled-ring marker, and a tooltip anchored above.
+ *
+ * Interaction: pointer move / touch drag surfaces the nearest data point.
+ * Works cleanly at any width because the viewBox stretches with the parent
+ * and we render coordinates in a fixed 0..100 x-range.
+ */
 export function SparklineInteractive({
   points,
   color = "#0B1B3A",
-  height = 44,
-  strokeWidth = 2.25,
+  height = 90,
+  strokeWidth = 2.4,
   formatKind = "raw",
   className,
   style,
@@ -44,15 +50,11 @@ export function SparklineInteractive({
   color?: string;
   height?: number;
   strokeWidth?: number;
-  /**
-   * String kind instead of a formatter function — functions can't cross the
-   * server→client RSC boundary and the parent StatCard is a server
-   * component, so we serialize the kind and format inside.
-   */
   formatKind?: SparklineFormatKind;
   className?: string;
   style?: CSSProperties;
 }) {
+  const gradientId = useId();
   const [hovered, setHovered] = useState<number | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -64,21 +66,51 @@ export function SparklineInteractive({
     const min = Math.min(...values);
     const max = Math.max(...values);
     const range = max - min || 1;
+    const paddingTop = 6;
+    const paddingBottom = 4;
+    const usable = height - paddingTop - paddingBottom;
     const step = n > 1 ? width / (n - 1) : width;
 
     const coords = points.map((p, i) => {
       const x = i * step;
-      const y =
-        height -
-        ((p.value - min) / range) * (height - strokeWidth * 2) -
-        strokeWidth;
+      const y = height - paddingBottom - ((p.value - min) / range) * usable;
       return { x, y };
     });
 
-    const pathD = `M ${coords.map((c) => `${c.x},${c.y}`).join(" L ")}`;
-    const areaD = `M 0,${height} L ${coords.map((c) => `${c.x},${c.y}`).join(" L ")} L ${width},${height} Z`;
-    return { width, coords, pathD, areaD, step };
-  }, [points, height, strokeWidth]);
+    // Cardinal-style smoothing between points → cubic Beziers.
+    const smoothing = 0.22;
+    const line: string[] = [];
+    line.push(`M ${coords[0]!.x} ${coords[0]!.y}`);
+    for (let i = 0; i < coords.length - 1; i++) {
+      const p0 = coords[i - 1] ?? coords[i]!;
+      const p1 = coords[i]!;
+      const p2 = coords[i + 1]!;
+      const p3 = coords[i + 2] ?? coords[i + 1]!;
+      const cp1x = p1.x + (p2.x - p0.x) * smoothing;
+      const cp1y = p1.y + (p2.y - p0.y) * smoothing;
+      const cp2x = p2.x - (p3.x - p1.x) * smoothing;
+      const cp2y = p2.y - (p3.y - p1.y) * smoothing;
+      line.push(`C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`);
+    }
+    const linePath = line.join(" ");
+    const areaPath =
+      `M 0 ${height} L 0 ${coords[0]!.y} ` +
+      linePath.slice(1) + // strip leading M
+      ` L ${width} ${height} Z`;
+
+    return {
+      width,
+      coords,
+      linePath,
+      areaPath,
+      step,
+      gridYs: [
+        paddingTop,
+        paddingTop + usable / 2,
+        height - paddingBottom,
+      ],
+    };
+  }, [points, height]);
 
   if (!geometry || points.length === 0) return null;
 
@@ -96,10 +128,7 @@ export function SparklineInteractive({
       : null;
 
   return (
-    <div
-      className={"relative " + (className ?? "")}
-      style={style}
-    >
+    <div className={"relative " + (className ?? "")} style={style}>
       <svg
         ref={svgRef}
         viewBox={`0 0 ${geometry.width} ${height}`}
@@ -111,22 +140,46 @@ export function SparklineInteractive({
         onPointerDown={(e) => setHovered(pointerToIndex(e.clientX))}
         onPointerLeave={() => setHovered(null)}
       >
-        {/* Soft fill under the line */}
-        <path d={geometry.areaD} fill={color} fillOpacity={0.14} />
-        {/* Main line */}
+        <defs>
+          <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity={0.35} />
+            <stop offset="60%" stopColor={color} stopOpacity={0.08} />
+            <stop offset="100%" stopColor={color} stopOpacity={0} />
+          </linearGradient>
+        </defs>
+
+        {/* Grid lines */}
+        {geometry.gridYs.map((y, i) => (
+          <line
+            key={i}
+            x1={0}
+            x2={geometry.width}
+            y1={y}
+            y2={y}
+            stroke={color}
+            strokeOpacity={i === 2 ? 0.14 : 0.06}
+            strokeWidth={0.5}
+            vectorEffect="non-scaling-stroke"
+          />
+        ))}
+
+        {/* Area fill */}
+        <path d={geometry.areaPath} fill={`url(#${gradientId})`} />
+
+        {/* Smoothed line */}
         <path
-          d={geometry.pathD}
+          d={geometry.linePath}
           fill="none"
           stroke={color}
           strokeWidth={strokeWidth}
           strokeLinecap="round"
           strokeLinejoin="round"
+          vectorEffect="non-scaling-stroke"
         />
 
-        {/* Hover artifacts */}
+        {/* Hover crosshair + point marker */}
         {hoveredPoint && (
           <>
-            {/* Vertical dashed guideline */}
             <line
               x1={hoveredPoint.x}
               x2={hoveredPoint.x}
@@ -138,11 +191,20 @@ export function SparklineInteractive({
               strokeDasharray="3 3"
               vectorEffect="non-scaling-stroke"
             />
-            {/* Point marker (white ring + colored core) */}
+            {/* Outer soft halo */}
             <circle
               cx={hoveredPoint.x}
               cy={hoveredPoint.y}
-              r={5}
+              r={8}
+              fill={color}
+              fillOpacity={0.15}
+              vectorEffect="non-scaling-stroke"
+            />
+            {/* Core marker: white fill, colored ring */}
+            <circle
+              cx={hoveredPoint.x}
+              cy={hoveredPoint.y}
+              r={4.5}
               fill="#ffffff"
               stroke={color}
               strokeWidth={2.5}
@@ -155,17 +217,17 @@ export function SparklineInteractive({
       {hoveredPoint && (
         <div
           role="tooltip"
-          className="pointer-events-none absolute z-20 -translate-x-1/2 -translate-y-full rounded-lg bg-ink-900 px-3 py-2 text-center text-[11px] font-bold text-white shadow-lg"
+          className="pointer-events-none absolute z-20 -translate-x-1/2 -translate-y-full rounded-xl bg-ink-900 px-3 py-2 text-center shadow-2xl"
           style={{
             left: `${(hoveredPoint.x / geometry.width) * 100}%`,
-            top: -8,
+            top: -10,
             whiteSpace: "nowrap",
           }}
         >
-          <div className="text-[10px] font-medium uppercase tracking-widest text-white/60">
+          <div className="text-[10px] font-bold uppercase tracking-widest text-white/60">
             {hoveredPoint.data.label}
           </div>
-          <div className="mt-0.5 text-[13px] font-black">
+          <div className="mt-0.5 text-[14px] font-black text-white">
             {formatFor(formatKind, hoveredPoint.data.value)}
           </div>
         </div>
