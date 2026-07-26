@@ -78,10 +78,6 @@ export function ActivationGate({
         !hasPhone ? { phone: phone.trim() } : {},
       );
       if (res.ok) {
-        if (res.mode === "staging_activated") {
-          window.location.reload();
-          return;
-        }
         window.location.href = res.loginUrl;
         return;
       }

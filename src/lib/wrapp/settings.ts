@@ -66,6 +66,18 @@ export type WrappSettings = {
  * values fall through to env. Both null/undefined/empty are treated as
  * unset.
  */
+/**
+ * Ensure the base URL includes the `/api/v1` version segment. Different
+ * historical configs stored either `https://staging.wrapp.ai` or the same
+ * with `/api/v1` appended; every endpoint call assumes `/api/v1` is part of
+ * the base, so we normalize once here.
+ */
+function normalizeBaseUrl(raw: string): string {
+  const trimmed = raw.replace(/\/+$/, "");
+  if (/\/api\/v\d+$/.test(trimmed)) return trimmed;
+  return `${trimmed}/api/v1`;
+}
+
 export async function getWrappSettings(): Promise<WrappSettings> {
   const [dbBase, dbPartner, dbStagingKey, dbStagingEmail, dbHook] = await Promise.all([
     readRaw(KEYS.baseUrl),
@@ -76,7 +88,7 @@ export async function getWrappSettings(): Promise<WrappSettings> {
   ]);
 
   return {
-    baseUrl: dbBase?.trim() || env.WRAPP_API_BASE_URL,
+    baseUrl: normalizeBaseUrl(dbBase?.trim() || env.WRAPP_API_BASE_URL),
     partnerApiKey: dbPartner?.trim() || env.WRAPP_PARTNER_API_KEY,
     stagingTenantApiKey:
       dbStagingKey?.trim() || env.WRAPP_STAGING_TENANT_API_KEY,

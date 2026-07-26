@@ -10,8 +10,6 @@ import { logAudit } from "@/lib/audit";
 import { logger } from "@/lib/logger";
 import { env } from "@/lib/env";
 import { SITE } from "@/lib/seo";
-import { getWrappSettings } from "@/lib/wrapp/settings";
-import { encryptSecret } from "@/lib/crypto";
 
 /**
  * Ask the provider whether the current tenant is active. Wired to the stub
@@ -183,13 +181,12 @@ export async function startWrappActivationAction(
   input: { phone?: string } = {},
 ): Promise<
   | { ok: true; mode: "redirect"; loginUrl: string }
-  | { ok: true; mode: "staging_activated" }
   | { ok: false; error: string; alreadyActive?: boolean }
 > {
   const ctx = await requireTenant();
   assertCan(ctx.role, "wrapp:manage");
 
-  const [business, existing, member, wrappSettings] = await Promise.all([
+  const [business, existing, member] = await Promise.all([
     prisma.business.findUnique({
       where: { id: ctx.businessId },
       select: {
@@ -207,7 +204,6 @@ export async function startWrappActivationAction(
       where: { businessId: ctx.businessId, role: { in: ["owner", "admin"] } },
       include: { user: { select: { email: true, fullName: true } } },
     }),
-    getWrappSettings(),
   ]);
 
   if (existing?.status === "active" && existing.canIssueInvoice) {
@@ -226,67 +222,9 @@ export async function startWrappActivationAction(
     };
   }
 
-  // ─── Staging shortcut ────────────────────────────────────────────────
-  // In staging, the provider gave us shared tenant credentials that are
-  // already fully onboarded on their side, so external_login just hits a
-  // login screen and returns without any wizard. Detect this by presence
-  // of both stagingTenantApiKey + stagingTenantEmail in the platform
-  // settings, and short-circuit: mark the WrappConnection active using
-  // those shared credentials. No redirect, no webhook needed.
-  const stagingMode = Boolean(
-    wrappSettings.stagingTenantApiKey?.trim() &&
-      wrappSettings.stagingTenantEmail?.trim(),
-  );
-  logger.info("wrapp.activation.mode_check", {
-    businessId: ctx.businessId,
-    stagingMode,
-    hasStagingKey: Boolean(wrappSettings.stagingTenantApiKey?.trim()),
-    hasStagingEmail: Boolean(wrappSettings.stagingTenantEmail?.trim()),
-    baseUrl: wrappSettings.baseUrl,
-  });
-  if (stagingMode) {
-    await prisma.wrappConnection.upsert({
-      where: { businessId: ctx.businessId },
-      create: {
-        businessId: ctx.businessId,
-        status: "active",
-        hasPlan: true,
-        canIssueInvoice: true,
-        wrappEmail: wrappSettings.stagingTenantEmail,
-        encryptedApiKey: encryptSecret(wrappSettings.stagingTenantApiKey),
-        encryptedJwt: null,
-        jwtExpiresAt: null,
-        lastVerifiedAt: new Date(),
-        lastError: null,
-      },
-      update: {
-        status: "active",
-        hasPlan: true,
-        canIssueInvoice: true,
-        wrappEmail: wrappSettings.stagingTenantEmail,
-        encryptedApiKey: encryptSecret(wrappSettings.stagingTenantApiKey),
-        encryptedJwt: null,
-        jwtExpiresAt: null,
-        lastVerifiedAt: new Date(),
-        lastError: null,
-      },
-    });
-
-    await logAudit({
-      userId: ctx.userId,
-      businessId: ctx.businessId,
-      action: "wrapp.activation.staging_shortcut",
-      meta: { email: wrappSettings.stagingTenantEmail },
-    });
-    logger.info("wrapp.activation.staging_shortcut", {
-      businessId: ctx.businessId,
-    });
-
-    revalidatePath("/app", "layout");
-    return { ok: true, mode: "staging_activated" };
-  }
-
-  // ─── Production flow ─────────────────────────────────────────────────
+  // Always go through Wrapp's external_login — that's the actual onboarding
+  // flow both in staging (Stripe test card + dummy taxis) and in production
+  // (real Stripe + real declaration). No shortcut, no shared tenant reuse.
 
   const partner = await getWrappPartnerClient();
   if (!partner) {
