@@ -164,28 +164,13 @@ export function ActivationGate({
                 id="activation-title"
                 className="text-3xl font-bold tracking-tight text-ink-900 md:text-4xl"
               >
-                Ολοκλήρωσε την ενεργοποίηση για να συνεχίσεις
+                Ενεργοποίησε τον πίνακα ελέγχου
               </h2>
               <p className="mt-5 text-lg leading-relaxed text-ink-700">
-                Πάτα «Ενεργοποίηση τώρα» για να μεταβείς με ασφάλεια στη Wrapp.
-                Μόλις ολοκληρώσεις εκεί, η ενεργοποίηση εντοπίζεται{" "}
-                <strong>αυτόματα</strong> στο dashboard σου.
+                Χρειάζεται ένα τελευταίο βήμα για να μπορείς να εκδίδεις
+                παραστατικά. Πάτα «Ενεργοποίηση τώρα» — η ενεργοποίηση
+                εντοπίζεται <strong>αυτόματα</strong> μόλις ολοκληρωθεί.
               </p>
-
-              <ol className="mt-8 space-y-3 rounded-2xl border-2 border-ink-300 bg-ink-100 p-5 text-base text-ink-900">
-                <Step
-                  n="1"
-                  text="Θα ανοίξει το ασφαλές portal της Wrapp με τα στοιχεία σου προσυμπληρωμένα."
-                />
-                <Step
-                  n="2"
-                  text="Ολοκλήρωσε τη σύνδεση / ενεργοποίηση του λογαριασμού στη Wrapp."
-                />
-                <Step
-                  n="3"
-                  text="Επιστρέφεις εδώ — η ενεργοποίηση εντοπίζεται αυτόματα σε λίγα δευτερόλεπτα."
-                />
-              </ol>
 
               {!hasPhone && (
                 <div className="mt-8 rounded-2xl border-2 border-brand-200 bg-brand-50 p-5">
@@ -197,8 +182,8 @@ export function ActivationGate({
                     <span className="ml-1 text-red-700">*</span>
                   </label>
                   <p className="mt-1 text-xs text-brand-900/70">
-                    Η Wrapp το χρειάζεται για την ενεργοποίηση. Θα αποθηκευτεί
-                    στα στοιχεία της επιχείρησής σου.
+                    Χρειάζεται για την ενεργοποίηση. Θα αποθηκευτεί στα
+                    στοιχεία της επιχείρησής σου.
                   </p>
                   <input
                     id="activation-phone"
@@ -251,8 +236,7 @@ export function ActivationGate({
 
               <div className="mt-8 border-t-2 border-ink-200 pt-6">
                 <p className="text-sm text-ink-700">
-                  Ολοκλήρωσες ήδη την πληρωμή στη Wrapp αλλά δεν εντοπίστηκε
-                  αυτόματα;
+                  Ολοκλήρωσες ήδη την ενεργοποίηση αλλά δεν εντοπίστηκε αυτόματα;
                 </p>
                 <button
                   type="button"
@@ -262,7 +246,7 @@ export function ActivationGate({
                   }}
                   className="mt-2 text-sm font-bold text-brand-800 underline underline-offset-4 hover:text-brand-900"
                 >
-                  Καταχώρησε το api_key χειροκίνητα →
+                  Καταχώρησε το κλειδί πρόσβασης χειροκίνητα →
                 </button>
               </div>
             </>
@@ -272,13 +256,13 @@ export function ActivationGate({
                 id="activation-title"
                 className="text-2xl font-bold tracking-tight text-ink-900 md:text-3xl"
               >
-                Χειροκίνητη καταχώρηση κλειδιού Wrapp
+                Χειροκίνητη καταχώρηση κλειδιού πρόσβασης
               </h2>
               <p className="mt-4 text-base text-ink-700">
-                Επικοινώνησε με τη Wrapp και ζήτησέ τους το{" "}
-                <strong>tenant api_key</strong> του λογαριασμού σου (αυτό που
-                στέλνεται συνήθως αυτόματα στο webhook). Επικόλλησέ το εδώ μαζί
-                με το email του λογαριασμού Wrapp και είσαι έτοιμος.
+                Επικοινώνησε με τον πάροχο ηλεκτρονικής τιμολόγησης και ζήτησε
+                το <strong>κλειδί (api_key)</strong> του λογαριασμού σου.
+                Επικόλλησέ το εδώ μαζί με το email με το οποίο ολοκλήρωσες την
+                ενεργοποίηση.
               </p>
 
               <div className="mt-6 space-y-4">
@@ -287,7 +271,7 @@ export function ActivationGate({
                     htmlFor="manual-email"
                     className="block text-sm font-bold text-ink-900"
                   >
-                    Email λογαριασμού Wrapp
+                    Email λογαριασμού
                   </label>
                   <input
                     id="manual-email"
@@ -304,7 +288,7 @@ export function ActivationGate({
                     htmlFor="manual-key"
                     className="block text-sm font-bold text-ink-900"
                   >
-                    Tenant api_key
+                    Κλειδί πρόσβασης (api_key)
                   </label>
                   <input
                     id="manual-key"
@@ -371,16 +355,3 @@ export function ActivationGate({
   );
 }
 
-function Step({ n, text }: { n: string; text: string }) {
-  return (
-    <li className="flex items-start gap-3">
-      <span
-        aria-hidden
-        className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-brand-700 text-sm font-bold text-white"
-      >
-        {n}
-      </span>
-      <span className="leading-relaxed">{text}</span>
-    </li>
-  );
-}

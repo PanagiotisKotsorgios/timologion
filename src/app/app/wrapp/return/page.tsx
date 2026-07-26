@@ -49,8 +49,8 @@ export default async function WrappReturnPage() {
   return (
     <>
       <PageHeader
-        title="Επιστροφή από Wrapp"
-        subtitle="Έλεγχος κατάστασης ενεργοποίησης."
+        title="Επιστροφή από την ενεργοποίηση"
+        subtitle="Έλεγχος κατάστασης."
       />
 
       <div className="mx-auto max-w-2xl">
@@ -65,14 +65,14 @@ export default async function WrappReturnPage() {
                   Ολοκληρώνεται η ενεργοποίηση
                 </h1>
                 <p className="mt-4 text-base text-ink-700">
-                  Η Wrapp επιβεβαιώνει την πληρωμή και μας στέλνει τα
-                  διαπιστευτήρια. Θα σε προωθήσουμε αυτόματα μόλις είναι
-                  έτοιμο — μην κλείσεις τη σελίδα.
+                  Επιβεβαιώνεται η πληρωμή και ολοκληρώνεται η ενεργοποίηση.
+                  Θα σε προωθήσουμε αυτόματα μόλις είναι έτοιμο — μην κλείσεις
+                  τη σελίδα.
                 </p>
                 <ReturnPoller />
                 <div className="mt-8 flex flex-col items-center gap-3">
                   <LinkButton href="/app" variant="secondary">
-                    Επιστροφή στο dashboard
+                    Επιστροφή στον πίνακα ελέγχου
                   </LinkButton>
                 </div>
               </>
