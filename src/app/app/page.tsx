@@ -519,12 +519,40 @@ function PlanUsageStrip({
   cap: number | null;
   used: number;
 }) {
-  if (!planName) return null;
   const hasCap = typeof cap === "number" && cap > 0;
-  const remaining = hasCap ? Math.max(0, cap - used) : null;
-  const pct = hasCap ? Math.min(100, Math.round((used / cap) * 100)) : 0;
+  const remaining = hasCap ? Math.max(0, cap! - used) : null;
+  const pct = hasCap ? Math.min(100, Math.round((used / cap!) * 100)) : 0;
   const overWarn = hasCap && pct >= 90;
   const nearWarn = hasCap && !overWarn && pct >= 70;
+
+  // No active subscription yet — nudge the user toward the pricing page
+  // instead of silently disappearing.
+  if (!planName) {
+    return (
+      <div className="mt-6">
+        <Card>
+          <CardBody className="p-5 md:p-6">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-[11px] font-black uppercase tracking-widest text-brand-900/60">
+                  Πακέτο συνδρομής
+                </p>
+                <p className="mt-1 text-2xl font-extrabold text-brand-900 md:text-3xl">
+                  Δεν έχεις επιλέξει πακέτο
+                </p>
+                <p className="mt-1 text-sm font-semibold text-ink-700">
+                  Επίλεξε πακέτο για να δεις χρήση και όρια παραστατικών.
+                </p>
+              </div>
+              <LinkButton href="/app/settings/subscription" variant="secondary">
+                Επιλογή πακέτου
+              </LinkButton>
+            </div>
+          </CardBody>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="mt-6">
@@ -548,7 +576,7 @@ function PlanUsageStrip({
                   {used.toLocaleString("el-GR")}
                   <span className="text-lg font-bold text-ink-500">
                     {" "}
-                    / {cap.toLocaleString("el-GR")}
+                    / {cap!.toLocaleString("el-GR")}
                   </span>
                 </p>
                 <p className="mt-1 text-sm font-semibold text-ink-700">
