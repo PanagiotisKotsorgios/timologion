@@ -13,6 +13,7 @@ import { t } from "@/lib/i18n";
 import { date, money } from "@/lib/format";
 import type { DocumentStatus, DocumentType, Prisma } from "@prisma/client";
 import { RowActions } from "./RowActions";
+import { ClickableRow } from "../ClickableRow";
 
 type Sort = "recent" | "oldest" | "amount_desc" | "amount_asc";
 
@@ -160,24 +161,22 @@ export default async function DocumentsPage({
               </thead>
               <tbody>
                 {rows.map((d) => (
-                  <tr key={d.id} title="Δεξί κλικ για γρήγορες ενέργειες">
+                  <ClickableRow key={d.id}>
                     <td className="mono">
                       <Link
                         href={`/app/documents/${d.id}`}
+                        data-row-anchor
                         className="font-semibold text-brand-800 hover:text-brand-900"
                       >
                         {date(d.issueDate)}
                       </Link>
                     </td>
                     <td>
-                      <Link
-                        href={`/app/documents/${d.id}`}
-                        className="font-semibold text-brand-800 hover:text-brand-900"
-                      >
+                      <span className="font-semibold text-ink-900">
                         {t.documents.types[d.type]}
-                      </Link>
+                      </span>
                       {d.series && (
-                        <span className="ml-2 text-xs text-ink-500">
+                        <span className="ml-2 text-sm text-ink-500">
                           {d.series}
                           {d.number ? ` #${d.number}` : ""}
                         </span>
@@ -197,7 +196,7 @@ export default async function DocumentsPage({
                         wrappInvoiceUrl={d.wrappInvoiceUrl}
                       />
                     </td>
-                  </tr>
+                  </ClickableRow>
                 ))}
               </tbody>
             </table>

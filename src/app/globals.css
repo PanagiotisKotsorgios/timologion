@@ -122,28 +122,30 @@ body {
   box-shadow: 0 0 0 4px rgba(15, 31, 57, 0.12);
 }
 
-/* Row-level compact input for tables like Γραμμές. */
+/* Row-level input for tables like Γραμμές. Bumped from h-9/text-sm to
+   h-11/base so the invoice editor doesn't feel cramped next to the rest
+   of the app's larger controls. */
 .row-input {
-  @apply h-9 w-full rounded-md border border-ink-300 bg-white px-2 text-sm text-ink-900 placeholder:text-ink-500 transition-colors;
+  @apply h-11 w-full rounded-lg border-2 border-ink-300 bg-white px-3 text-base text-ink-900 placeholder:text-ink-500 transition-colors;
 }
 .row-input:hover { border-color: rgba(15, 31, 57, 0.4); }
 .row-input:focus {
   outline: none;
   border-color: #0f1f39;
-  box-shadow: 0 0 0 2px rgba(15, 31, 57, 0.15);
+  box-shadow: 0 0 0 3px rgba(15, 31, 57, 0.15);
 }
 
 .row-select {
-  @apply h-9 w-full rounded-md border border-ink-300 bg-white px-2 pr-7 text-sm text-ink-900 appearance-none transition-colors;
+  @apply h-11 w-full rounded-lg border-2 border-ink-300 bg-white px-3 pr-8 text-base text-ink-900 appearance-none transition-colors;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'><path d='M2 4l3 3 3-3' fill='none' stroke='%230f172a' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/></svg>");
   background-repeat: no-repeat;
-  background-position: right 8px center;
+  background-position: right 10px center;
 }
 .row-select:hover { border-color: rgba(15, 31, 57, 0.4); }
 .row-select:focus {
   outline: none;
   border-color: #0f1f39;
-  box-shadow: 0 0 0 2px rgba(15, 31, 57, 0.15);
+  box-shadow: 0 0 0 3px rgba(15, 31, 57, 0.15);
 }
 
 /* ─── Data table treatment (app + admin lists) ────────────────────────── */

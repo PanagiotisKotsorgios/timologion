@@ -9,6 +9,7 @@ import {
   Plus,
   Trash2,
   Save,
+  Send,
   Eye,
   ExternalLink,
 } from "lucide-react";
@@ -21,6 +22,7 @@ import {
   createDraftAction,
   updateDraftAction,
   ensureBillingBookForTypeAction,
+  attemptIssueAction,
   type DraftInput,
 } from "./actions";
 
@@ -236,7 +238,7 @@ export function DraftEditor({
     setLines((rows) => (rows.length > 1 ? rows.filter((r) => r.key !== key) : rows));
   }
 
-  function submit() {
+  function submit(mode: "save" | "issue" = "save") {
     setError(null);
     const payload: DraftInput = {
       type,
@@ -261,14 +263,23 @@ export function DraftEditor({
     };
 
     startTransition(async () => {
-      const res = editing
+      const saveRes = editing
         ? await updateDraftAction(editing.id, payload)
         : await createDraftAction(payload);
-      if (!res.ok) {
-        setError(res.error);
+      if (!saveRes.ok) {
+        setError(saveRes.error);
         return;
       }
-      router.push(`/app/documents/${res.id}`);
+      if (mode === "issue") {
+        const issueRes = await attemptIssueAction(saveRes.id);
+        if (!issueRes.ok) {
+          setError(issueRes.error);
+          // Draft is saved — send the user to it so they can retry or fix.
+          router.push(`/app/documents/${saveRes.id}`);
+          return;
+        }
+      }
+      router.push(`/app/documents/${saveRes.id}`);
     });
   }
 
@@ -306,11 +317,12 @@ export function DraftEditor({
             </Field>
 
             <div className="grid gap-4 md:grid-cols-2">
-              <Field label="Τύπος παραστατικού" htmlFor="type">
+              <Field label="Τύπος παραστατικού" htmlFor="type" required>
                 <Select
                   id="type"
                   value={type}
                   onChange={(e) => setType(e.target.value as DraftInput["type"])}
+                  required
                 >
                   {DOC_TYPE_OPTIONS.map((o) => (
                     <option key={o.value} value={o.value}>
@@ -319,21 +331,23 @@ export function DraftEditor({
                   ))}
                 </Select>
               </Field>
-              <Field label="Ημ. έκδοσης" htmlFor="issueDate">
+              <Field label="Ημ. έκδοσης" htmlFor="issueDate" required>
                 <Input
                   id="issueDate"
                   type="date"
                   value={issueDate}
                   onChange={(e) => setIssueDate(e.target.value)}
+                  required
                 />
               </Field>
 
-              <Field label="Σειρά" htmlFor="billingBookId">
+              <Field label="Σειρά" htmlFor="billingBookId" required>
                 <Select
                   id="billingBookId"
                   value={billingBookId}
                   onChange={(e) => setBillingBookId(e.target.value)}
                   disabled={availableBooks.length === 0}
+                  required
                 >
                   {availableBooks.length === 0 && (
                     <option value="">— Χωρίς σειρά —</option>
@@ -500,24 +514,24 @@ export function DraftEditor({
           <CardBody className="space-y-3">
             <Button
               type="button"
-              onClick={submit}
+              onClick={() => submit("issue")}
               disabled={pending}
               size="lg"
               className="w-full"
-              icon={Save}
+              icon={Send}
             >
-              {pending ? "Αποθήκευση..." : "Αποθήκευση ως πρόχειρο"}
+              {pending ? "Παρακαλώ περίμενε..." : "Έκδοση παραστατικού"}
             </Button>
             <Button
               type="button"
               variant="secondary"
+              onClick={() => submit("save")}
+              disabled={pending}
               size="md"
               className="w-full"
-              icon={Eye}
-              disabled
-              title="Θα ενεργοποιηθεί μετά την αποθήκευση"
+              icon={Save}
             >
-              Επισκόπηση
+              Αποθήκευση ως πρόχειρο
             </Button>
             <p className="text-xs text-ink-700">{t.brand.providerNote}</p>
           </CardBody>
@@ -544,17 +558,32 @@ export function DraftEditor({
           />
           <CardBody className="p-0">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-brand-50 text-[11px] uppercase tracking-widest text-brand-900">
+              <table className="w-full min-w-[960px] text-base">
+                <thead className="bg-brand-100 text-[12px] uppercase tracking-widest text-brand-900">
                   <tr>
-                    <th className="px-3 py-3 text-left">Είδος/Υπηρεσία</th>
-                    <th className="px-3 py-3 text-left">Περιγραφή</th>
-                    <th className="px-3 py-3 text-right">Ποσότητα</th>
-                    <th className="px-3 py-3 text-right">Τιμή</th>
-                    <th className="px-3 py-3 text-right">Έκπτ. %</th>
-                    <th className="px-3 py-3 text-right">ΦΠΑ %</th>
-                    <th className="px-3 py-3 text-right">Σύνολο</th>
-                    <th />
+                    <th className="px-4 py-4 text-left" style={{ width: "220px" }}>
+                      Είδος/Υπηρεσία
+                    </th>
+                    <th className="px-4 py-4 text-left">
+                      Περιγραφή
+                      <span aria-hidden className="ml-1 text-red-600">*</span>
+                    </th>
+                    <th className="px-4 py-4 text-right" style={{ width: "120px" }}>
+                      Ποσότητα
+                    </th>
+                    <th className="px-4 py-4 text-right" style={{ width: "130px" }}>
+                      Τιμή
+                    </th>
+                    <th className="px-4 py-4 text-right" style={{ width: "100px" }}>
+                      Έκπτ. %
+                    </th>
+                    <th className="px-4 py-4 text-right" style={{ width: "100px" }}>
+                      ΦΠΑ %
+                    </th>
+                    <th className="px-4 py-4 text-right" style={{ width: "140px" }}>
+                      Σύνολο
+                    </th>
+                    <th style={{ width: "44px" }} />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-ink-300/60">
@@ -562,7 +591,7 @@ export function DraftEditor({
                     const tot = computeLineDisplay(l);
                     return (
                       <tr key={l.key}>
-                        <td className="px-2 py-1.5" style={{ width: "18%" }}>
+                        <td className="px-3 py-2.5">
                           <select
                             value={l.itemId}
                             onChange={(e) => pickItem(l.key, e.target.value)}
@@ -576,7 +605,7 @@ export function DraftEditor({
                             ))}
                           </select>
                         </td>
-                        <td className="px-2 py-1.5">
+                        <td className="px-3 py-2.5">
                           <input
                             value={l.description}
                             onChange={(e) =>
@@ -586,7 +615,7 @@ export function DraftEditor({
                             className="row-input"
                           />
                         </td>
-                        <td className="px-2 py-1.5" style={{ width: "82px" }}>
+                        <td className="px-3 py-2.5">
                           <input
                             type="number"
                             step="0.001"
@@ -598,7 +627,7 @@ export function DraftEditor({
                             className="row-input text-right"
                           />
                         </td>
-                        <td className="px-2 py-1.5" style={{ width: "92px" }}>
+                        <td className="px-3 py-2.5">
                           <input
                             type="number"
                             step="0.01"
@@ -610,7 +639,7 @@ export function DraftEditor({
                             className="row-input text-right"
                           />
                         </td>
-                        <td className="px-2 py-1.5" style={{ width: "74px" }}>
+                        <td className="px-3 py-2.5">
                           <input
                             type="number"
                             step="0.01"
@@ -623,7 +652,7 @@ export function DraftEditor({
                             className="row-input text-right"
                           />
                         </td>
-                        <td className="px-2 py-1.5" style={{ width: "72px" }}>
+                        <td className="px-3 py-2.5">
                           <input
                             type="number"
                             step="0.01"
@@ -636,21 +665,18 @@ export function DraftEditor({
                             className="row-input text-right"
                           />
                         </td>
-                        <td
-                          className="px-2 py-1.5 text-right text-sm font-semibold text-brand-900 tabular-nums"
-                          style={{ width: "110px" }}
-                        >
+                        <td className="px-4 py-2.5 text-right text-base font-bold text-brand-900 tabular-nums">
                           {formatMoney(tot.total)}
                         </td>
-                        <td className="px-1 py-1.5 text-right" style={{ width: "36px" }}>
+                        <td className="px-2 py-2.5 text-right">
                           <button
                             type="button"
                             onClick={() => removeLine(l.key)}
-                            className="grid h-8 w-8 place-items-center rounded-md text-red-700 hover:bg-red-50 disabled:opacity-40"
+                            className="grid h-9 w-9 place-items-center rounded-md text-red-700 hover:bg-red-50 disabled:opacity-40"
                             disabled={lines.length === 1}
                             aria-label="Αφαίρεση γραμμής"
                           >
-                            <Trash2 size={14} />
+                            <Trash2 size={16} />
                           </button>
                         </td>
                       </tr>
@@ -710,12 +736,22 @@ export function DraftEditor({
       <div className="flex flex-wrap justify-end gap-3">
         <Button
           type="button"
-          onClick={submit}
+          variant="secondary"
+          onClick={() => submit("save")}
           disabled={pending}
           size="lg"
           icon={Save}
         >
-          {pending ? "Αποθήκευση..." : "Αποθήκευση ως πρόχειρο"}
+          Αποθήκευση ως πρόχειρο
+        </Button>
+        <Button
+          type="button"
+          onClick={() => submit("issue")}
+          disabled={pending}
+          size="lg"
+          icon={Send}
+        >
+          {pending ? "Παρακαλώ περίμενε..." : "Έκδοση παραστατικού"}
         </Button>
       </div>
     </div>

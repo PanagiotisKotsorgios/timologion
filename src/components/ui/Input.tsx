@@ -8,6 +8,7 @@ type FieldProps = {
   className?: string;
   children: ReactNode;
   htmlFor?: string;
+  required?: boolean;
 };
 
 export function Field({
@@ -17,6 +18,7 @@ export function Field({
   children,
   className,
   htmlFor,
+  required,
 }: FieldProps) {
   return (
     <div className={clsx("space-y-2", className)}>
@@ -26,6 +28,11 @@ export function Field({
           className="block text-base font-bold text-ink-900"
         >
           {label}
+          {required && (
+            <span aria-hidden className="ml-1 text-red-600">
+              *
+            </span>
+          )}
         </label>
       )}
       {children}
