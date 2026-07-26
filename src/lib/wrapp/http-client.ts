@@ -551,6 +551,11 @@ export class WrappPartnerClient {
     vat?: string;
   }): Promise<{ login_url: string }> {
     const url = `${this.base}/external_login`;
+    // Prefix-log the partner key so we can distinguish staging (62fd61b1...)
+    // from production (d393cee6...) from Coolify logs without leaking the
+    // full secret. A 401 on this endpoint almost always means wrong key.
+    const keyPrefix = this.partnerKey ? this.partnerKey.slice(0, 8) : "(empty)";
+    const keyLen = this.partnerKey?.length ?? 0;
     let res: Response;
     try {
       res = await fetchWithTimeout(url, {
@@ -570,7 +575,7 @@ export class WrappPartnerClient {
       const text = await res.text();
       const contentType = res.headers.get("content-type") ?? "";
       throw new WrappApiError(
-        `Partner external_login failed [${res.status} ${res.statusText || "?"}] url=${url} ct=${contentType} body="${text.slice(0, 500)}"`,
+        `Partner external_login failed [${res.status} ${res.statusText || "?"}] url=${url} keyPrefix=${keyPrefix} keyLen=${keyLen} ct=${contentType} body="${text.slice(0, 500)}"`,
         {
           code: "wrapp.partner.external_login_failed",
           httpStatus: res.status,
