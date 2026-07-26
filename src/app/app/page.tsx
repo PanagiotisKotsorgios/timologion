@@ -29,6 +29,7 @@ export default async function DashboardPage() {
   const [
     wrapp,
     monthCount,
+    totalIssuedCount,
     recentDocs,
     draftCount,
     unpaidAgg,
@@ -44,6 +45,12 @@ export default async function DashboardPage() {
       where: {
         businessId: ctx.businessId,
         issueDate: { gte: monthStart },
+        status: { in: ["issued", "sending"] },
+      },
+    }),
+    prisma.document.count({
+      where: {
+        businessId: ctx.businessId,
         status: { in: ["issued", "sending"] },
       },
     }),
@@ -72,8 +79,18 @@ export default async function DashboardPage() {
 
   const wrappStatus = wrapp?.status ?? "inactive";
 
-  const totalDocsAll = monthCount + draftCount;
-  const isNewUser = clientCount === 0 && itemCount === 0 && totalDocsAll === 0;
+  // Onboarding checklist stays visible until every step is actually done —
+  // account created (implicit), provider active, first client, first item,
+  // first issued document. Only after all four remaining boxes tick does it
+  // disappear from the dashboard. Uses the all-time issued count so it
+  // doesn't come back at month rollover.
+  const onboardingSteps = {
+    wrapp: wrappStatus === "active",
+    clients: clientCount > 0,
+    items: itemCount > 0,
+    issued: totalIssuedCount > 0,
+  };
+  const showOnboarding = Object.values(onboardingSteps).some((v) => !v);
 
   const quotaLimit = quota.ok ? quota.limit : quota.limit;
   const quotaUsed = quota.ok ? quota.used : quota.used;
@@ -115,13 +132,13 @@ export default async function DashboardPage() {
       {/* Activation warning is handled by the blocking ActivationGate modal in
           the app layout — no in-page banner needed here. */}
 
-      {isNewUser && (
+      {showOnboarding && (
         <div className="mb-6">
           <WelcomeChecklist
-            hasClients={clientCount > 0}
-            hasItems={itemCount > 0}
-            hasIssuedDoc={monthCount > 0}
-            wrappActive={wrappStatus === "active"}
+            hasClients={onboardingSteps.clients}
+            hasItems={onboardingSteps.items}
+            hasIssuedDoc={onboardingSteps.issued}
+            wrappActive={onboardingSteps.wrapp}
           />
         </div>
       )}
