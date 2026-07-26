@@ -19,15 +19,22 @@ export async function VerifyEmailBanner() {
   if (!user || user.emailVerifiedAt) return null;
 
   return (
-    <div className="border-b-2 border-amber-300 bg-amber-50 px-4 py-2 text-sm md:px-6">
-      <div className="flex flex-wrap items-center justify-between gap-2 text-amber-900">
-        <span className="inline-flex items-center gap-2">
-          <Mail size={16} aria-hidden />
-          <span>
-            Το email σου <strong>{user.email}</strong> δεν έχει επιβεβαιωθεί
-            ακόμη.
-          </span>
-        </span>
+    <div className="border-b-2 border-amber-300 bg-amber-50 px-4 py-3 text-sm md:px-6">
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 text-amber-900">
+        <div className="flex items-start gap-2">
+          <Mail size={18} className="mt-0.5 shrink-0" aria-hidden />
+          <div className="leading-relaxed">
+            <p className="font-semibold">
+              Το email σου <strong>{user.email}</strong> δεν έχει επιβεβαιωθεί
+              ακόμη.
+            </p>
+            <p className="text-amber-800/90">
+              Σου έχουμε στείλει email επιβεβαίωσης — έλεγξε το inbox σου (και
+              τον φάκελο spam). Πάτησε τον σύνδεσμο που περιέχει για να
+              ενεργοποιήσεις τον λογαριασμό σου.
+            </p>
+          </div>
+        </div>
         <VerifyEmailBannerResend />
       </div>
     </div>
