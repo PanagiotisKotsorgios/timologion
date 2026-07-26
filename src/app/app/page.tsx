@@ -596,24 +596,36 @@ function PlanUsageStrip({
           </div>
 
           {hasCap && (
-            <div className="mt-4">
-              <div className="h-3 w-full overflow-hidden rounded-full bg-ink-200">
+            <div className="mt-5">
+              {/* Track is now h-4 with a stronger border-radius so it reads
+                  as a proper progress bar rather than a hairline. When usage
+                  is above 0 but rounds to 0% (e.g. 3 / 1500), we force a
+                  minimum sliver width so the user can see something happened. */}
+              <div className="h-4 w-full overflow-hidden rounded-full bg-ink-200 shadow-inner">
                 <div
                   className={
-                    "h-full transition-all " +
+                    "h-full rounded-full transition-all " +
                     (overWarn
                       ? "bg-red-600"
                       : nearWarn
                         ? "bg-amber-500"
                         : "bg-brand-900")
                   }
-                  style={{ width: `${pct}%` }}
+                  style={{
+                    width:
+                      used > 0 && pct < 2
+                        ? "2%"
+                        : `${pct}%`,
+                  }}
                   aria-valuenow={pct}
                   role="progressbar"
                   aria-valuemin={0}
                   aria-valuemax={100}
                 />
               </div>
+              <p className="mt-2 text-xs font-semibold text-ink-500">
+                {pct}% χρήση
+              </p>
               {overWarn && (
                 <p className="mt-2 text-sm font-semibold text-red-700">
                   Πλησιάζεις το όριο του πακέτου — σκέψου αναβάθμιση.

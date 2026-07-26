@@ -240,6 +240,55 @@ export async function POST(req: Request) {
           lastError: null,
         },
       });
+      // Auto-provision a local BusinessSubscription so the dashboard's
+      // Plan Usage strip has something to display without the user having
+      // to click through /settings/subscription. Wrapp charges the customer
+      // directly for the €29 Basic tier during onboarding; we just mirror
+      // that as a local row for display / quota tracking. Idempotent: only
+      // creates a new subscription if none is already active.
+      try {
+        const existingSub = await prisma.businessSubscription.findFirst({
+          where: {
+            businessId,
+            status: { in: ["active", "trialing", "past_due"] },
+          },
+          select: { id: true },
+        });
+        if (!existingSub) {
+          const basicPlan = await prisma.platformPlan.findFirst({
+            where: { code: "basic", active: true },
+            select: { id: true },
+          });
+          if (basicPlan) {
+            const now = new Date();
+            const yearFromNow = new Date(now);
+            yearFromNow.setFullYear(yearFromNow.getFullYear() + 1);
+            await prisma.businessSubscription.create({
+              data: {
+                businessId,
+                planId: basicPlan.id,
+                billingCycle: "yearly",
+                status: "active",
+                currentPeriodStart: now,
+                currentPeriodEnd: yearFromNow,
+                nextBillingAt: yearFromNow,
+                notes: "Auto-provisioned by Wrapp onboarding webhook.",
+              },
+            });
+            logger.info("wrapp.onboarding.subscription_provisioned", {
+              businessId,
+            });
+          }
+        }
+      } catch (err) {
+        // Non-fatal — activation completed already, the subscription is
+        // just a display convenience.
+        logger.warn("wrapp.onboarding.subscription_provision_failed", {
+          businessId,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+
       await logAudit({
         businessId,
         action: "wrapp.onboarding.completed",
