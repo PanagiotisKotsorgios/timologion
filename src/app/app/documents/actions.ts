@@ -509,6 +509,33 @@ export async function attemptIssueAction(documentId: string) {
     };
   }
 
+  // Auto-provision a local billing book if the draft was saved without one
+  // (race: user hit save before the editor's silent auto-create finished,
+  // or the draft was created for a different type and the switch never
+  // fired). Idempotent — no-op if a book already exists for this type.
+  let effectiveBillingBookId = doc.billingBookId;
+  if (!effectiveBillingBookId) {
+    try {
+      const ensured = await ensureDefaultBillingBook(ctx.businessId, doc.type);
+      effectiveBillingBookId = ensured.id;
+      await prisma.document.update({
+        where: { id: doc.id },
+        data: { billingBookId: ensured.id },
+      });
+    } catch (err) {
+      logger.error("wrapp.issue.autoprovision_local_book_failed", err, {
+        businessId: ctx.businessId,
+        documentId: doc.id,
+        type: doc.type,
+      });
+      return {
+        ok: false as const,
+        error:
+          "Δεν καταφέραμε να δημιουργήσουμε αυτόματα σειρά παραστατικών. Δοκίμασε ξανά σε λίγο.",
+      };
+    }
+  }
+
   // Local quota is display-only — the certified provider is the real gate
   // and will reject transmission if the tenant is over its yearly package.
   // Reserve the next number atomically from the billing book. Runs in its own
@@ -516,8 +543,8 @@ export async function attemptIssueAction(documentId: string) {
   // a small numbering gap is preferable to duplicate numbers under concurrency.
   let reservedSeries: string | null = doc.series;
   let reservedNumber: number | null = doc.number;
-  if (doc.billingBookId && doc.number == null) {
-    const bookId = doc.billingBookId;
+  if (doc.number == null) {
+    const bookId = effectiveBillingBookId;
     const reservation = await prisma.$transaction(async (tx) => {
       return reserveNextNumber(tx, bookId, ctx.businessId);
     });
@@ -557,21 +584,11 @@ export async function attemptIssueAction(documentId: string) {
     return { ok: true as const, series: reservedSeries, number: reservedNumber };
   }
 
-  if (!doc.billingBookId) {
-    await prisma.document
-      .update({ where: { id: doc.id }, data: { status: "draft" } })
-      .catch(() => undefined);
-    return {
-      ok: false as const,
-      error: "Λείπει σειρά παραστατικών (billing book). Συμπλήρωσε πριν την έκδοση.",
-    };
-  }
-
   // Auto-sync the billing book with Wrapp on first use — never surface the
   // "σειρά δεν είναι συγχρονισμένη" dead-end anymore.
   const sync = await ensureWrappBillingBookSynced(
     ctx.businessId,
-    doc.billingBookId,
+    effectiveBillingBookId,
     invoiceTypeCode,
   );
   if ("error" in sync) {
@@ -633,30 +650,38 @@ export async function attemptIssueAction(documentId: string) {
         postal_code: "00000",
       };
 
+  // Credit notes: we store the totals + line amounts as NEGATIVE numbers so
+  // the local ledger balances correctly, but Wrapp/myDATA require POSITIVE
+  // numbers on the wire (the invoice_type_code 5.1/5.2 tells them it's a
+  // reversal). Force abs() for credit_note payloads.
+  const wire = doc.type === "credit_note"
+    ? (n: number) => Math.abs(n)
+    : (n: number) => n;
+
   const wrappPayload = {
     invoice_type_code: invoiceTypeCode,
     billing_book_id: book.wrappBookId,
     branch: branch?.wrappBranchId ?? undefined,
     payment_method_type: mapPaymentMethodToWrapp(doc.paymentMethod),
-    net_total_amount: Number(doc.netTotalAmount),
-    vat_total_amount: Number(doc.vatTotalAmount),
-    total_amount: Number(doc.totalAmount),
-    payable_total_amount: Number(doc.payableTotalAmount),
+    net_total_amount: wire(Number(doc.netTotalAmount)),
+    vat_total_amount: wire(Number(doc.vatTotalAmount)),
+    total_amount: wire(Number(doc.totalAmount)),
+    payable_total_amount: wire(Number(doc.payableTotalAmount)),
     notes: doc.notes ?? undefined,
     num: reservedNumber ?? undefined,
     counterpart,
     invoice_lines: doc.lines.map((l, i) => {
-      const net = Number(l.netAmount);
-      const vat = Number(l.vatAmount);
-      const total = Number(l.totalAmount);
+      const net = wire(Number(l.netAmount));
+      const vat = wire(Number(l.vatAmount));
+      const total = wire(Number(l.totalAmount));
       return {
         line_number: i + 1,
         name: (l.description?.trim() || "Είδος").slice(0, 200),
         code: undefined,
         description: undefined,
-        quantity: Number(l.quantity),
+        quantity: wire(Number(l.quantity)),
         quantity_type: 1,
-        unit_price: Number(l.unitPrice),
+        unit_price: wire(Number(l.unitPrice)),
         net_total_price: net,
         vat_rate: Number(l.vatRate),
         vat_total: vat,
