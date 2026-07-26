@@ -79,7 +79,7 @@ export default async function VerifyEmailPage({
       {outcome === "no-token" && (
         <>
           <p className="mt-6 text-lg text-black/70">
-            Έλεγξε το inbox σου για το email επιβεβαίωσης. Αν δεν το βρίσκεις,
+            Έλεγξε τα εισερχόμενά σου για το email επιβεβαίωσης. Αν δεν το βρίσκεις,
             μπορείς να ζητήσεις να ξανασταλεί.
           </p>
           {session ? (

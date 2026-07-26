@@ -30,7 +30,7 @@ export function VerifyEmailBannerResend() {
     return (
       <span className="inline-flex items-center gap-1.5 text-sm font-bold text-emerald-800">
         <CheckCircle2 size={14} aria-hidden />
-        Στάλθηκε νέο email — έλεγξε το inbox σου
+        Στάλθηκε νέο email — έλεγξε τα εισερχόμενά σου
       </span>
     );
   }

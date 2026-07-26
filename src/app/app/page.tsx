@@ -511,16 +511,6 @@ function StatCard({
   progress?: number | null;
 }) {
   const tokens = ACCENT_TOKENS[accent];
-  const fmt =
-    sparklineFormat === "money"
-      ? (n: number) =>
-          n.toLocaleString("el-GR", {
-            style: "currency",
-            currency: "EUR",
-            maximumFractionDigits: 2,
-          })
-      : (n: number) =>
-          `${n.toLocaleString("el-GR")} ${n === 1 ? "παραστατικό" : "παραστατικά"}`;
   return (
     <Card className="overflow-hidden">
       <CardBody className="p-6 md:p-8">
@@ -558,7 +548,7 @@ function StatCard({
             points={sparkline}
             color={tokens.hex}
             height={44}
-            format={fmt}
+            formatKind={sparklineFormat}
           />
         </div>
       </CardBody>

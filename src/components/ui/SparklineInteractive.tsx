@@ -15,12 +15,28 @@ type Point = {
  * Designed for stat cards. No external chart lib — pure SVG + one React
  * state hook. Works on touch by anchoring to `pointerdown`/`pointermove`.
  */
+export type SparklineFormatKind = "money" | "count" | "raw";
+
+function formatFor(kind: SparklineFormatKind, n: number): string {
+  if (kind === "money") {
+    return n.toLocaleString("el-GR", {
+      style: "currency",
+      currency: "EUR",
+      maximumFractionDigits: 2,
+    });
+  }
+  if (kind === "count") {
+    return `${n.toLocaleString("el-GR")} ${n === 1 ? "παραστατικό" : "παραστατικά"}`;
+  }
+  return n.toLocaleString("el-GR");
+}
+
 export function SparklineInteractive({
   points,
   color = "#0B1B3A",
   height = 44,
   strokeWidth = 2.25,
-  format = (n: number) => n.toLocaleString("el-GR"),
+  formatKind = "raw",
   className,
   style,
 }: {
@@ -28,7 +44,12 @@ export function SparklineInteractive({
   color?: string;
   height?: number;
   strokeWidth?: number;
-  format?: (n: number) => string;
+  /**
+   * String kind instead of a formatter function — functions can't cross the
+   * server→client RSC boundary and the parent StatCard is a server
+   * component, so we serialize the kind and format inside.
+   */
+  formatKind?: SparklineFormatKind;
   className?: string;
   style?: CSSProperties;
 }) {
@@ -145,7 +166,7 @@ export function SparklineInteractive({
             {hoveredPoint.data.label}
           </div>
           <div className="mt-0.5 text-[13px] font-black">
-            {format(hoveredPoint.data.value)}
+            {formatFor(formatKind, hoveredPoint.data.value)}
           </div>
         </div>
       )}
