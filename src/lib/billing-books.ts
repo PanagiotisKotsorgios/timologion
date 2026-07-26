@@ -1,6 +1,8 @@
 import "server-only";
 import type { DocumentType } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { getWrappClient, WrappApiError } from "@/lib/wrapp/client";
+import { logger } from "@/lib/logger";
 
 /**
  * Default series (Greek convention + Wrapp mapping) for each supported
@@ -29,6 +31,23 @@ const DEFAULT_LABEL: Record<DocumentType, string> = {
   quote: "Προσφορές",
   order: "Παραγγελίες",
   delivery_note: "Δελτία αποστολής",
+};
+
+/**
+ * Wrapp accepts only Latin/ASCII names for billing books in staging (the
+ * validator rejects Greek characters with a 422). Match FishBill's mapping
+ * so existing conventions carry over.
+ */
+const WRAPP_LATIN_NAME: Record<DocumentType, string> = {
+  invoice: "Timologia Polisis",
+  service_invoice: "Timologia Parochis",
+  retail_receipt: "Apodeixeis Lianikis",
+  service_receipt: "Apodeixeis Parochis",
+  credit_note: "Pistotika Correlated",
+  proforma: "Protimologia",
+  quote: "Prosfores",
+  order: "Paraggelies",
+  delivery_note: "Deltia Apostolis",
 };
 
 /**
@@ -77,5 +96,144 @@ export async function ensureDefaultBillingBook(
     });
     if (raced) return { id: raced.id, created: false };
     throw new Error("Failed to ensure default billing book.");
+  }
+}
+
+/**
+ * Ensure a local BillingBook is synced with a Wrapp billing book. Called on
+ * first issuance so users never see "σειρά δεν είναι συγχρονισμένη".
+ *
+ * Strategy:
+ *   1. Fast path — book already has `wrappBookId`.
+ *   2. Fetch the tenant's Wrapp books, look for one that matches the local
+ *      series letter under the same invoice_type_code. Reuse it silently if
+ *      found (covers the case where a book was created earlier by another
+ *      caller or through Wrapp's UI).
+ *   3. Otherwise POST /billing_books with an ASCII-safe name + our local
+ *      series letter + starting number 1.
+ *   4. On the 422 "name/series already used" race (per FishBill's audit
+ *      doc), re-list and match by name OR series.
+ *
+ * Returns the Wrapp book id. Persists it locally before returning so
+ * subsequent calls take the fast path.
+ */
+export async function ensureWrappBillingBookSynced(
+  businessId: string,
+  localBookId: string,
+  invoiceTypeCode: string,
+): Promise<{ wrappBookId: string; created: boolean } | { error: string }> {
+  const book = await prisma.billingBook.findFirst({
+    where: { id: localBookId, businessId },
+    select: {
+      id: true,
+      documentType: true,
+      series: true,
+      wrappBookId: true,
+      nextNumber: true,
+    },
+  });
+  if (!book) return { error: "Η σειρά παραστατικών δεν βρέθηκε." };
+  if (book.wrappBookId) {
+    return { wrappBookId: book.wrappBookId, created: false };
+  }
+
+  const client = getWrappClient();
+
+  // Try to reuse an existing Wrapp book for the same type + series letter.
+  try {
+    const existing = await client.listBillingBooks(businessId);
+    const match =
+      existing.find(
+        (b) => b.invoice_type_code === invoiceTypeCode && b.series === book.series,
+      ) ?? existing.find((b) => b.invoice_type_code === invoiceTypeCode);
+    if (match) {
+      await prisma.billingBook.update({
+        where: { id: book.id },
+        data: { wrappBookId: match.id },
+      });
+      logger.info("wrapp.billing_book.reused", {
+        businessId,
+        localBookId: book.id,
+        wrappBookId: match.id,
+        type: invoiceTypeCode,
+      });
+      return { wrappBookId: match.id, created: false };
+    }
+  } catch (err) {
+    logger.warn("wrapp.billing_book.list_failed_before_create", {
+      businessId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    // Continue to create path.
+  }
+
+  const name = WRAPP_LATIN_NAME[book.documentType];
+  try {
+    const created = await client.createBillingBook(businessId, {
+      name,
+      series: book.series,
+      number: book.nextNumber ?? 1,
+      invoice_type_code: invoiceTypeCode,
+    });
+    await prisma.billingBook.update({
+      where: { id: book.id },
+      data: { wrappBookId: created.id },
+    });
+    logger.info("wrapp.billing_book.created", {
+      businessId,
+      localBookId: book.id,
+      wrappBookId: created.id,
+      type: invoiceTypeCode,
+      series: book.series,
+    });
+    return { wrappBookId: created.id, created: true };
+  } catch (err) {
+    // Wrapp returns 422 with `{errors: [{title: "Name το έχουν ήδη …"}]}` when
+    // a book with our proposed name or series already exists on their side.
+    // Recover by re-listing and matching by name OR series.
+    const httpStatus = err instanceof WrappApiError ? err.httpStatus : 0;
+    const message = err instanceof Error ? err.message : String(err);
+    const isDupe =
+      httpStatus === 422 &&
+      /το έχουν ήδη|already|χρησιμοποιήσει/i.test(message);
+    if (!isDupe) {
+      logger.error("wrapp.billing_book.create_failed", err, {
+        businessId,
+        localBookId: book.id,
+      });
+      return {
+        error:
+          "Αποτυχία δημιουργίας σειράς παραστατικών στη Wrapp. Δοκίμασε ξανά σε λίγο.",
+      };
+    }
+    try {
+      const list = await client.listBillingBooks(businessId);
+      const dupeMatch =
+        list.find((b) => b.name === name) ??
+        list.find((b) => b.series === book.series);
+      if (dupeMatch) {
+        await prisma.billingBook.update({
+          where: { id: book.id },
+          data: { wrappBookId: dupeMatch.id },
+        });
+        logger.info("wrapp.billing_book.recovered_after_dupe", {
+          businessId,
+          localBookId: book.id,
+          wrappBookId: dupeMatch.id,
+        });
+        return { wrappBookId: dupeMatch.id, created: false };
+      }
+      return {
+        error:
+          "Η σειρά υπάρχει ήδη στη Wrapp αλλά δεν εντοπίστηκε — δοκίμασε ξανά.",
+      };
+    } catch (listErr) {
+      logger.error("wrapp.billing_book.recovery_list_failed", listErr, {
+        businessId,
+      });
+      return {
+        error: "Αποτυχία συγχρονισμού σειράς με τη Wrapp — δοκίμασε ξανά.",
+      };
+    }
   }
 }

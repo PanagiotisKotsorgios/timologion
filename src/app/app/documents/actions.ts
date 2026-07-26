@@ -19,7 +19,10 @@ import {
 } from "@/lib/wrapp/client";
 import { reserveNextNumber } from "@/lib/numbering";
 import { logger } from "@/lib/logger";
-import { ensureDefaultBillingBook } from "@/lib/billing-books";
+import {
+  ensureDefaultBillingBook,
+  ensureWrappBillingBookSynced,
+} from "@/lib/billing-books";
 import type { DocumentType } from "@prisma/client";
 
 const DOCUMENT_TYPES = [
@@ -564,20 +567,20 @@ export async function attemptIssueAction(documentId: string) {
     };
   }
 
-  const book = await prisma.billingBook.findFirst({
-    where: { id: doc.billingBookId, businessId: ctx.businessId },
-    select: { wrappBookId: true },
-  });
-  if (!book?.wrappBookId) {
+  // Auto-sync the billing book with Wrapp on first use — never surface the
+  // "σειρά δεν είναι συγχρονισμένη" dead-end anymore.
+  const sync = await ensureWrappBillingBookSynced(
+    ctx.businessId,
+    doc.billingBookId,
+    invoiceTypeCode,
+  );
+  if ("error" in sync) {
     await prisma.document
       .update({ where: { id: doc.id }, data: { status: "draft" } })
       .catch(() => undefined);
-    return {
-      ok: false as const,
-      error:
-        "Η σειρά παραστατικών δεν είναι συγχρονισμένη με τη Wrapp. Συγχρόνισε από τις Ρυθμίσεις.",
-    };
+    return { ok: false as const, error: sync.error };
   }
+  const book = { wrappBookId: sync.wrappBookId };
 
   const branch = doc.branchId
     ? await prisma.branch.findUnique({
