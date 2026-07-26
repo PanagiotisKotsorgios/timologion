@@ -307,15 +307,23 @@ export class HttpWrappClient {
       const streetAndNumber = [parsed.address, parsed.street_number]
         .filter(Boolean)
         .join(" ");
+      // Wrapp uses several possible field names for the same concept
+      // depending on tenant / staging build. Coalesce them so the client
+      // form sees a single normalised shape.
+      const tradeName = parsed.trade_name ?? parsed.distinct_title ?? null;
+      const activity = parsed.activity ?? parsed.main_activity ?? null;
+      const taxOffice = parsed.tax_office ?? parsed.doy ?? null;
       return {
         vat: parsed.vat_no,
         legal_name: parsed.name,
-        trade_name: null,
+        trade_name: tradeName || null,
         address: streetAndNumber || null,
         city: parsed.city ?? null,
         postal_code: parsed.postal_code ?? null,
-        activity: null,
-        tax_office: null,
+        activity: activity || null,
+        tax_office: taxOffice || null,
+        phone: parsed.phone ?? null,
+        email: parsed.email ?? null,
         country_code: "EL",
       };
     } catch (err) {

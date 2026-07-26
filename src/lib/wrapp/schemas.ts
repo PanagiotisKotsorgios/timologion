@@ -34,6 +34,14 @@ export type WrappTenantDetails = z.infer<typeof wrappTenantDetails>;
 
 // ─── VAT search ───────────────────────────────────────────────────────────
 
+/**
+ * VAT-search response. The staging response is the strict subset in the
+ * spec, but Wrapp sometimes surfaces additional ΑΑΔΕ fields (ΔΟΥ, activity,
+ * distinct trade name, phone, email) when the tenant has richer registry
+ * data. Every extra field is treated as nullish so a lean staging response
+ * still parses, and a fatter production response gets propagated straight
+ * into the client form auto-fill.
+ */
 export const wrappVatSearchRaw = z.object({
   vat_no: z.string(),
   name: z.string(),
@@ -41,6 +49,17 @@ export const wrappVatSearchRaw = z.object({
   address: z.string().nullish(),
   postal_code: z.string().nullish(),
   street_number: z.string().nullish(),
+  // Optional extras — the API may or may not populate them.
+  trade_name: z.string().nullish(),
+  distinct_title: z.string().nullish(),
+  tax_office: z.string().nullish(),
+  doy: z.string().nullish(),
+  activity: z.string().nullish(),
+  main_activity: z.string().nullish(),
+  phone: z.string().nullish(),
+  email: z.string().nullish(),
+  country_code: z.string().nullish(),
+  status: z.string().nullish(),
 });
 export type WrappVatSearchRaw = z.infer<typeof wrappVatSearchRaw>;
 
@@ -54,6 +73,8 @@ export type WrappVatSearchResult = {
   postal_code: string | null;
   activity: string | null;
   tax_office: string | null;
+  phone: string | null;
+  email: string | null;
   country_code: "EL";
 };
 

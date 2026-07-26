@@ -146,6 +146,8 @@ export async function vatSearchAction(formData: FormData) {
         postal_code: aadeResult.postal_code ?? null,
         activity: aadeResult.activity ?? null,
         tax_office: aadeResult.tax_office ?? null,
+        phone: null,
+        email: null,
         country_code: "EL",
       },
       source: aadeResult.source,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
-import { Save, Plus, Search } from "lucide-react";
+import { Save, Plus, Search, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Textarea } from "@/components/ui/Input";
 import { Alert } from "@/components/ui/Alert";
@@ -94,8 +94,28 @@ export function ClientForm({
         addressLine: res.result.address ?? s.addressLine,
         city: res.result.city ?? s.city,
         postalCode: res.result.postal_code ?? s.postalCode,
+        // Prefer the fetched values, but only overwrite if the user hasn't
+        // already typed something. Phone/email are frequently blank in
+        // the ΑΦΜ registry so we don't want to wipe a good manual value.
+        phone: s.phone || res.result.phone || "",
+        email: s.email || res.result.email || "",
       }));
-      setVatMessage("Συμπληρώθηκαν στοιχεία από αναζήτηση ΑΦΜ.");
+      // Rough count of what actually got populated — helpful UX signal so
+      // the user knows if we just filled name+city vs a full record.
+      const filled = [
+        res.result.legal_name,
+        res.result.trade_name,
+        res.result.tax_office,
+        res.result.activity,
+        res.result.address,
+        res.result.city,
+        res.result.postal_code,
+        res.result.phone,
+        res.result.email,
+      ].filter(Boolean).length;
+      setVatMessage(
+        `Συμπληρώθηκαν ${filled} πεδία από την αναζήτηση ΑΦΜ.`,
+      );
     });
   }
 
@@ -119,9 +139,10 @@ export function ClientForm({
               size="md"
               onClick={handleVatLookup}
               disabled={vatBusy}
-              icon={Search}
+              icon={vatBusy ? Loader2 : Search}
+              className={vatBusy ? "[&_svg]:animate-spin" : ""}
             >
-              {vatBusy ? "..." : "Αναζήτηση"}
+              {vatBusy ? "Αναζήτηση..." : "Αναζήτηση"}
             </Button>
           </div>
         </Field>
