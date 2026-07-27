@@ -4,8 +4,9 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth/session";
 import { env } from "@/lib/env";
-import { Sidebar } from "@/components/layout/Sidebar";
+import { Sidebar, type SidebarPlugin } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
+import { getPluginRuntime } from "@/lib/plugins";
 import { ImpersonationBanner } from "@/components/layout/ImpersonationBanner";
 import { ToastProvider } from "@/components/ui/Toast";
 import { ActivationGate } from "./ActivationGate";
@@ -69,10 +70,27 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const needsActivation = (wrapp?.status ?? "inactive") !== "active";
   const hasPhone = Boolean(activeBusiness?.phone?.trim());
 
+  // Load the plugin activation state for the active business so the
+  // sidebar only shows rows for plugins the tenant has turned on. Runs
+  // once per page render — cached-friendly since we're already on a
+  // dynamic layout that hits the DB for the wrapp status.
+  const pluginRuntime = await getPluginRuntime(active.businessId);
+  const sidebarPlugins: SidebarPlugin[] = Array.from(
+    pluginRuntime.values(),
+  )
+    .filter((p) => p.status === "trialing" || p.status === "active")
+    .map((p) => ({
+      code: p.definition.code,
+      label: p.definition.sidebarLabel,
+      href: p.definition.href,
+      iconName: p.definition.iconName,
+      daysLeftInTrial: p.daysLeftInTrial,
+    }));
+
   return (
     <ToastProvider>
       <div className="flex min-h-screen bg-ink-100">
-        <Sidebar />
+        <Sidebar plugins={sidebarPlugins} />
         <div className="flex min-w-0 flex-1 flex-col">
           <ImpersonationBanner />
           <Topbar

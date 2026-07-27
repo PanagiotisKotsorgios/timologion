@@ -7,120 +7,85 @@ import {
   Sparkles,
   Check,
   ArrowRight,
+  Clock,
   type LucideIcon,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card, CardBody } from "@/components/ui/Card";
-
-type Plugin = {
-  href: string;
-  icon: LucideIcon;
-  name: string;
-  tagline: string;
-  price: string;
-  perks: string[];
-  status: "included" | "available" | "coming_soon";
-};
-
-/**
- * Πρόσθετα — specialist modules that live off the main sidebar. Keeps the
- * default dashboard uncluttered for freelancers who only issue invoices,
- * while letting anyone who needs POS/CRM/accountant tooling turn it on with
- * a single click.
- *
- * Prices here are presentation-only for now; real gating will hook into the
- * PlatformPlan tiers already seeded via first-boot.
- */
-const PLUGINS: Plugin[] = [
-  {
-    href: "/app/pos",
-    icon: ShoppingCart,
-    name: "POS & Ταμείο",
-    tagline: "Γρήγορη πώληση, τραπέζια, θερμική εκτύπωση 80mm.",
-    price: "9,90€ / μήνα",
-    perks: [
-      "Γρήγορη πώληση σε 1 κλικ",
-      "Ανοιχτά τραπέζια & catering flow",
-      "Θερμική εκτύπωση αποδείξεων",
-    ],
-    status: "available",
-  },
-  {
-    href: "/app/crm",
-    icon: Users2,
-    name: "CRM",
-    tagline: "Leads, ευκαιρίες με 5 στάδια pipeline, tasks με υπενθυμίσεις.",
-    price: "7,90€ / μήνα",
-    perks: [
-      "Leads & pipeline ευκαιριών",
-      "Εργασίες με ημερομηνία λήξης",
-      "Ιστορικό επικοινωνίας ανά πελάτη",
-    ],
-    status: "available",
-  },
-  {
-    href: "/app/reports",
-    icon: FileSpreadsheet,
-    name: "Αναφορές λογιστή",
-    tagline: "Έσοδα, ΦΠΑ, ανεξόφλητα, εξαγωγή σε Excel/CSV.",
-    price: "5,90€ / μήνα",
-    perks: [
-      "Μηνιαία σύνοψη εσόδων & ΦΠΑ",
-      "Ανοικτά υπόλοιπα πελατών",
-      "Εξαγωγές για τον λογιστή σου",
-    ],
-    status: "available",
-  },
-  {
-    href: "#",
-    icon: CalendarClock,
-    name: "Ραντεβού & ημερολόγιο",
-    tagline: "Κράτηση χρόνου, υπενθυμίσεις πελάτη — έρχεται.",
-    price: "Έρχεται σύντομα",
-    perks: [
-      "Ημερολόγιο πολλαπλών χρηστών",
-      "Υπηρεσίες συνδεδεμένες με τιμοκατάλογο",
-      "Μετατροπή ραντεβού σε παραστατικό",
-    ],
-    status: "coming_soon",
-  },
-  {
-    href: "#",
-    icon: Sparkles,
-    name: "AI βοηθός",
-    tagline: "Έκδοση παραστατικού με φυσική γλώσσα.",
-    price: "Έρχεται σύντομα",
-    perks: [
-      "«Εκδώσε τιμολόγιο 100€ στον Παπαδόπουλο»",
-      "Αυτόματη κατηγοριοποίηση",
-      "Έξυπνες προτάσεις τιμών",
-    ],
-    status: "coming_soon",
-  },
-];
+import { Alert } from "@/components/ui/Alert";
+import { requireTenant } from "@/lib/tenant";
+import {
+  PLUGIN_CATALOG,
+  getPluginRuntime,
+  type PluginDefinition,
+  type PluginRuntimeStatus,
+} from "@/lib/plugins";
+import { activatePluginAction } from "./actions";
 
 export const dynamic = "force-dynamic";
 
-export default function PluginsPage() {
+const ICONS: Record<string, LucideIcon> = {
+  ShoppingCart,
+  Users2,
+  FileSpreadsheet,
+  CalendarClock,
+  Sparkles,
+};
+
+export default async function PluginsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ activated?: string }>;
+}) {
+  const ctx = await requireTenant();
+  const [runtime, params] = await Promise.all([
+    getPluginRuntime(ctx.businessId),
+    searchParams,
+  ]);
+
+  const justActivated =
+    params.activated &&
+    PLUGIN_CATALOG.find((p) => p.code === params.activated);
+
   return (
     <>
       <PageHeader
         title="Πρόσθετα"
-        subtitle="Ενεργοποίησε επιπλέον λειτουργίες όποτε τις χρειαστείς. Ο πίνακας ελέγχου παραμένει καθαρός."
+        subtitle="Ενεργοποίησέ τα δωρεάν για 6 μήνες. Στη λήξη επιλέγεις αν θα τα κρατήσεις."
       />
 
+      {justActivated && (
+        <div className="mb-6">
+          <Alert tone="success" title={`Ενεργοποιήθηκε: ${justActivated.name}`}>
+            Δωρεάν για 6 μήνες — θα βρεις τη νέα καρτέλα στο πλαϊνό μενού.
+          </Alert>
+        </div>
+      )}
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {PLUGINS.map((p) => (
-          <PluginCard key={p.name} plugin={p} />
-        ))}
+        {PLUGIN_CATALOG.map((p) => {
+          const rt = runtime.get(p.code)!;
+          return <PluginCard key={p.code} plugin={p} runtime={rt} />;
+        })}
       </div>
     </>
   );
 }
 
-function PluginCard({ plugin }: { plugin: Plugin }) {
-  const Icon = plugin.icon;
-  const disabled = plugin.status === "coming_soon";
+function PluginCard({
+  plugin,
+  runtime,
+}: {
+  plugin: PluginDefinition;
+  runtime: PluginRuntimeStatus;
+}) {
+  const Icon = ICONS[plugin.iconName] ?? Sparkles;
+  const disabled = plugin.availability === "coming_soon";
+  const isTrialing = runtime.status === "trialing";
+  const isActive = runtime.status === "active";
+  const isExpired = runtime.status === "expired";
+  const isActivated = isTrialing || isActive;
+
   return (
     <Card
       className={
@@ -132,7 +97,10 @@ function PluginCard({ plugin }: { plugin: Plugin }) {
         <div className="grid h-12 w-12 place-items-center rounded-2xl bg-brand-50 text-brand-800">
           <Icon size={22} aria-hidden />
         </div>
-        <StatusPill status={plugin.status} />
+        <StatusPill
+          runtime={runtime}
+          availability={plugin.availability}
+        />
       </div>
       <CardBody className="flex flex-1 flex-col">
         <h3 className="text-xl font-extrabold text-brand-900">{plugin.name}</h3>
@@ -152,18 +120,56 @@ function PluginCard({ plugin }: { plugin: Plugin }) {
           ))}
         </ul>
 
+        {isTrialing && runtime.daysLeftInTrial != null && (
+          <div className="mt-4 rounded-xl border-2 border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-900">
+            Δωρεάν δοκιμή — απομένουν{" "}
+            <strong>{runtime.daysLeftInTrial}</strong> μέρες.
+          </div>
+        )}
+        {isExpired && (
+          <div className="mt-4 rounded-xl border-2 border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-800">
+            Η δωρεάν δοκιμή έληξε. Ενεργοποίησε συνδρομή για να συνεχίσεις.
+          </div>
+        )}
+
         <div className="mt-6 flex items-center justify-between gap-3">
-          <p className="text-lg font-extrabold text-brand-900">{plugin.price}</p>
+          <p className="text-lg font-extrabold text-brand-900">
+            {plugin.priceMonthly > 0
+              ? `${plugin.priceMonthly.toFixed(2).replace(".", ",")}€ / μήνα`
+              : "Δωρεάν"}
+          </p>
           {disabled ? (
             <span className="text-sm font-semibold text-ink-500">—</span>
-          ) : (
+          ) : isActivated ? (
             <Link
               href={plugin.href}
               className="inline-flex h-11 items-center gap-2 rounded-full bg-brand-900 px-5 text-sm font-bold text-white transition-transform hover:-translate-y-0.5 hover:bg-black"
             >
-              {plugin.status === "included" ? "Άνοιγμα" : "Ενεργοποίηση"}
+              Άνοιγμα
               <ArrowRight size={14} aria-hidden />
             </Link>
+          ) : isExpired ? (
+            <form action={activatePluginAction}>
+              <input type="hidden" name="code" value={plugin.code} />
+              <button
+                type="submit"
+                className="inline-flex h-11 items-center gap-2 rounded-full bg-red-700 px-5 text-sm font-bold text-white hover:bg-red-800"
+              >
+                Ανανέωση
+                <ArrowRight size={14} aria-hidden />
+              </button>
+            </form>
+          ) : (
+            <form action={activatePluginAction}>
+              <input type="hidden" name="code" value={plugin.code} />
+              <button
+                type="submit"
+                className="inline-flex h-11 items-center gap-2 rounded-full bg-brand-900 px-5 text-sm font-bold text-white transition-transform hover:-translate-y-0.5 hover:bg-black"
+              >
+                Ενεργοποίηση
+                <ArrowRight size={14} aria-hidden />
+              </button>
+            </form>
           )}
         </div>
       </CardBody>
@@ -171,23 +177,44 @@ function PluginCard({ plugin }: { plugin: Plugin }) {
   );
 }
 
-function StatusPill({ status }: { status: Plugin["status"] }) {
-  if (status === "included") {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-black uppercase tracking-widest text-emerald-900">
-        Περιλαμβάνεται
-      </span>
-    );
-  }
-  if (status === "coming_soon") {
+function StatusPill({
+  runtime,
+  availability,
+}: {
+  runtime: PluginRuntimeStatus;
+  availability: PluginDefinition["availability"];
+}) {
+  if (availability === "coming_soon") {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-ink-200 px-3 py-1 text-[11px] font-black uppercase tracking-widest text-ink-700">
         Έρχεται
       </span>
     );
   }
+  if (runtime.status === "trialing") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-black uppercase tracking-widest text-emerald-900">
+        <Clock size={10} />
+        Δωρεάν δοκιμή
+      </span>
+    );
+  }
+  if (runtime.status === "active") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-brand-100 px-3 py-1 text-[11px] font-black uppercase tracking-widest text-brand-900">
+        Ενεργό
+      </span>
+    );
+  }
+  if (runtime.status === "expired") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-3 py-1 text-[11px] font-black uppercase tracking-widest text-red-800">
+        Έληξε
+      </span>
+    );
+  }
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-brand-100 px-3 py-1 text-[11px] font-black uppercase tracking-widest text-brand-900">
+    <span className="inline-flex items-center gap-1 rounded-full bg-ink-100 px-3 py-1 text-[11px] font-black uppercase tracking-widest text-ink-700">
       Πρόσθετο
     </span>
   );

@@ -17,6 +17,11 @@ import {
   UserCircle,
   Menu,
   X,
+  ShoppingCart,
+  Users2,
+  FileSpreadsheet,
+  CalendarClock,
+  Sparkles,
   type LucideIcon,
 } from "lucide-react";
 import { t } from "@/lib/i18n";
@@ -25,6 +30,28 @@ type NavItem = {
   href: string;
   label: string;
   icon: LucideIcon;
+  daysLeftInTrial?: number | null;
+};
+
+/**
+ * Server sends plugin nav rows as plain data (icon name as string) so the
+ * server component can pick the right icon without shipping a function
+ * across the RSC boundary.
+ */
+export type SidebarPlugin = {
+  code: string;
+  label: string;
+  href: string;
+  iconName: string;
+  daysLeftInTrial: number | null;
+};
+
+const PLUGIN_ICONS: Record<string, LucideIcon> = {
+  ShoppingCart,
+  Users2,
+  FileSpreadsheet,
+  CalendarClock,
+  Sparkles,
 };
 
 /**
@@ -66,11 +93,22 @@ export function SidebarTrigger() {
   );
 }
 
-export function Sidebar() {
+export function Sidebar({
+  plugins = [],
+}: {
+  plugins?: SidebarPlugin[];
+}) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const allHrefs = [...primary, ...secondary].map((n) => n.href);
+  const pluginItems: NavItem[] = plugins.map((p) => ({
+    href: p.href,
+    label: p.label,
+    icon: PLUGIN_ICONS[p.iconName] ?? Puzzle,
+    daysLeftInTrial: p.daysLeftInTrial,
+  }));
+
+  const allHrefs = [...primary, ...pluginItems, ...secondary].map((n) => n.href);
   const activeHref =
     allHrefs
       .filter(
@@ -154,6 +192,23 @@ export function Sidebar() {
             ))}
           </ul>
 
+          {pluginItems.length > 0 && (
+            <>
+              <p className="mt-8 mb-3 px-4 text-[11px] font-bold uppercase tracking-[0.2em] text-white/50">
+                Πρόσθετα
+              </p>
+              <ul className="space-y-1.5">
+                {pluginItems.map((item) => (
+                  <NavLink
+                    key={item.href}
+                    item={item}
+                    active={item.href === activeHref}
+                  />
+                ))}
+              </ul>
+            </>
+          )}
+
           <p className="mt-8 mb-3 px-4 text-[11px] font-bold uppercase tracking-[0.2em] text-white/50">
             Λογαριασμός
           </p>
@@ -178,6 +233,8 @@ export function Sidebar() {
 
 function NavLink({ item, active }: { item: NavItem; active: boolean }) {
   const Icon = item.icon;
+  const showTrialBadge =
+    typeof item.daysLeftInTrial === "number" && item.daysLeftInTrial > 0;
   return (
     <li>
       <Link
@@ -195,7 +252,20 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
           className={active ? "text-brand-800" : "text-white/70"}
           aria-hidden
         />
-        <span>{item.label}</span>
+        <span className="flex-1">{item.label}</span>
+        {showTrialBadge && (
+          <span
+            className={clsx(
+              "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-widest",
+              active
+                ? "bg-emerald-100 text-emerald-800"
+                : "bg-emerald-500/20 text-emerald-200",
+            )}
+            title={`Δωρεάν δοκιμή — απομένουν ${item.daysLeftInTrial} μέρες`}
+          >
+            {item.daysLeftInTrial}μ
+          </span>
+        )}
       </Link>
     </li>
   );

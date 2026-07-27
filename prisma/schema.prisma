@@ -509,6 +509,7 @@ model Business {
   suppliers         Supplier[]
   expenses          Expense[]
   expensePayments   ExpensePayment[]
+  pluginActivations PluginActivation[]
 
   @@index([vatNumber])
   @@map("businesses")
@@ -1087,4 +1088,37 @@ model ExpensePayment {
   @@index([expenseId])
   @@index([supplierId])
   @@map("expense_payments")
+}
+
+// ─── Plugin add-ons (POS / CRM / Reports / Appointments) ───────────────
+// Each plugin can be activated per business with a free trial. After the
+// trial window closes the app blocks the plugin's routes and shows the
+// tenant a "keep it running" paywall. Pricing snapshot is captured at
+// activation time so a later platform-admin price change doesn't retro-
+// bill a customer who signed up under the old rate.
+
+enum PluginStatus {
+  trialing
+  active
+  expired
+  cancelled
+}
+
+model PluginActivation {
+  id             String       @id @default(cuid())
+  businessId     String
+  pluginCode     String       @db.VarChar(40)
+  status         PluginStatus @default(trialing)
+  trialStartedAt DateTime     @default(now())
+  trialEndsAt    DateTime
+  paidUntilAt    DateTime?
+  priceMonthly   Decimal      @db.Decimal(8, 2)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  business       Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, pluginCode])
+  @@index([businessId, status])
+  @@map("plugin_activations")
 }
