@@ -177,9 +177,12 @@ export async function getPluginRuntime(
 }
 
 /**
- * Activate a plugin with a fresh 6-month trial. Idempotent — if there's
- * already an activation row for this (business, plugin) we return it
- * without extending the trial.
+ * Activate (or re-activate) a plugin. Behaviour:
+ *   - No row yet → create with a fresh trial window.
+ *   - Row exists in trialing/active → return as-is (idempotent no-op).
+ *   - Row exists in cancelled/expired → flip back to trialing with a
+ *     fresh trial window. Users who turned it off and changed their mind
+ *     get the full 1-year clock reset from now, not the leftover.
  */
 export async function activatePluginForBusiness(
   businessId: string,
@@ -196,11 +199,26 @@ export async function activatePluginForBusiness(
   const existing = await prisma.pluginActivation.findUnique({
     where: { businessId_pluginCode: { businessId, pluginCode: code } },
   });
-  if (existing) return { ok: true, activation: existing };
 
-  const trialEndsAt = new Date(
-    Date.now() + def.trialDays * 86_400_000,
-  );
+  const trialEndsAt = new Date(Date.now() + def.trialDays * 86_400_000);
+
+  if (existing) {
+    if (existing.status === "trialing" || existing.status === "active") {
+      return { ok: true, activation: existing };
+    }
+    // cancelled / expired — re-arm the trial.
+    const revived = await prisma.pluginActivation.update({
+      where: { id: existing.id },
+      data: {
+        status: "trialing",
+        trialStartedAt: new Date(),
+        trialEndsAt,
+        priceMonthly: def.priceMonthly,
+      },
+    });
+    return { ok: true, activation: revived };
+  }
+
   const activation = await prisma.pluginActivation.create({
     data: {
       businessId,

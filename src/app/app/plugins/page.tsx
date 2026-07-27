@@ -20,7 +20,7 @@ import {
   type PluginRuntimeStatus,
 } from "@/lib/plugins";
 import { ActivatePluginButton } from "./ActivatePluginButton";
-import { PluginToggle } from "./PluginToggle";
+import { DeactivatePluginButton } from "./DeactivatePluginButton";
 import { AutoDismissAlert } from "./AutoDismissAlert";
 
 export const dynamic = "force-dynamic";
@@ -107,19 +107,10 @@ function PluginCard({
         <div className="grid h-12 w-12 place-items-center rounded-2xl bg-brand-50 text-brand-800">
           <Icon size={22} aria-hidden />
         </div>
-        <div className="flex items-center gap-2">
-          <StatusPill
-            runtime={runtime}
-            availability={plugin.availability}
-          />
-          {isActivated && (
-            <PluginToggle
-              code={plugin.code}
-              pluginName={plugin.name}
-              isOn
-            />
-          )}
-        </div>
+        <StatusPill
+          runtime={runtime}
+          availability={plugin.availability}
+        />
       </div>
       <CardBody className="flex flex-1 flex-col">
         <h3 className="text-xl font-extrabold text-brand-900">{plugin.name}</h3>
@@ -151,20 +142,26 @@ function PluginCard({
           </div>
         )}
 
-        <div className="mt-6 flex items-center justify-between gap-3">
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
           <p className="text-lg font-extrabold text-emerald-700">
             Δωρεάν
           </p>
           {disabled ? (
             <span className="text-sm font-semibold text-ink-500">—</span>
           ) : isActivated ? (
-            <Link
-              href={plugin.href}
-              className="inline-flex h-11 items-center gap-2 rounded-full bg-brand-900 px-5 text-sm font-bold text-white transition-transform hover:-translate-y-0.5 hover:bg-black"
-            >
-              Άνοιγμα
-              <ArrowRight size={14} aria-hidden />
-            </Link>
+            <div className="flex items-center gap-3">
+              <Link
+                href={plugin.href}
+                className="inline-flex items-center gap-1.5 text-sm font-bold text-brand-800 underline underline-offset-4 hover:text-brand-900"
+              >
+                Άνοιγμα
+                <ArrowRight size={14} aria-hidden />
+              </Link>
+              <DeactivatePluginButton
+                code={plugin.code}
+                pluginName={plugin.name}
+              />
+            </div>
           ) : isExpired ? (
             <ActivatePluginButton
               code={plugin.code}

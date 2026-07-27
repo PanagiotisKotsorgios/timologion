@@ -2,32 +2,32 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { X, Power, PowerOff, ArrowRight } from "lucide-react";
+import { X, PowerOff, ArrowRight } from "lucide-react";
 import { deactivatePluginAction } from "./actions";
 
 /**
- * Toggle switch that shows current ON/OFF state and lets the user turn
- * the plugin off. Turning it back on goes through the confirmation
- * modal (`ActivatePluginButton`), so this component only needs to
- * handle the "deactivate" side.
+ * Red primary CTA that opens a confirmation modal before flipping the
+ * plugin's status to "cancelled". Mirrors ActivatePluginButton's shape
+ * so activate → deactivate → activate is a single visual affordance
+ * that swaps colour and copy but stays in the same slot on the card.
  */
-export function PluginToggle({
+export function DeactivatePluginButton({
   code,
   pluginName,
-  isOn,
+  label,
 }: {
   code: string;
   pluginName: string;
-  isOn: boolean;
+  label?: string;
 }) {
-  const [confirming, setConfirming] = useState(false);
+  const [open, setOpen] = useState(false);
   const [pending, startTx] = useTransition();
   const router = useRouter();
 
   useEffect(() => {
-    if (!confirming) return;
+    if (!open) return;
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape" && !pending) setConfirming(false);
+      if (e.key === "Escape" && !pending) setOpen(false);
     }
     window.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
@@ -36,9 +36,9 @@ export function PluginToggle({
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = prev;
     };
-  }, [confirming, pending]);
+  }, [open, pending]);
 
-  function confirmOff() {
+  function confirm() {
     const fd = new FormData();
     fd.set("code", code);
     startTx(async () => {
@@ -51,43 +51,24 @@ export function PluginToggle({
     <>
       <button
         type="button"
-        role="switch"
-        aria-checked={isOn}
-        aria-label={
-          isOn ? `Απενεργοποίηση ${pluginName}` : `Ενεργοποίηση ${pluginName}`
-        }
-        onClick={() => isOn && setConfirming(true)}
-        disabled={!isOn}
-        className={
-          "relative inline-flex h-7 w-12 shrink-0 cursor-pointer items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-brand-800 focus:ring-offset-2 disabled:cursor-default " +
-          (isOn ? "bg-emerald-600" : "bg-ink-300")
-        }
+        onClick={() => setOpen(true)}
+        className="inline-flex h-11 items-center gap-2 rounded-full bg-red-700 px-5 text-sm font-bold text-white transition-transform hover:-translate-y-0.5 hover:bg-red-800"
       >
-        <span
-          className={
-            "inline-flex h-5 w-5 transform items-center justify-center rounded-full bg-white shadow transition-transform " +
-            (isOn ? "translate-x-6" : "translate-x-1")
-          }
-        >
-          {isOn ? (
-            <Power size={10} className="text-emerald-700" aria-hidden />
-          ) : (
-            <PowerOff size={10} className="text-ink-500" aria-hidden />
-          )}
-        </span>
+        <PowerOff size={14} aria-hidden />
+        {label ?? "Απενεργοποίηση"}
       </button>
 
-      {confirming && (
+      {open && (
         <div
           role="dialog"
           aria-modal="true"
-          aria-labelledby="deactivate-plugin-title"
+          aria-labelledby="deactivate-plugin-cta-title"
           className="fixed inset-0 z-[110] flex items-start justify-center overflow-y-auto p-4 py-10 sm:p-8"
         >
           <button
             type="button"
             aria-label="Κλείσιμο"
-            onClick={() => !pending && setConfirming(false)}
+            onClick={() => !pending && setOpen(false)}
             className="fixed inset-0 bg-black/60 backdrop-blur-sm"
           />
           <div className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-ink-300/70 bg-white shadow-2xl">
@@ -98,7 +79,7 @@ export function PluginToggle({
                 </div>
                 <div>
                   <h2
-                    id="deactivate-plugin-title"
+                    id="deactivate-plugin-cta-title"
                     className="text-2xl font-extrabold text-brand-900 md:text-3xl"
                   >
                     Απενεργοποίηση: {pluginName}
@@ -111,7 +92,7 @@ export function PluginToggle({
               <button
                 type="button"
                 aria-label="Κλείσιμο"
-                onClick={() => !pending && setConfirming(false)}
+                onClick={() => !pending && setOpen(false)}
                 disabled={pending}
                 className="grid h-10 w-10 shrink-0 place-items-center rounded-lg text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-900 disabled:opacity-50"
               >
@@ -122,14 +103,14 @@ export function PluginToggle({
             <div className="space-y-4 px-8 py-6">
               <p className="text-sm text-ink-800">
                 Τα δεδομένα του πρόσθετου παραμένουν στη βάση — αν το
-                ενεργοποιήσεις ξανά, θα τα δεις πάλι. Μπορείς να
-                ξεκινήσεις νέα δωρεάν χρήση οποιαδήποτε στιγμή.
+                ενεργοποιήσεις ξανά, θα τα δεις πάλι και θα ξεκινήσει
+                νέα δωρεάν χρήση.
               </p>
 
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setConfirming(false)}
+                  onClick={() => setOpen(false)}
                   disabled={pending}
                   className="inline-flex h-11 items-center rounded-full border-2 border-ink-300 bg-white px-5 text-sm font-bold text-ink-900 hover:border-brand-900 disabled:opacity-50"
                 >
@@ -137,7 +118,7 @@ export function PluginToggle({
                 </button>
                 <button
                   type="button"
-                  onClick={confirmOff}
+                  onClick={confirm}
                   disabled={pending}
                   className="inline-flex h-11 items-center gap-2 rounded-full bg-red-700 px-5 text-sm font-bold text-white transition-transform hover:-translate-y-0.5 hover:bg-red-800 disabled:opacity-60"
                 >
