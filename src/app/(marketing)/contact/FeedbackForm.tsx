@@ -1,6 +1,14 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faBug,
+  faLightbulb,
+  faMessage,
+  faCircleCheck,
+  type IconDefinition,
+} from "@fortawesome/free-solid-svg-icons";
 import {
   submitFeedbackAction,
   type FeedbackState,
@@ -10,25 +18,25 @@ import { FEEDBACK_CATEGORIES } from "./feedback-config";
 const TYPES: {
   value: "bug" | "feature" | "other";
   label: string;
-  emoji: string;
+  icon: IconDefinition;
   hint: string;
 }[] = [
   {
     value: "bug",
     label: "Πρόβλημα",
-    emoji: "🐞",
+    icon: faBug,
     hint: "Κάτι δεν δουλεύει όπως θα έπρεπε.",
   },
   {
     value: "feature",
     label: "Νέο χαρακτηριστικό",
-    emoji: "💡",
+    icon: faLightbulb,
     hint: "Πρόταση για κάτι που λείπει.",
   },
   {
     value: "other",
     label: "Άλλο",
-    emoji: "💬",
+    icon: faMessage,
     hint: "Γενικό σχόλιο ή ερώτηση.",
   },
 ];
@@ -92,7 +100,14 @@ export function FeedbackForm({
       )}
       {state?.success && (
         <div className="rounded-2xl border-2 border-emerald-500/40 bg-emerald-50 p-5 text-base font-medium text-emerald-900">
-          <p className="font-bold">✅ Στάλθηκε</p>
+          <p className="flex items-center gap-2 font-bold">
+            <FontAwesomeIcon
+              icon={faCircleCheck}
+              className="text-emerald-600"
+              aria-hidden
+            />
+            Στάλθηκε
+          </p>
           <p className="mt-1">{state.success}</p>
           {state.id && (
             <p className="mt-2 text-xs text-emerald-800/70">
@@ -115,7 +130,7 @@ export function FeedbackForm({
               <label
                 key={t.value}
                 className={
-                  "cursor-pointer rounded-2xl border-2 p-4 transition-all " +
+                  "cursor-pointer rounded-2xl border-2 p-5 transition-all " +
                   (active
                     ? "border-brand-900 bg-brand-50 shadow-inner"
                     : "border-black/10 hover:border-brand-900/40")
@@ -129,11 +144,24 @@ export function FeedbackForm({
                   checked={active}
                   onChange={() => setType(t.value)}
                 />
-                <p className="text-2xl">{t.emoji}</p>
-                <p className="mt-2 text-lg font-extrabold text-brand-900">
+                <span
+                  className={
+                    "inline-grid h-11 w-11 place-items-center rounded-xl transition-colors " +
+                    (active
+                      ? "bg-brand-900 text-white"
+                      : "bg-brand-900/5 text-brand-900")
+                  }
+                >
+                  <FontAwesomeIcon
+                    icon={t.icon}
+                    className="text-xl"
+                    aria-hidden
+                  />
+                </span>
+                <p className="mt-3 text-lg font-extrabold text-brand-900">
                   {t.label}
                 </p>
-                <p className="mt-0.5 text-sm text-black/60">{t.hint}</p>
+                <p className="mt-1 text-sm text-black/60">{t.hint}</p>
               </label>
             );
           })}
