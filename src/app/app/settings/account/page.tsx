@@ -120,10 +120,10 @@ export default async function AccountSettingsPage() {
           <Card>
             <CardHeader
               title="Λογαριασμός"
-              action={<Shield size={16} className="text-ink-500" />}
+              action={<Shield size={18} className="text-ink-500" />}
             />
-            <CardBody className="space-y-3 text-sm">
-              <Row label="Email" value={user.email} />
+            <CardBody className="space-y-5 p-6 md:p-8">
+              <Row label="Email" value={user.email} mono />
               <Row label="Ονοματεπώνυμο" value={user.fullName} />
               <Row
                 label="Μέθοδοι σύνδεσης"
@@ -160,11 +160,28 @@ export default async function AccountSettingsPage() {
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Row({
+  label,
+  value,
+  mono,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
   return (
-    <div className="flex items-start justify-between gap-3 border-b border-ink-200/60 pb-2 last:border-b-0 last:pb-0">
-      <span className="text-ink-700">{label}</span>
-      <span className="text-right font-semibold text-ink-900">{value}</span>
+    <div className="border-b-2 border-ink-200/60 pb-4 last:border-b-0 last:pb-0">
+      <p className="text-xs font-bold uppercase tracking-widest text-ink-500">
+        {label}
+      </p>
+      <p
+        className={
+          "mt-2 break-all text-lg font-semibold leading-snug text-ink-900 " +
+          (mono ? "mono text-base" : "")
+        }
+      >
+        {value}
+      </p>
     </div>
   );
 }
