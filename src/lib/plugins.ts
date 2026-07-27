@@ -11,8 +11,8 @@ import type { PluginActivation, PluginStatus } from "@prisma/client";
  * sidebar reads it to know which route + icon to show when a plugin is
  * active for the current business.
  *
- * `trialDays` = 180 (6 months) matches what marketing promises: free for
- * 6 months, then the tenant is prompted to pay to keep it enabled.
+ * `trialDays` = 365 (1 year) matches what marketing promises: free for
+ * 1 year, then the tenant is prompted to pay to keep it enabled.
  *
  * Prices here are the platform default. If a tenant activates while the
  * platform admin has set a different price on PluginCatalog (future
@@ -48,7 +48,7 @@ export const PLUGIN_CATALOG: PluginDefinition[] = [
       "Θερμική εκτύπωση αποδείξεων",
     ],
     priceMonthly: 9.9,
-    trialDays: 180,
+    trialDays: 365,
     sidebarLabel: "POS & Ταμείο",
     href: "/app/pos",
     iconName: "ShoppingCart",
@@ -64,7 +64,7 @@ export const PLUGIN_CATALOG: PluginDefinition[] = [
       "Ιστορικό επικοινωνίας ανά πελάτη",
     ],
     priceMonthly: 7.9,
-    trialDays: 180,
+    trialDays: 365,
     sidebarLabel: "CRM",
     href: "/app/crm",
     iconName: "Users2",
@@ -80,7 +80,7 @@ export const PLUGIN_CATALOG: PluginDefinition[] = [
       "Εξαγωγές για τον λογιστή σου",
     ],
     priceMonthly: 5.9,
-    trialDays: 180,
+    trialDays: 365,
     sidebarLabel: "Αναφορές",
     href: "/app/reports",
     iconName: "FileSpreadsheet",
@@ -96,7 +96,7 @@ export const PLUGIN_CATALOG: PluginDefinition[] = [
       "Μετατροπή ραντεβού σε παραστατικό",
     ],
     priceMonthly: 0,
-    trialDays: 180,
+    trialDays: 365,
     sidebarLabel: "Ραντεβού",
     href: "/app/appointments",
     iconName: "CalendarClock",

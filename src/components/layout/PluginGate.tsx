@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { Sparkles, Lock, ArrowRight } from "lucide-react";
+import { Sparkles, Lock } from "lucide-react";
 import { requireTenant } from "@/lib/tenant";
 import { getPluginRuntime, type PluginCode } from "@/lib/plugins";
-import { activatePluginAction } from "@/app/app/plugins/actions";
+import { ActivatePluginButton } from "@/app/app/plugins/ActivatePluginButton";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 
@@ -38,10 +38,6 @@ export async function PluginGate({
 
   const def = state.definition;
   const isExpired = state.status === "expired";
-  const priceLabel =
-    def.priceMonthly > 0
-      ? `${def.priceMonthly.toFixed(2).replace(".", ",")}€ / μήνα`
-      : "Δωρεάν";
 
   return (
     <>
@@ -49,8 +45,8 @@ export async function PluginGate({
         title={def.name}
         subtitle={
           isExpired
-            ? "Η δωρεάν 6μηνη δοκιμή έληξε — ενεργοποίησε συνδρομή για να συνεχίσεις."
-            : "Ενεργοποίησέ το δωρεάν για 6 μήνες."
+            ? "Η δωρεάν 1-ετής δοκιμή έληξε — ενεργοποίησε συνδρομή για να συνεχίσεις."
+            : "Ενεργοποίησέ το δωρεάν για 1 έτος."
         }
       />
       <Card className="overflow-hidden">
@@ -69,10 +65,12 @@ export async function PluginGate({
               </p>
             </div>
             <div className="text-right">
-              <p className="text-4xl font-extrabold">{priceLabel}</p>
+              <p className="text-4xl font-extrabold text-emerald-300">
+                Δωρεάν
+              </p>
               {!isExpired && (
                 <p className="mt-1 text-sm text-brand-200">
-                  δωρεάν για τους πρώτους 6 μήνες
+                  για ένα ολόκληρο έτος
                 </p>
               )}
             </div>
@@ -97,29 +95,13 @@ export async function PluginGate({
           </ul>
 
           <div className="flex flex-wrap items-center gap-3">
-            {isExpired ? (
-              <form action={activatePluginAction}>
-                <input type="hidden" name="code" value={code} />
-                <button
-                  type="submit"
-                  className="inline-flex h-12 items-center gap-2 rounded-full bg-brand-900 px-6 text-base font-bold text-white hover:bg-black"
-                >
-                  Ανανέωση συνδρομής · {priceLabel}
-                  <ArrowRight size={16} />
-                </button>
-              </form>
-            ) : (
-              <form action={activatePluginAction}>
-                <input type="hidden" name="code" value={code} />
-                <button
-                  type="submit"
-                  className="inline-flex h-12 items-center gap-2 rounded-full bg-brand-900 px-6 text-base font-bold text-white hover:bg-black"
-                >
-                  Ενεργοποίηση — δωρεάν για 6 μήνες
-                  <ArrowRight size={16} />
-                </button>
-              </form>
-            )}
+            <ActivatePluginButton
+              code={code}
+              pluginName={def.name}
+              priceMonthly={def.priceMonthly}
+              variant={isExpired ? "danger" : "primary"}
+              label={isExpired ? "Ανανέωση συνδρομής" : "Ενεργοποίηση"}
+            />
             <Link
               href="/app/plugins"
               className="inline-flex h-12 items-center gap-2 rounded-full border-2 border-ink-300 bg-white px-6 text-base font-bold text-ink-900 hover:border-brand-900"
