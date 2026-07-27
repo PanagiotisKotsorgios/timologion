@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Container } from "@/components/marketing/Container";
 import { pageMetadata } from "@/lib/seo";
 import { ContactForm } from "./ContactForm";
+import { FeedbackForm } from "./FeedbackForm";
 
 export const metadata: Metadata = pageMetadata({
   title: "Επικοινωνία & Υποστήριξη",
@@ -68,7 +69,66 @@ export default function ContactPage() {
           </div>
         </Container>
       </section>
+
+      <section id="feedback" className="border-t-2 border-black/10 bg-ink-50">
+        <Container className="py-24 md:py-32">
+          <div className="grid gap-16 lg:grid-cols-12">
+            <div className="lg:col-span-4">
+              <p className="eyebrow text-brand-900/70">Ανατροφοδότηση</p>
+              <h2 className="text-headline mt-8 text-brand-900">
+                Ανέφερε πρόβλημα ή πρότεινε χαρακτηριστικό.
+              </h2>
+              <p className="mt-6 max-w-md text-lg text-black/70">
+                Το Τιμολόγιον χτίζεται με τη βοήθειά σου. Πες μας τι δεν
+                δουλεύει σωστά ή τι θα ήθελες να προστεθεί — κάθε αναφορά
+                διαβάζεται και ιεραρχείται.
+              </p>
+
+              <ul className="mt-10 space-y-4 text-base text-black/70">
+                <FeedbackPerk>
+                  Απάντηση εντός μιας εργάσιμης ημέρας από την ομάδα
+                  ανάπτυξης
+                </FeedbackPerk>
+                <FeedbackPerk>
+                  Bugs με blocker σοβαρότητα προτεραιοποιούνται άμεσα
+                </FeedbackPerk>
+                <FeedbackPerk>
+                  Οι προτάσεις που μαζεύουν ζήτηση μπαίνουν στο roadmap
+                </FeedbackPerk>
+              </ul>
+            </div>
+
+            <div className="lg:col-span-8">
+              <div className="rounded-3xl border-2 border-black/10 bg-white p-8 md:p-12">
+                <FeedbackForm />
+              </div>
+            </div>
+          </div>
+        </Container>
+      </section>
     </>
+  );
+}
+
+function FeedbackPerk({ children }: { children: React.ReactNode }) {
+  return (
+    <li className="flex items-start gap-3">
+      <span
+        aria-hidden
+        className="mt-1.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-brand-900 text-white"
+      >
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none">
+          <path
+            d="M5 12l5 5L20 7"
+            stroke="currentColor"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </span>
+      <span>{children}</span>
+    </li>
   );
 }
 

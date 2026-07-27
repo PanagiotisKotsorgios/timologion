@@ -1128,6 +1128,61 @@ model PluginActivation {
   @@map("plugin_activations")
 }
 
+// ─── Feedback reports (bug reports + feature requests) ─────────────────
+// Submissions from /contact#feedback — the "Αναφορά προβλήματος / Πρόταση"
+// form. Persisted so we can triage without relying on inbox parsing, and
+// so power users can be told "you already reported this" if they submit a
+// duplicate. Kept intentionally lightweight (no thread, no comments) —
+// full ticketing lives outside of this app.
+
+enum FeedbackType {
+  bug
+  feature
+  other
+}
+
+enum FeedbackSeverity {
+  low
+  medium
+  high
+  blocker
+}
+
+enum FeedbackStatus {
+  new
+  triaged
+  in_progress
+  resolved
+  dismissed
+}
+
+model FeedbackReport {
+  id            String            @id @default(cuid())
+  type          FeedbackType
+  severity      FeedbackSeverity  @default(medium)
+  status        FeedbackStatus    @default(new)
+  category      String            @db.VarChar(60)
+  title         String            @db.VarChar(200)
+  description   String            @db.Text
+  reproSteps    String?           @db.Text
+  submitterName String            @db.VarChar(120)
+  submitterEmail String           @db.VarChar(160)
+  businessName  String?           @db.VarChar(160)
+  // Denormalised — some submitters are already logged-in users, but the
+  // form is also open to anonymous visitors on /contact, so we snapshot
+  // rather than require an FK.
+  userId        String?
+  businessId    String?
+  userAgent     String?           @db.VarChar(400)
+  pageUrl       String?           @db.VarChar(500)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([status, createdAt])
+  @@index([type, severity])
+  @@map("feedback_reports")
+}
+
 // ─── Appointments (Ραντεβού & ημερολόγιο) ───────────────────────────────
 // Bookings for services in the item catalogue. Optional staffUserId ties
 // the slot to a specific team member; NULL = "any" or reception-managed.

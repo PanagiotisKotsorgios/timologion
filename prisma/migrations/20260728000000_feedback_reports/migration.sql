@@ -1,0 +1,22 @@
+CREATE TABLE `feedback_reports` (
+  `id` VARCHAR(191) NOT NULL,
+  `type` ENUM('bug', 'feature', 'other') NOT NULL,
+  `severity` ENUM('low', 'medium', 'high', 'blocker') NOT NULL DEFAULT 'medium',
+  `status` ENUM('new', 'triaged', 'in_progress', 'resolved', 'dismissed') NOT NULL DEFAULT 'new',
+  `category` VARCHAR(60) NOT NULL,
+  `title` VARCHAR(200) NOT NULL,
+  `description` TEXT NOT NULL,
+  `reproSteps` TEXT NULL,
+  `submitterName` VARCHAR(120) NOT NULL,
+  `submitterEmail` VARCHAR(160) NOT NULL,
+  `businessName` VARCHAR(160) NULL,
+  `userId` VARCHAR(191) NULL,
+  `businessId` VARCHAR(191) NULL,
+  `userAgent` VARCHAR(400) NULL,
+  `pageUrl` VARCHAR(500) NULL,
+  `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updatedAt` DATETIME(3) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `feedback_reports_status_createdAt_idx` (`status`, `createdAt`),
+  KEY `feedback_reports_type_severity_idx` (`type`, `severity`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
