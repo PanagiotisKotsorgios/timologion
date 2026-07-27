@@ -10,12 +10,14 @@ import {
   Trash2,
   Edit3,
   UserX,
+  Copy,
 } from "lucide-react";
 import type { AppointmentStatus } from "@prisma/client";
 import {
   updateAppointmentStatusAction,
   deleteAppointmentAction,
   convertAppointmentToDocumentAction,
+  duplicateAppointmentAction,
 } from "./actions";
 import {
   NewAppointmentButton,
@@ -105,6 +107,17 @@ export function AppointmentRowActions({
     });
   }
 
+  function fireDuplicate(days: number) {
+    const fd = new FormData();
+    fd.set("id", appointment.id);
+    fd.set("days", String(days));
+    startTx(async () => {
+      await duplicateAppointmentAction(fd);
+      setOpen(false);
+      router.refresh();
+    });
+  }
+
   const alreadyConverted = Boolean(appointment.convertedDocumentId);
 
   return (
@@ -161,6 +174,29 @@ export function AppointmentRowActions({
               onClick={() => fireStatus("cancelled")}
             >
               Ακύρωση
+            </MenuItem>
+          </div>
+          <div className="border-t-2 border-ink-200 p-1.5">
+            <MenuItem
+              icon={Copy}
+              disabled={pending}
+              onClick={() => fireDuplicate(1)}
+            >
+              Αντιγραφή +1 μέρα
+            </MenuItem>
+            <MenuItem
+              icon={Copy}
+              disabled={pending}
+              onClick={() => fireDuplicate(7)}
+            >
+              Αντιγραφή +1 εβδομάδα
+            </MenuItem>
+            <MenuItem
+              icon={Copy}
+              disabled={pending}
+              onClick={() => fireDuplicate(30)}
+            >
+              Αντιγραφή +1 μήνα
             </MenuItem>
           </div>
           <div className="border-t-2 border-ink-200 p-1.5">

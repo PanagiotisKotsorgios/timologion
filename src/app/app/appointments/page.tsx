@@ -8,6 +8,7 @@ import {
   Download,
   Users2,
   Clock3,
+  Bell,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card, CardBody } from "@/components/ui/Card";
@@ -110,8 +111,19 @@ export default async function AppointmentsPage({
   const todayEnd = new Date();
   todayEnd.setHours(23, 59, 59, 999);
 
-  const [rows, total, monthTotal, todayCount, staff, clients, items] =
-    await Promise.all([
+  const next24 = new Date();
+  next24.setHours(next24.getHours() + 24);
+
+  const [
+    rows,
+    total,
+    monthTotal,
+    todayCount,
+    upcoming24,
+    staff,
+    clients,
+    items,
+  ] = await Promise.all([
       prisma.appointment.findMany({
         where,
         orderBy: { startAt: "desc" },
@@ -134,6 +146,13 @@ export default async function AppointmentsPage({
         where: {
           businessId: ctx.businessId,
           startAt: { gte: todayStart, lte: todayEnd },
+        },
+      }),
+      prisma.appointment.count({
+        where: {
+          businessId: ctx.businessId,
+          startAt: { gte: new Date(), lte: next24 },
+          status: "scheduled",
         },
       }),
       prisma.businessMember.findMany({
@@ -194,6 +213,13 @@ export default async function AppointmentsPage({
         actions={
           <>
             <LinkButton
+              href="/app/appointments/calendar"
+              variant="secondary"
+              icon={CalendarDays}
+            >
+              Ημερολόγιο
+            </LinkButton>
+            <LinkButton
               href="/api/export/appointments"
               variant="secondary"
               icon={Download}
@@ -209,12 +235,18 @@ export default async function AppointmentsPage({
         }
       />
 
-      <div className="mb-6 grid gap-4 md:grid-cols-3">
+      <div className="mb-6 grid gap-4 md:grid-cols-4">
         <StatCard
           icon={<CalendarDays size={22} />}
           label="Σήμερα"
           value={todayCount.toLocaleString("el-GR")}
           hint="ραντεβού σήμερα"
+        />
+        <StatCard
+          icon={<Bell size={22} />}
+          label="Επόμενες 24 ώρες"
+          value={upcoming24.toLocaleString("el-GR")}
+          hint="προγραμματισμένα"
         />
         <StatCard
           icon={<Clock3 size={22} />}
@@ -290,6 +322,9 @@ export default async function AppointmentsPage({
                     serviceName: a.serviceName,
                     startAt: a.startAt,
                     endAt: a.endAt,
+                    locationType: a.locationType,
+                    locationDetail: a.locationDetail,
+                    reminderMinutesBefore: a.reminderMinutesBefore,
                     priceOverride: a.priceOverride
                       ? Number(a.priceOverride)
                       : null,

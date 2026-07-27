@@ -14,6 +14,8 @@ function o(v: string | undefined | null): string | null {
   return v && v.length > 0 ? v : null;
 }
 
+const LOCATION_TYPES = ["in_person", "online", "phone"] as const;
+
 const upsertSchema = z
   .object({
     id: z.string().optional().or(z.literal("")),
@@ -23,6 +25,9 @@ const upsertSchema = z
     serviceName: z.string().min(1).max(200),
     startAt: z.string().min(1),
     endAt: z.string().min(1),
+    locationType: z.enum(LOCATION_TYPES).default("in_person"),
+    locationDetail: z.string().max(400).optional().or(z.literal("")),
+    reminderMinutesBefore: z.string().optional().or(z.literal("")),
     priceOverride: z.string().optional().or(z.literal("")),
     vatRate: z.string().optional().or(z.literal("")),
     notes: z.string().max(5000).optional().or(z.literal("")),
@@ -56,10 +61,18 @@ export async function saveAppointmentAction(
     serviceName,
     startAt,
     endAt,
+    locationType,
+    locationDetail,
+    reminderMinutesBefore,
     priceOverride,
     vatRate,
     notes,
   } = parsed.data;
+
+  const reminderMinutes =
+    reminderMinutesBefore && !Number.isNaN(Number(reminderMinutesBefore))
+      ? Number(reminderMinutesBefore)
+      : null;
 
   const data = {
     businessId: ctx.businessId,
@@ -69,6 +82,9 @@ export async function saveAppointmentAction(
     serviceName: serviceName.trim(),
     startAt: new Date(startAt),
     endAt: new Date(endAt),
+    locationType,
+    locationDetail: o(locationDetail),
+    reminderMinutesBefore: reminderMinutes,
     priceOverride: priceOverride ? Number(priceOverride) : null,
     vatRate: vatRate ? Number(vatRate) : null,
     notes: o(notes),
@@ -125,6 +141,56 @@ export async function updateAppointmentStatusAction(formData: FormData) {
     entityId: id,
     meta: { status },
   });
+  revalidatePath("/app/appointments");
+}
+
+/**
+ * Duplicate an appointment n days forward. Used for lightweight
+ * "recurring" support without needing a background job — the user
+ * fires it manually and gets a fresh row they can tweak.
+ */
+export async function duplicateAppointmentAction(formData: FormData) {
+  const ctx = await requireTenant();
+  assertCan(ctx.role, "client:write");
+  const id = String(formData.get("id") ?? "");
+  const days = Math.max(1, Math.min(365, Number(formData.get("days") ?? "7")));
+  if (!id) return;
+
+  const source = await prisma.appointment.findFirst({
+    where: { id, businessId: ctx.businessId },
+  });
+  if (!source) return;
+
+  const shift = days * 86_400_000;
+  const dupe = await prisma.appointment.create({
+    data: {
+      businessId: ctx.businessId,
+      staffUserId: source.staffUserId,
+      clientId: source.clientId,
+      itemId: source.itemId,
+      serviceName: source.serviceName,
+      startAt: new Date(source.startAt.getTime() + shift),
+      endAt: new Date(source.endAt.getTime() + shift),
+      status: "scheduled",
+      locationType: source.locationType,
+      locationDetail: source.locationDetail,
+      reminderMinutesBefore: source.reminderMinutesBefore,
+      priceOverride: source.priceOverride,
+      vatRate: source.vatRate,
+      notes: source.notes,
+      parentAppointmentId: source.parentAppointmentId ?? source.id,
+    },
+  });
+
+  await logAudit({
+    userId: ctx.userId,
+    businessId: ctx.businessId,
+    action: "appointment.duplicate",
+    entityType: "Appointment",
+    entityId: dupe.id,
+    meta: { source: source.id, days },
+  });
+
   revalidatePath("/app/appointments");
 }
 

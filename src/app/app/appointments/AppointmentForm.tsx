@@ -29,10 +29,24 @@ export type AppointmentInitial = {
   serviceName?: string;
   startAt?: Date | string;
   endAt?: Date | string;
+  locationType?: "in_person" | "online" | "phone";
+  locationDetail?: string | null;
+  reminderMinutesBefore?: number | null;
   priceOverride?: number | string | null;
   vatRate?: number | string | null;
   notes?: string | null;
 };
+
+const REMINDER_OPTIONS: { value: string; label: string }[] = [
+  { value: "", label: "— Χωρίς υπενθύμιση —" },
+  { value: "15", label: "15 λεπτά πριν" },
+  { value: "30", label: "30 λεπτά πριν" },
+  { value: "60", label: "1 ώρα πριν" },
+  { value: "180", label: "3 ώρες πριν" },
+  { value: "1440", label: "1 μέρα πριν" },
+  { value: "2880", label: "2 μέρες πριν" },
+  { value: "10080", label: "1 εβδομάδα πριν" },
+];
 
 function toLocalInput(v: Date | string | undefined): string {
   if (!v) return "";
@@ -89,6 +103,12 @@ export function AppointmentForm({
     serviceName: initial?.serviceName ?? "",
     startAt: initialStart,
     endAt: toLocalInput(initial?.endAt) || plusHour(initialStart),
+    locationType: initial?.locationType ?? "in_person",
+    locationDetail: initial?.locationDetail ?? "",
+    reminderMinutesBefore:
+      initial?.reminderMinutesBefore != null
+        ? String(initial.reminderMinutesBefore)
+        : "",
     priceOverride:
       initial?.priceOverride != null ? String(initial.priceOverride) : "",
     vatRate: initial?.vatRate != null ? String(initial.vatRate) : "",
@@ -214,6 +234,72 @@ export function AppointmentForm({
             placeholder="π.χ. Συμβουλευτική, Κοπή μαλλιών"
           />
         </Field>
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-2">
+        <Field label="Τύπος τοποθεσίας" htmlFor="locationType">
+          <Select
+            id="locationType"
+            name="locationType"
+            value={values.locationType}
+            onChange={(e) =>
+              set(
+                "locationType",
+                e.target.value as "in_person" | "online" | "phone",
+              )
+            }
+          >
+            <option value="in_person">Δια ζώσης</option>
+            <option value="online">Online (video call)</option>
+            <option value="phone">Τηλεφωνικά</option>
+          </Select>
+        </Field>
+        <Field
+          label={
+            values.locationType === "online"
+              ? "Σύνδεσμος συνάντησης"
+              : values.locationType === "phone"
+                ? "Τηλέφωνο επικοινωνίας"
+                : "Διεύθυνση"
+          }
+          htmlFor="locationDetail"
+        >
+          <Input
+            id="locationDetail"
+            name="locationDetail"
+            value={values.locationDetail}
+            onChange={(e) => set("locationDetail", e.target.value)}
+            maxLength={400}
+            placeholder={
+              values.locationType === "online"
+                ? "https://meet.google.com/..."
+                : values.locationType === "phone"
+                  ? "+30 210 ..."
+                  : "Οδός, αριθμός, πόλη"
+            }
+          />
+        </Field>
+      </section>
+
+      <section>
+        <Field label="Υπενθύμιση" htmlFor="reminderMinutesBefore">
+          <Select
+            id="reminderMinutesBefore"
+            name="reminderMinutesBefore"
+            value={values.reminderMinutesBefore}
+            onChange={(e) => set("reminderMinutesBefore", e.target.value)}
+          >
+            {REMINDER_OPTIONS.map((r) => (
+              <option key={r.value} value={r.value}>
+                {r.label}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <p className="mt-2 text-xs text-ink-500">
+          Στέλνουμε email στον πελάτη τη σωστή στιγμή αν έχει email
+          καταχωρημένο.
+        </p>
       </section>
 
       <section className="grid gap-4 md:grid-cols-3">
