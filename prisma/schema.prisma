@@ -780,6 +780,15 @@ model Document {
   additionalTaxes     String?        @db.Text
   notes               String?        @db.Text
 
+  // Delivery-note (myDATA 9.3) specifics — Πληροφορίες Διακίνησης. Only
+  // populated when type == delivery_note; NULL for every other type.
+  dispatchAt          DateTime?
+  dispatchReason      String?        @db.VarChar(200)
+  dispatchPurpose     String?        @db.VarChar(200)
+  destinationAddress  String?        @db.VarChar(400)
+  vehicleNumber       String?        @db.VarChar(40)
+  driverName          String?        @db.VarChar(160)
+
   netTotalAmount      Decimal        @default(0) @db.Decimal(14, 2)
   vatTotalAmount      Decimal        @default(0) @db.Decimal(14, 2)
   totalAmount         Decimal        @default(0) @db.Decimal(14, 2)

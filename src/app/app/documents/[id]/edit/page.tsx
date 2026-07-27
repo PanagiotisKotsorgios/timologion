@@ -144,6 +144,14 @@ export default async function EditDocumentPage({
             discountPct: l.discountPct.toString(),
             vatRate: l.vatRate.toString(),
           })),
+          dispatchAt: doc.dispatchAt
+            ? doc.dispatchAt.toISOString().slice(0, 16)
+            : "",
+          dispatchReason: doc.dispatchReason ?? "",
+          dispatchPurpose: doc.dispatchPurpose ?? "",
+          destinationAddress: doc.destinationAddress ?? "",
+          vehicleNumber: doc.vehicleNumber ?? "",
+          driverName: doc.driverName ?? "",
         }}
       />
     </>

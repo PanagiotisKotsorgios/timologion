@@ -117,6 +117,12 @@ export type DraftEditorInitial = {
   additionalTaxes: string;
   notes: string;
   lines: Line[];
+  dispatchAt?: string;
+  dispatchReason?: string;
+  dispatchPurpose?: string;
+  destinationAddress?: string;
+  vehicleNumber?: string;
+  driverName?: string;
 };
 
 export function DraftEditor({
@@ -200,6 +206,23 @@ export function DraftEditor({
   const [lines, setLines] = useState<Line[]>(
     editing?.lines?.length ? editing.lines : [emptyLine(0)],
   );
+  // ─── Delivery-note (9.3) dispatch fields ───────────────────────────
+  const [dispatchAt, setDispatchAt] = useState(
+    editing?.dispatchAt ?? "",
+  );
+  const [dispatchReason, setDispatchReason] = useState(
+    editing?.dispatchReason ?? "Πώληση",
+  );
+  const [dispatchPurpose, setDispatchPurpose] = useState(
+    editing?.dispatchPurpose ?? "Παράδοση",
+  );
+  const [destinationAddress, setDestinationAddress] = useState(
+    editing?.destinationAddress ?? "",
+  );
+  const [vehicleNumber, setVehicleNumber] = useState(
+    editing?.vehicleNumber ?? "",
+  );
+  const [driverName, setDriverName] = useState(editing?.driverName ?? "");
   const [showMore, setShowMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -265,6 +288,19 @@ export function DraftEditor({
         discountPct: Number(l.discountPct),
         vatRate: Number(l.vatRate),
       })),
+      // Delivery-note extras — only meaningful for type=delivery_note; the
+      // server nulls them on other types anyway.
+      dispatchAt: type === "delivery_note" ? dispatchAt || undefined : undefined,
+      dispatchReason:
+        type === "delivery_note" ? dispatchReason || undefined : undefined,
+      dispatchPurpose:
+        type === "delivery_note" ? dispatchPurpose || undefined : undefined,
+      destinationAddress:
+        type === "delivery_note" ? destinationAddress || undefined : undefined,
+      vehicleNumber:
+        type === "delivery_note" ? vehicleNumber || undefined : undefined,
+      driverName:
+        type === "delivery_note" ? driverName || undefined : undefined,
     };
 
     startTransition(async () => {
@@ -481,43 +517,62 @@ export function DraftEditor({
           </CardBody>
         </Card>
 
-        <Card>
-          <CardHeader title="Πληρωμή" />
-          <CardBody className="space-y-4">
-            <Field label="Επαφές πελάτη" htmlFor="contact">
-              <Select id="contact" disabled defaultValue="">
-                <option value="">
-                  {selectedClient?.email ?? "— Επιλέξτε —"}
-                </option>
-              </Select>
-            </Field>
-            <Field label="Μέθοδος πληρωμής" htmlFor="paymentMethod">
-              <Select
-                id="paymentMethod"
-                value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value)}
-              >
-                {PAYMENT_METHODS.map((m) => (
-                  <option key={m} value={m}>
-                    {m}
+        {type === "delivery_note" ? (
+          <DispatchInfoCard
+            dispatchAt={dispatchAt}
+            setDispatchAt={setDispatchAt}
+            dispatchReason={dispatchReason}
+            setDispatchReason={setDispatchReason}
+            dispatchPurpose={dispatchPurpose}
+            setDispatchPurpose={setDispatchPurpose}
+            destinationAddress={destinationAddress}
+            setDestinationAddress={setDestinationAddress}
+            vehicleNumber={vehicleNumber}
+            setVehicleNumber={setVehicleNumber}
+            driverName={driverName}
+            setDriverName={setDriverName}
+            printLanguage={printLanguage}
+            setPrintLanguage={setPrintLanguage}
+          />
+        ) : (
+          <Card>
+            <CardHeader title="Πληρωμή" />
+            <CardBody className="space-y-4">
+              <Field label="Επαφές πελάτη" htmlFor="contact">
+                <Select id="contact" disabled defaultValue="">
+                  <option value="">
+                    {selectedClient?.email ?? "— Επιλέξτε —"}
                   </option>
-                ))}
-              </Select>
-            </Field>
-            <Field label="Γλώσσα εκτυπώσιμου" htmlFor="printLanguage">
-              <Select
-                id="printLanguage"
-                value={printLanguage}
-                onChange={(e) =>
-                  setPrintLanguage(e.target.value as "el" | "en")
-                }
-              >
-                <option value="el">Ελληνικά</option>
-                <option value="en">Αγγλικά</option>
-              </Select>
-            </Field>
-          </CardBody>
-        </Card>
+                </Select>
+              </Field>
+              <Field label="Μέθοδος πληρωμής" htmlFor="paymentMethod">
+                <Select
+                  id="paymentMethod"
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                >
+                  {PAYMENT_METHODS.map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field label="Γλώσσα εκτυπώσιμου" htmlFor="printLanguage">
+                <Select
+                  id="printLanguage"
+                  value={printLanguage}
+                  onChange={(e) =>
+                    setPrintLanguage(e.target.value as "el" | "en")
+                  }
+                >
+                  <option value="el">Ελληνικά</option>
+                  <option value="en">Αγγλικά</option>
+                </Select>
+              </Field>
+            </CardBody>
+          </Card>
+        )}
 
         <Card>
           <CardBody className="space-y-3">
@@ -852,4 +907,144 @@ function formatMoney(v: number) {
     style: "currency",
     currency: "EUR",
   }).format(v);
+}
+
+// ─── Delivery-note dispatch info card ─────────────────────────────────────
+
+const DISPATCH_REASONS = [
+  "Πώληση",
+  "Δείγματα",
+  "Επιστροφή",
+  "Μεταφορά αποθηκευτικού χώρου",
+  "Επισκευή",
+  "Άλλο",
+];
+
+const DISPATCH_PURPOSES = [
+  "Παράδοση",
+  "Παραλαβή",
+  "Ενδοδιακίνηση",
+  "Άλλο",
+];
+
+function DispatchInfoCard({
+  dispatchAt,
+  setDispatchAt,
+  dispatchReason,
+  setDispatchReason,
+  dispatchPurpose,
+  setDispatchPurpose,
+  destinationAddress,
+  setDestinationAddress,
+  vehicleNumber,
+  setVehicleNumber,
+  driverName,
+  setDriverName,
+  printLanguage,
+  setPrintLanguage,
+}: {
+  dispatchAt: string;
+  setDispatchAt: (v: string) => void;
+  dispatchReason: string;
+  setDispatchReason: (v: string) => void;
+  dispatchPurpose: string;
+  setDispatchPurpose: (v: string) => void;
+  destinationAddress: string;
+  setDestinationAddress: (v: string) => void;
+  vehicleNumber: string;
+  setVehicleNumber: (v: string) => void;
+  driverName: string;
+  setDriverName: (v: string) => void;
+  printLanguage: "el" | "en";
+  setPrintLanguage: (v: "el" | "en") => void;
+}) {
+  return (
+    <Card>
+      <CardHeader
+        title="Στοιχεία διακίνησης"
+        subtitle="Απαιτούμενα από τη myDATA για Δελτίο Αποστολής (9.3)."
+      />
+      <CardBody className="space-y-4">
+        <Field label="Ημ/νία & ώρα αποστολής" htmlFor="dispatchAt">
+          <Input
+            id="dispatchAt"
+            type="datetime-local"
+            value={dispatchAt}
+            onChange={(e) => setDispatchAt(e.target.value)}
+          />
+        </Field>
+
+        <Field label="Σκοπός διακίνησης" htmlFor="dispatchReason">
+          <Select
+            id="dispatchReason"
+            value={dispatchReason}
+            onChange={(e) => setDispatchReason(e.target.value)}
+          >
+            {DISPATCH_REASONS.map((r) => (
+              <option key={r} value={r}>
+                {r}
+              </option>
+            ))}
+          </Select>
+        </Field>
+
+        <Field label="Λόγος διακίνησης" htmlFor="dispatchPurpose">
+          <Select
+            id="dispatchPurpose"
+            value={dispatchPurpose}
+            onChange={(e) => setDispatchPurpose(e.target.value)}
+          >
+            {DISPATCH_PURPOSES.map((r) => (
+              <option key={r} value={r}>
+                {r}
+              </option>
+            ))}
+          </Select>
+        </Field>
+
+        <Field label="Διεύθυνση προορισμού" htmlFor="destinationAddress">
+          <Input
+            id="destinationAddress"
+            value={destinationAddress}
+            onChange={(e) => setDestinationAddress(e.target.value)}
+            placeholder="Οδός, αριθμός"
+            maxLength={400}
+          />
+        </Field>
+
+        <div className="grid gap-3 md:grid-cols-2">
+          <Field label="Αρ. οχήματος" htmlFor="vehicleNumber">
+            <Input
+              id="vehicleNumber"
+              value={vehicleNumber}
+              onChange={(e) => setVehicleNumber(e.target.value.toUpperCase())}
+              placeholder="ABC-1234"
+              maxLength={40}
+              className="mono uppercase"
+            />
+          </Field>
+          <Field label="Οδηγός / μεταφορέας" htmlFor="driverName">
+            <Input
+              id="driverName"
+              value={driverName}
+              onChange={(e) => setDriverName(e.target.value)}
+              placeholder="Όνομα οδηγού"
+              maxLength={160}
+            />
+          </Field>
+        </div>
+
+        <Field label="Γλώσσα εκτυπώσιμου" htmlFor="printLanguage">
+          <Select
+            id="printLanguage"
+            value={printLanguage}
+            onChange={(e) => setPrintLanguage(e.target.value as "el" | "en")}
+          >
+            <option value="el">Ελληνικά</option>
+            <option value="en">Αγγλικά</option>
+          </Select>
+        </Field>
+      </CardBody>
+    </Card>
+  );
 }

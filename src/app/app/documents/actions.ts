@@ -111,6 +111,13 @@ const draftSchema = z.object({
   additionalTaxes: z.string().max(5000).optional().or(z.literal("")),
   notes: z.string().max(5000).optional().or(z.literal("")),
   lines: z.array(lineSchema).min(1, "Πρόσθεσε τουλάχιστον μία γραμμή."),
+  // Delivery-note (9.3) extras — collected as Πληροφορίες Διακίνησης.
+  dispatchAt: z.string().optional().or(z.literal("")),
+  dispatchReason: z.string().max(200).optional().or(z.literal("")),
+  dispatchPurpose: z.string().max(200).optional().or(z.literal("")),
+  destinationAddress: z.string().max(400).optional().or(z.literal("")),
+  vehicleNumber: z.string().max(40).optional().or(z.literal("")),
+  driverName: z.string().max(160).optional().or(z.literal("")),
 });
 
 export type DraftFormState = { error?: string } | undefined;
@@ -163,6 +170,14 @@ export async function createDraftAction(
         printLanguage: parsed.data.printLanguage,
         additionalTaxes: parsed.data.additionalTaxes || null,
         notes: parsed.data.notes || null,
+        dispatchAt: parsed.data.dispatchAt
+          ? new Date(parsed.data.dispatchAt)
+          : null,
+        dispatchReason: parsed.data.dispatchReason || null,
+        dispatchPurpose: parsed.data.dispatchPurpose || null,
+        destinationAddress: parsed.data.destinationAddress || null,
+        vehicleNumber: parsed.data.vehicleNumber || null,
+        driverName: parsed.data.driverName || null,
         netTotalAmount: totals.netTotal,
         vatTotalAmount: totals.vatTotal,
         totalAmount: totals.total,
@@ -266,6 +281,14 @@ export async function updateDraftAction(
         printLanguage: parsed.data.printLanguage,
         additionalTaxes: parsed.data.additionalTaxes || null,
         notes: parsed.data.notes || null,
+        dispatchAt: parsed.data.dispatchAt
+          ? new Date(parsed.data.dispatchAt)
+          : null,
+        dispatchReason: parsed.data.dispatchReason || null,
+        dispatchPurpose: parsed.data.dispatchPurpose || null,
+        destinationAddress: parsed.data.destinationAddress || null,
+        vehicleNumber: parsed.data.vehicleNumber || null,
+        driverName: parsed.data.driverName || null,
         netTotalAmount: totals.netTotal,
         vatTotalAmount: totals.vatTotal,
         totalAmount: totals.total,
@@ -615,9 +638,50 @@ export async function attemptIssueAction(documentId: string) {
   const branch = doc.branchId
     ? await prisma.branch.findUnique({
         where: { id: doc.branchId },
-        select: { wrappBranchId: true },
+        select: {
+          wrappBranchId: true,
+          addressLine: true,
+          city: true,
+          postalCode: true,
+          label: true,
+        },
       })
     : null;
+
+  // Delivery notes need the issuer's dispatch address. Prefer the branch
+  // address if a branch is set on the doc; otherwise fall back to the
+  // business address. Both are fetched only for delivery_note to avoid an
+  // extra query on every invoice.
+  const issuerAddress =
+    doc.type === "delivery_note"
+      ? branch?.addressLine
+        ? {
+            legalName: null as string | null,
+            addressLine: branch.addressLine,
+            city: branch.city,
+            postalCode: branch.postalCode,
+          }
+        : await prisma.business
+            .findUnique({
+              where: { id: ctx.businessId },
+              select: {
+                legalName: true,
+                addressLine: true,
+                city: true,
+                postalCode: true,
+              },
+            })
+            .then((b) =>
+              b
+                ? {
+                    legalName: b.legalName,
+                    addressLine: b.addressLine,
+                    city: b.city,
+                    postalCode: b.postalCode,
+                  }
+                : null,
+            )
+      : null;
 
   const classification = classificationFor(doc.type);
 
@@ -671,6 +735,26 @@ export async function attemptIssueAction(documentId: string) {
     ? (n: number) => Math.abs(n)
     : (n: number) => n;
 
+  // Build the delivery-note (9.3) shipping block from the dispatch fields
+  // we captured in the draft. Wrapp requires most fields to be present so we
+  // fill safe fallbacks for anything the user left empty — myDATA rejects
+  // NULLs on 9.3 payloads.
+  const deliveryDetail =
+    doc.type === "delivery_note"
+      ? buildDeliveryDetail({
+          dispatchAt: doc.dispatchAt,
+          dispatchReason: doc.dispatchReason,
+          dispatchPurpose: doc.dispatchPurpose,
+          destinationAddress: doc.destinationAddress,
+          vehicleNumber: doc.vehicleNumber,
+          driverName: doc.driverName,
+          issuerAddress,
+          branchCode: branch?.wrappBranchId ?? null,
+          fallbackParseStreet: parseStreet,
+          fallbackNormalizePostal: normalizePostal,
+        })
+      : undefined;
+
   const wrappPayload = {
     invoice_type_code: invoiceTypeCode,
     billing_book_id: book.wrappBookId,
@@ -683,6 +767,8 @@ export async function attemptIssueAction(documentId: string) {
     notes: doc.notes ?? undefined,
     num: reservedNumber ?? undefined,
     counterpart,
+    is_delivery_note: doc.type === "delivery_note" ? true : undefined,
+    delivery_detail: deliveryDetail,
     invoice_lines: doc.lines.map((l, i) => {
       const net = wire(Number(l.netAmount));
       const vat = wire(Number(l.vatAmount));
@@ -794,4 +880,78 @@ export async function attemptIssueAction(documentId: string) {
     }
     return { ok: false as const, error: message };
   }
+}
+
+// ─── Delivery-note (9.3) payload helper ─────────────────────────────────
+
+type IssuerAddress = {
+  legalName: string | null;
+  addressLine: string | null;
+  city: string | null;
+  postalCode: string | null;
+};
+
+type DispatchInput = {
+  dispatchAt: Date | null;
+  dispatchReason: string | null;
+  dispatchPurpose: string | null;
+  destinationAddress: string | null;
+  vehicleNumber: string | null;
+  driverName: string | null;
+  issuerAddress: IssuerAddress | null;
+  branchCode: string | null;
+  fallbackParseStreet: (raw: string | null | undefined) => {
+    street: string;
+    number: string;
+  };
+  fallbackNormalizePostal: (raw: string | null | undefined) => string;
+};
+
+/**
+ * Compose the `delivery_detail` block Wrapp requires for 9.3 payloads.
+ *
+ * myDATA rejects NULLs on required fields (dispatch_date, dispatch_time,
+ * from_*, to_*, purpose_of_movement, issuer_of_movement, vehicle_number),
+ * so every field falls back to a safe placeholder if the user didn't type
+ * one. That keeps issuance from blowing up on a mostly-empty draft while
+ * still letting the user override every value from the editor.
+ *
+ * `purpose_of_movement` is a Wrapp free-text code (Πώληση / Δείγματα /
+ * Επιστροφή / Άλλο). Since Wrapp accepts arbitrary strings there, we pass
+ * the user's dispatchReason straight through and use the "Άλλο" custom
+ * title slot to carry dispatchPurpose so both survive the round-trip.
+ */
+function buildDeliveryDetail(input: DispatchInput) {
+  const now = input.dispatchAt ?? new Date();
+  const dispatchDate = now.toISOString().slice(0, 10);
+  const dispatchTime = now.toISOString().slice(11, 16);
+
+  const fromStreet = input.fallbackParseStreet(
+    input.issuerAddress?.addressLine,
+  );
+  const toStreet = input.fallbackParseStreet(input.destinationAddress);
+
+  return {
+    dispatch_date: dispatchDate,
+    dispatch_time: dispatchTime,
+    vehicle_number: (input.vehicleNumber || "-").slice(0, 40),
+    purpose_of_movement: (input.dispatchReason || "Πώληση").slice(0, 200),
+    purpose_of_movement_custom_title: input.dispatchPurpose
+      ? input.dispatchPurpose.slice(0, 200)
+      : undefined,
+    issuer_of_movement: (
+      input.driverName ||
+      input.issuerAddress?.legalName ||
+      "Εκδότης"
+    ).slice(0, 160),
+    from_address: fromStreet.street,
+    from_number: fromStreet.number,
+    from_city: (input.issuerAddress?.city || "-").slice(0, 80),
+    from_zipcode: input.fallbackNormalizePostal(input.issuerAddress?.postalCode),
+    from_branch: input.branchCode ?? undefined,
+    to_address: toStreet.street,
+    to_number: toStreet.number,
+    to_city: "-",
+    to_zipcode: "00000",
+  };
 }
