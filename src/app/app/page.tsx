@@ -198,7 +198,7 @@ export default async function DashboardPage() {
       <PlanUsageStrip
         planName={activeSub?.plan.name ?? null}
         cap={activeSub?.plan.includedDocsMonth ?? null}
-        used={totalIssuedCount}
+        used={quotaUsed}
       />
 
       <div className="mt-6 grid gap-6 md:grid-cols-4">

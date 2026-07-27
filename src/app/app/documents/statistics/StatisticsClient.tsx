@@ -272,8 +272,8 @@ function KpiCard({
 // ─── Interactive Bar Chart ─────────────────────────────────────────────
 
 const BAR_W = 900;
-const BAR_H = 320;
-const BAR_PAD = { top: 30, right: 24, bottom: 40, left: 12 };
+const BAR_H = 340;
+const BAR_PAD = { top: 30, right: 24, bottom: 40, left: 68 };
 
 function BarChart({
   months,
@@ -289,6 +289,11 @@ function BarChart({
     (best, m, i) => (m.revenue > months[best]!.revenue ? i : best),
     0,
   );
+  const nonEmpty = months.filter((m) => m.revenue > 0);
+  const avg =
+    nonEmpty.length > 0
+      ? nonEmpty.reduce((s, m) => s + m.revenue, 0) / nonEmpty.length
+      : 0;
   const barW = chartW / months.length;
 
   const onMove = (e: React.PointerEvent<SVGSVGElement>) => {
@@ -300,6 +305,7 @@ function BarChart({
   };
 
   const active = hovered != null ? months[hovered]! : null;
+  const gridSteps = [0, 0.25, 0.5, 0.75, 1];
 
   return (
     <div className="relative">
@@ -312,18 +318,80 @@ function BarChart({
         role="img"
         aria-label="Έσοδα ανά μήνα"
       >
-        {/* horizontal gridlines */}
-        {[0.25, 0.5, 0.75, 1].map((t) => (
-          <line
-            key={t}
-            x1={BAR_PAD.left}
-            x2={BAR_PAD.left + chartW}
-            y1={BAR_PAD.top + chartH * (1 - t)}
-            y2={BAR_PAD.top + chartH * (1 - t)}
-            stroke="#e2e8f0"
-            strokeDasharray={t === 1 ? undefined : "4 4"}
-          />
-        ))}
+        <defs>
+          <linearGradient id="bar-brand" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#3b6cb3" />
+            <stop offset="1" stopColor="#0f1f39" />
+          </linearGradient>
+          <linearGradient id="bar-brand-hover" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#059669" />
+            <stop offset="1" stopColor="#065f46" />
+          </linearGradient>
+          <linearGradient id="bar-best" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#f59e0b" />
+            <stop offset="1" stopColor="#b45309" />
+          </linearGradient>
+        </defs>
+
+        {/* horizontal gridlines with Y-axis labels */}
+        {gridSteps.map((t) => {
+          const y = BAR_PAD.top + chartH * (1 - t);
+          return (
+            <g key={t}>
+              <line
+                x1={BAR_PAD.left}
+                x2={BAR_PAD.left + chartW}
+                y1={y}
+                y2={y}
+                stroke="#e2e8f0"
+                strokeDasharray={t === 0 ? undefined : "4 4"}
+              />
+              <text
+                x={BAR_PAD.left - 8}
+                y={y + 4}
+                textAnchor="end"
+                fontSize={11}
+                fontWeight={600}
+                fill="#94a3b8"
+              >
+                {compactMoney(max * t)}
+              </text>
+            </g>
+          );
+        })}
+
+        {/* Average dashed reference line */}
+        {avg > 0 && (
+          <g>
+            <line
+              x1={BAR_PAD.left}
+              x2={BAR_PAD.left + chartW}
+              y1={BAR_PAD.top + chartH * (1 - avg / max)}
+              y2={BAR_PAD.top + chartH * (1 - avg / max)}
+              stroke="#059669"
+              strokeDasharray="6 4"
+              strokeWidth={1.5}
+            />
+            <rect
+              x={BAR_PAD.left + chartW - 96}
+              y={BAR_PAD.top + chartH * (1 - avg / max) - 20}
+              width={92}
+              height={17}
+              rx={8}
+              fill="#059669"
+            />
+            <text
+              x={BAR_PAD.left + chartW - 50}
+              y={BAR_PAD.top + chartH * (1 - avg / max) - 8}
+              textAnchor="middle"
+              fontSize={10}
+              fontWeight={800}
+              fill="#fff"
+            >
+              Μ.Ο. {compactMoney(avg)}
+            </text>
+          </g>
+        )}
 
         {months.map((m, i) => {
           const h = (m.revenue / max) * chartH;
@@ -331,12 +399,12 @@ function BarChart({
           const y = BAR_PAD.top + chartH - h;
           const w = barW * 0.76;
           const isHovered = hovered === i;
-          const isBest = bestIdx === i;
+          const isBest = bestIdx === i && m.revenue > 0;
           const fill = isHovered
-            ? "#0f1f39"
+            ? "url(#bar-brand-hover)"
             : isBest
-              ? "#0f1f39"
-              : "#25457b";
+              ? "url(#bar-best)"
+              : "url(#bar-brand)";
           return (
             <g key={i} aria-label={`${m.label} ${money(m.revenue)}`}>
               <rect
@@ -347,7 +415,7 @@ function BarChart({
                 rx={6}
                 fill={fill}
                 style={{
-                  transition: "y 240ms ease, height 240ms ease, fill 200ms",
+                  transition: "y 240ms ease, height 240ms ease",
                 }}
               />
               {isBest && (
@@ -355,9 +423,9 @@ function BarChart({
                   x={x + w / 2}
                   y={y - 12}
                   textAnchor="middle"
-                  fontSize={11}
-                  fontWeight={700}
-                  fill="#0f1f39"
+                  fontSize={12}
+                  fontWeight={800}
+                  fill="#b45309"
                 >
                   ★ {compactMoney(m.revenue)}
                 </text>
@@ -404,7 +472,44 @@ function BarChart({
           </p>
         </div>
       )}
+
+      {/* Legend */}
+      <div className="mt-3 flex flex-wrap items-center justify-center gap-4 text-xs font-semibold text-ink-700">
+        <LegendSwatch color="linear-gradient(180deg,#3b6cb3,#0f1f39)">
+          Έσοδα μήνα
+        </LegendSwatch>
+        <LegendSwatch color="linear-gradient(180deg,#f59e0b,#b45309)">
+          Καλύτερος μήνας
+        </LegendSwatch>
+        <LegendSwatch color="#059669" dashed>
+          Μηνιαίος μέσος όρος
+        </LegendSwatch>
+      </div>
     </div>
+  );
+}
+
+function LegendSwatch({
+  color,
+  dashed,
+  children,
+}: {
+  color: string;
+  dashed?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <span className="inline-flex items-center gap-2">
+      <span
+        aria-hidden
+        className={
+          "inline-block h-2.5 w-6 rounded-full " +
+          (dashed ? "border-t-[3px] border-dashed border-emerald-600 bg-transparent" : "")
+        }
+        style={dashed ? undefined : { background: color }}
+      />
+      {children}
+    </span>
   );
 }
 
@@ -638,6 +743,7 @@ function YearlyBars({
 function TopClientsList({ clients }: { clients: ClientLine[] }) {
   const [hovered, setHovered] = useState<number | null>(null);
   const max = Math.max(1, ...clients.map((c) => c.revenue));
+  const totalShown = clients.reduce((s, c) => s + c.revenue, 0);
 
   if (clients.length === 0)
     return (
@@ -650,8 +756,10 @@ function TopClientsList({ clients }: { clients: ClientLine[] }) {
     <ol className="divide-y-2 divide-ink-300/60">
       {clients.map((c, i) => {
         const width = (c.revenue / max) * 100;
+        const share = totalShown > 0 ? (c.revenue / totalShown) * 100 : 0;
         const isTop = i === 0;
         const isHovered = hovered === i;
+        const avgPerDoc = c.docs > 0 ? c.revenue / c.docs : 0;
         return (
           <li
             key={c.id}
@@ -665,7 +773,7 @@ function TopClientsList({ clients }: { clients: ClientLine[] }) {
             <div className="flex items-center gap-3">
               <div
                 className={
-                  "grid h-9 w-9 place-items-center rounded-full font-black " +
+                  "grid h-10 w-10 place-items-center rounded-full font-black " +
                   (isTop
                     ? "bg-amber-100 text-amber-900"
                     : "bg-ink-100 text-ink-700")
@@ -679,16 +787,20 @@ function TopClientsList({ clients }: { clients: ClientLine[] }) {
                 </p>
                 <p className="text-xs text-ink-500">
                   {nfInt.format(c.docs)}{" "}
-                  {c.docs === 1 ? "παραστατικό" : "παραστατικά"}
+                  {c.docs === 1 ? "παραστατικό" : "παραστατικά"} · Μ.Ο.{" "}
+                  {compactMoney(avgPerDoc)}
                 </p>
               </div>
               <div className="text-right">
                 <p className="text-sm font-extrabold tabular-nums text-brand-900">
                   {money(c.revenue)}
                 </p>
+                <p className="text-[11px] font-bold text-ink-500">
+                  {share.toFixed(1).replace(".", ",")}% του συνόλου
+                </p>
               </div>
             </div>
-            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-ink-100">
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-ink-100">
               <div
                 className={
                   "h-full transition-all duration-700 " +
@@ -740,7 +852,7 @@ export function StatisticsClient(props: StatisticsProps) {
         />
         <KpiCard
           icon={ReceiptText}
-          label={`YTD ${props.currentYear}`}
+          label={`Από αρχή έτους (${props.currentYear})`}
           value={<AnimatedMoney value={props.kpis.ytdRevenue} />}
         />
         <KpiCard
@@ -772,7 +884,7 @@ export function StatisticsClient(props: StatisticsProps) {
         <Card>
           <CardHeader
             title="Ετήσια πορεία"
-            subtitle="Ranked ανά έτος."
+            subtitle="Κατάταξη ανά έτος."
           />
           <CardBody>
             <YearlyBars
@@ -791,7 +903,7 @@ export function StatisticsClient(props: StatisticsProps) {
           action={
             <span className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-black uppercase tracking-widest text-emerald-800">
               <CalendarDays size={12} />
-              Real-time
+              Ζωντανά
             </span>
           }
         />
@@ -803,7 +915,7 @@ export function StatisticsClient(props: StatisticsProps) {
       {/* Top clients */}
       <Card className="mt-6">
         <CardHeader
-          title={`Top πελάτες · ${props.selectedYear}`}
+          title={`Κορυφαίοι πελάτες · ${props.selectedYear}`}
           subtitle="Οι πελάτες που φέρνουν τα περισσότερα έσοδα."
         />
         <CardBody className="p-0">
