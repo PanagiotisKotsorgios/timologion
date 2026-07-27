@@ -81,8 +81,10 @@ export function Pagination({
             </label>
             <PageSizeSelect
               value={pageSize}
-              options={pageSizeOptions}
-              sizeHref={sizeHref}
+              options={pageSizeOptions.map((o) => ({
+                value: o,
+                href: sizeHref(o),
+              }))}
             />
           </span>
         )}

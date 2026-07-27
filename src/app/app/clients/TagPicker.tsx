@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { Plus, X, Tag as TagIcon } from "lucide-react";
+import { Plus, X, Check, Tag as TagIcon } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { createTagAction, setClientTagsAction } from "./tag-actions";
@@ -228,29 +228,21 @@ function NewTagModal({
           </div>
           <div>
             <label
-              htmlFor="new-tag-color"
               className="mb-1.5 block text-xs font-semibold uppercase tracking-widest text-ink-500"
             >
               Χρώμα
             </label>
-            <div className="flex items-center gap-3">
-              <input
-                id="new-tag-color"
-                type="color"
-                value={color}
-                onChange={(e) => setColor(e.target.value)}
-                className="h-12 w-14 cursor-pointer rounded-lg border-2 border-ink-300"
-              />
+            <ColorSwatchPicker value={color} onChange={setColor} />
+            <div className="mt-4 flex items-center justify-between rounded-2xl border-2 border-dashed border-ink-300 bg-ink-50/60 p-4">
+              <span className="text-xs font-semibold uppercase tracking-widest text-ink-500">
+                Προεπισκόπηση
+              </span>
               <span
-                className="inline-flex items-center gap-1.5 rounded-full border-2 px-3 py-1 text-sm font-semibold"
-                style={{
-                  borderColor: color,
-                  background: color,
-                  color: "#fff",
-                }}
+                className="inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-semibold text-white shadow-sm"
+                style={{ background: color }}
               >
-                <TagIcon size={12} aria-hidden />
-                {label.trim() || "Προεπισκόπηση"}
+                <TagIcon size={13} aria-hidden />
+                {label.trim() || "Νέα ετικέτα"}
               </span>
             </div>
           </div>
@@ -274,6 +266,115 @@ function NewTagModal({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Swatch-based color picker with a curated palette + fine-grained custom
+ * override. Beats the native `<input type="color">` because:
+ *   - The palette is curated for tag chips (readable on white with white
+ *     text on the fill).
+ *   - No OS-specific picker dialog, so the modal doesn't lose focus.
+ *   - "Άλλο" reveals the native input as an escape hatch for edge cases.
+ */
+const TAG_PALETTE: { color: string; name: string }[] = [
+  { color: "#0B1B3A", name: "Βαθύ μπλε" },
+  { color: "#25457b", name: "Ναυτικό" },
+  { color: "#0ea5e9", name: "Γαλάζιο" },
+  { color: "#059669", name: "Πράσινο" },
+  { color: "#65a30d", name: "Λαχανί" },
+  { color: "#f59e0b", name: "Πορτοκαλί" },
+  { color: "#dc2626", name: "Κόκκινο" },
+  { color: "#db2777", name: "Ροζ" },
+  { color: "#7c3aed", name: "Μωβ" },
+  { color: "#334155", name: "Γκρι" },
+];
+
+function ColorSwatchPicker({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const normalized = value.toLowerCase();
+  const isPreset = TAG_PALETTE.some((p) => p.color.toLowerCase() === normalized);
+  const [customOpen, setCustomOpen] = useState(!isPreset);
+
+  return (
+    <div className="space-y-3">
+      <div
+        role="radiogroup"
+        aria-label="Επιλογή χρώματος"
+        className="grid grid-cols-5 gap-3"
+      >
+        {TAG_PALETTE.map((p) => {
+          const active = p.color.toLowerCase() === normalized;
+          return (
+            <button
+              key={p.color}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              aria-label={p.name}
+              title={p.name}
+              onClick={() => {
+                onChange(p.color);
+                setCustomOpen(false);
+              }}
+              className={
+                "relative grid h-11 place-items-center rounded-xl border-2 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-800 " +
+                (active
+                  ? "border-brand-900 shadow-inner ring-2 ring-brand-900/40 scale-[1.03]"
+                  : "border-transparent hover:scale-105")
+              }
+              style={{ background: p.color }}
+            >
+              {active && (
+                <Check
+                  size={18}
+                  strokeWidth={3}
+                  className="text-white drop-shadow-sm"
+                  aria-hidden
+                />
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      <button
+        type="button"
+        onClick={() => setCustomOpen((s) => !s)}
+        className="text-sm font-semibold text-brand-800 underline underline-offset-4 hover:text-brand-900"
+      >
+        {customOpen ? "Απόκρυψη custom" : "Άλλο χρώμα..."}
+      </button>
+
+      {customOpen && (
+        <div className="flex items-center gap-3 rounded-xl border-2 border-ink-300 bg-white p-2">
+          <input
+            type="color"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            aria-label="Επιλογή custom χρώματος"
+            className="h-10 w-12 cursor-pointer rounded-md border border-ink-300"
+          />
+          <input
+            type="text"
+            value={value}
+            onChange={(e) => {
+              const v = e.target.value.trim();
+              if (/^#[0-9a-fA-F]{0,6}$/.test(v)) onChange(v);
+            }}
+            maxLength={7}
+            placeholder="#000000"
+            className="h-10 w-28 rounded-md border border-ink-300 px-2 font-mono text-sm uppercase focus:border-brand-800 focus:outline-none"
+          />
+          <span className="text-xs text-ink-500">Δώσε hex ή διάλεξε</span>
+        </div>
+      )}
     </div>
   );
 }
