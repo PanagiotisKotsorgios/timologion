@@ -12,7 +12,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
 import { Input, Select, Field } from "@/components/ui/Input";
 import { money } from "@/lib/format";
-import { Pagination } from "@/components/ui/Pagination";
+import { Pagination, resolvePageSize } from "@/components/ui/Pagination";
 
 type Sort = "name" | "recent" | "price_desc" | "price_asc";
 
@@ -22,9 +22,8 @@ type SearchParams = {
   vat?: string;
   sort?: Sort;
   page?: string;
+  size?: string;
 };
-
-const PAGE_SIZE = 10;
 
 export default async function ItemsPage({
   searchParams,
@@ -40,6 +39,7 @@ export default async function ItemsPage({
   const vat = params.vat?.trim() ?? "";
   const sort = (params.sort ?? "name") as Sort;
   const currentPage = Math.max(1, Number(params.page ?? "1") || 1);
+  const pageSize = resolvePageSize(params.size);
 
   const where = {
     businessId: ctx.businessId,
@@ -68,12 +68,19 @@ export default async function ItemsPage({
     prisma.item.findMany({
       where,
       orderBy,
-      take: PAGE_SIZE,
-      skip: (currentPage - 1) * PAGE_SIZE,
+      take: pageSize,
+      skip: (currentPage - 1) * pageSize,
     }),
     prisma.item.count({ where }),
   ]);
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  const baseQuery = {
+    q: search,
+    kind: kind ?? "",
+    vat,
+    sort,
+  };
 
   return (
     <>
@@ -162,15 +169,21 @@ export default async function ItemsPage({
         currentPage={currentPage}
         totalPages={totalPages}
         totalCount={total}
-        pageSize={PAGE_SIZE}
+        pageSize={pageSize}
         buildHref={(p) =>
           "/app/items?" +
           new URLSearchParams({
-            q: search,
-            kind: kind ?? "",
-            vat,
-            sort,
+            ...baseQuery,
+            size: String(pageSize),
             page: String(p),
+          }).toString()
+        }
+        sizeHref={(s) =>
+          "/app/items?" +
+          new URLSearchParams({
+            ...baseQuery,
+            size: String(s),
+            page: "1",
           }).toString()
         }
       />

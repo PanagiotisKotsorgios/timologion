@@ -11,9 +11,7 @@ import { Badge } from "@/components/ui/Badge";
 import { money, date } from "@/lib/format";
 import { NewPaymentButton } from "./NewPaymentButton";
 import { deletePaymentAction } from "./actions";
-import { Pagination } from "@/components/ui/Pagination";
-
-const PAGE_SIZE = 10;
+import { Pagination, resolvePageSize } from "@/components/ui/Pagination";
 
 export const dynamic = "force-dynamic";
 
@@ -30,20 +28,21 @@ const METHOD_LABEL: Record<string, string> = {
 export default async function PaymentsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; size?: string }>;
 }) {
   const ctx = await requireTenant();
   assertCan(ctx.role, "document:read");
 
   const params = await searchParams;
   const currentPage = Math.max(1, Number(params.page ?? "1") || 1);
+  const pageSize = resolvePageSize(params.size);
 
   const [payments, totalPayments, unpaidAgg, monthAgg] = await Promise.all([
     prisma.payment.findMany({
       where: { businessId: ctx.businessId },
       orderBy: { receivedAt: "desc" },
-      take: PAGE_SIZE,
-      skip: (currentPage - 1) * PAGE_SIZE,
+      take: pageSize,
+      skip: (currentPage - 1) * pageSize,
       include: {
         client: { select: { legalName: true } },
         document: { select: { id: true, series: true, number: true, type: true } },
@@ -197,10 +196,11 @@ export default async function PaymentsPage({
 
       <Pagination
         currentPage={currentPage}
-        totalPages={Math.max(1, Math.ceil(totalPayments / PAGE_SIZE))}
+        totalPages={Math.max(1, Math.ceil(totalPayments / pageSize))}
         totalCount={totalPayments}
-        pageSize={PAGE_SIZE}
-        buildHref={(p) => `/app/payments?page=${p}`}
+        pageSize={pageSize}
+        buildHref={(p) => `/app/payments?page=${p}&size=${pageSize}`}
+        sizeHref={(s) => `/app/payments?page=1&size=${s}`}
       />
     </>
   );

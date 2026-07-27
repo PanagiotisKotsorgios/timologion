@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Tag } from "lucide-react";
+import { Plus, Trash2, Tag, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input, Field } from "@/components/ui/Input";
 import {
@@ -21,29 +21,9 @@ export function PriceTiersPanel({
 }) {
   const router = useRouter();
   const [rows] = useState<Tier[]>(initial);
-  const [newTier, setNewTier] = useState("");
-  const [newPrice, setNewPrice] = useState("");
+  const [showNew, setShowNew] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTx] = useTransition();
-
-  function addTier() {
-    if (!newTier.trim() || !newPrice) return;
-    setError(null);
-    const fd = new FormData();
-    fd.set("itemId", itemId);
-    fd.set("tier", newTier.trim());
-    fd.set("price", newPrice);
-    startTx(async () => {
-      const res = await saveItemPriceTierAction(fd);
-      if (!res.ok) {
-        setError(res.error);
-        return;
-      }
-      setNewTier("");
-      setNewPrice("");
-      router.refresh();
-    });
-  }
 
   function updateTier(tier: string, price: string) {
     setError(null);
@@ -93,37 +73,171 @@ export function PriceTiersPanel({
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-3 border-t border-ink-200 pt-4 md:grid-cols-[1fr_1fr_auto]">
-        <Field label="Νέα ζώνη" htmlFor="new-tier">
-          <Input
-            id="new-tier"
-            value={newTier}
-            onChange={(e) => setNewTier(e.target.value)}
-            placeholder="π.χ. Χονδρική, VIP"
-            maxLength={40}
-          />
-        </Field>
-        <Field label="Τιμή" htmlFor="new-price">
-          <Input
-            id="new-price"
-            type="number"
-            step="0.01"
-            min="0"
-            value={newPrice}
-            onChange={(e) => setNewPrice(e.target.value)}
-          />
-        </Field>
-        <div className="self-end">
-          <Field label=" " htmlFor="add-tier">
+      <div className="pt-2">
+        <Button
+          type="button"
+          onClick={() => setShowNew(true)}
+          icon={Plus}
+          variant="secondary"
+        >
+          Νέα ζώνη τιμών
+        </Button>
+      </div>
+
+      {showNew && (
+        <NewTierModal
+          itemId={itemId}
+          onClose={() => setShowNew(false)}
+          onSaved={() => {
+            setShowNew(false);
+            router.refresh();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function NewTierModal({
+  itemId,
+  onClose,
+  onSaved,
+}: {
+  itemId: string;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [newTier, setNewTier] = useState("");
+  const [newPrice, setNewPrice] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTx] = useTransition();
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [onClose]);
+
+  function submit() {
+    if (!newTier.trim() || !newPrice) return;
+    setError(null);
+    const fd = new FormData();
+    fd.set("itemId", itemId);
+    fd.set("tier", newTier.trim());
+    fd.set("price", newPrice);
+    startTx(async () => {
+      const res = await saveItemPriceTierAction(fd);
+      if (!res.ok) {
+        setError(res.error);
+        return;
+      }
+      onSaved();
+    });
+  }
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="new-tier-title"
+      className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto p-4 py-10 sm:p-8"
+    >
+      <button
+        type="button"
+        aria-label="Κλείσιμο"
+        onClick={onClose}
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+      />
+      <div className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-ink-300/70 bg-white shadow-2xl">
+        <div className="flex items-start justify-between gap-4 border-b border-ink-300/60 px-8 py-6">
+          <div className="flex items-start gap-3">
+            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-brand-50 text-brand-800">
+              <Tag size={22} aria-hidden />
+            </div>
+            <div>
+              <h2
+                id="new-tier-title"
+                className="text-2xl font-extrabold text-brand-900 md:text-3xl"
+              >
+                Νέα ζώνη τιμών
+              </h2>
+              <p className="mt-1 text-sm text-ink-700">
+                Ορίστε μια διαφορετική τιμή για συγκεκριμένη ομάδα πελατών.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            aria-label="Κλείσιμο"
+            onClick={onClose}
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-lg text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-900"
+          >
+            <X size={18} />
+          </button>
+        </div>
+        <div className="space-y-4 px-8 py-6">
+          {error && (
+            <p className="rounded-md bg-red-50 p-2 text-sm text-red-800">
+              {error}
+            </p>
+          )}
+          <Field label="Όνομα ζώνης" htmlFor="new-tier">
+            <Input
+              id="new-tier"
+              value={newTier}
+              onChange={(e) => setNewTier(e.target.value)}
+              placeholder="π.χ. Χονδρική, VIP"
+              maxLength={40}
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  submit();
+                }
+              }}
+            />
+          </Field>
+          <Field label="Τιμή" htmlFor="new-price">
+            <Input
+              id="new-price"
+              type="number"
+              step="0.01"
+              min="0"
+              value={newPrice}
+              onChange={(e) => setNewPrice(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  submit();
+                }
+              }}
+            />
+          </Field>
+          <div className="flex justify-end gap-2 pt-2">
             <Button
               type="button"
-              onClick={addTier}
+              variant="secondary"
+              onClick={onClose}
+              disabled={pending}
+            >
+              Άκυρο
+            </Button>
+            <Button
+              type="button"
+              onClick={submit}
               icon={Plus}
               disabled={pending || !newTier.trim() || !newPrice}
             >
-              Προσθήκη
+              {pending ? "Αποθήκευση..." : "Προσθήκη"}
             </Button>
-          </Field>
+          </div>
         </div>
       </div>
     </div>

@@ -14,7 +14,7 @@ import { date, money } from "@/lib/format";
 import type { DocumentStatus, DocumentType, Prisma } from "@prisma/client";
 import { RowActions } from "./RowActions";
 import { ClickableRow } from "../ClickableRow";
-import { Pagination } from "@/components/ui/Pagination";
+import { Pagination, resolvePageSize } from "@/components/ui/Pagination";
 
 type Sort = "recent" | "oldest" | "amount_desc" | "amount_asc";
 
@@ -26,9 +26,8 @@ type SearchParams = {
   to?: string;
   sort?: Sort;
   page?: string;
+  size?: string;
 };
-
-const PAGE_SIZE = 10;
 
 const DOC_TYPES: DocumentType[] = [
   "invoice",
@@ -58,6 +57,7 @@ export default async function DocumentsPage({
   const to = params.to ?? "";
   const sort = (params.sort ?? "recent") as Sort;
   const currentPage = Math.max(1, Number(params.page ?? "1") || 1);
+  const pageSize = resolvePageSize(params.size);
 
   const issueDate: Prisma.DateTimeFilter | undefined =
     from || to
@@ -96,15 +96,24 @@ export default async function DocumentsPage({
     prisma.document.findMany({
       where,
       orderBy,
-      take: PAGE_SIZE,
-      skip: (currentPage - 1) * PAGE_SIZE,
+      take: pageSize,
+      skip: (currentPage - 1) * pageSize,
       include: { client: { select: { legalName: true } } },
       // Pull the Wrapp URL so the row menu can offer "Δημόσιος σύνδεσμος".
       // (wrappInvoiceUrl is on the base Document select — no join needed.)
     }),
     prisma.document.count({ where }),
   ]);
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  const baseQuery = {
+    q: search,
+    status: status ?? "",
+    type: type ?? "",
+    from,
+    to,
+    sort,
+  };
 
   return (
     <>
@@ -218,17 +227,21 @@ export default async function DocumentsPage({
         currentPage={currentPage}
         totalPages={totalPages}
         totalCount={total}
-        pageSize={PAGE_SIZE}
+        pageSize={pageSize}
         buildHref={(p) =>
           "/app/documents?" +
           new URLSearchParams({
-            q: search,
-            status: status ?? "",
-            type: type ?? "",
-            from,
-            to,
-            sort,
+            ...baseQuery,
+            size: String(pageSize),
             page: String(p),
+          }).toString()
+        }
+        sizeHref={(s) =>
+          "/app/documents?" +
+          new URLSearchParams({
+            ...baseQuery,
+            size: String(s),
+            page: "1",
           }).toString()
         }
       />

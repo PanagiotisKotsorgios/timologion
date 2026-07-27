@@ -10,7 +10,7 @@ import { LinkButton } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Input, Select, Field } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import { Pagination } from "@/components/ui/Pagination";
+import { Pagination, resolvePageSize } from "@/components/ui/Pagination";
 
 type Sort = "name" | "recent" | "vat";
 
@@ -21,9 +21,8 @@ type SearchParams = {
   hasEmail?: string;
   tag?: string;
   page?: string;
+  size?: string;
 };
-
-const PAGE_SIZE = 10;
 
 export default async function ClientsPage({
   searchParams,
@@ -40,6 +39,7 @@ export default async function ClientsPage({
   const onlyWithEmail = params.hasEmail === "1";
   const tagFilter = params.tag?.trim() ?? "";
   const currentPage = Math.max(1, Number(params.page ?? "1") || 1);
+  const pageSize = resolvePageSize(params.size);
 
   const where = {
     businessId: ctx.businessId,
@@ -70,8 +70,8 @@ export default async function ClientsPage({
     prisma.client.findMany({
       where,
       orderBy,
-      take: PAGE_SIZE,
-      skip: (currentPage - 1) * PAGE_SIZE,
+      take: pageSize,
+      skip: (currentPage - 1) * pageSize,
       include: { tagLinks: { include: { tag: true } } },
     }),
     prisma.client.count({ where }),
@@ -88,7 +88,15 @@ export default async function ClientsPage({
     }),
   ]);
 
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  const baseQuery = {
+    q: search,
+    sort,
+    city: cityFilter,
+    hasEmail: onlyWithEmail ? "1" : "",
+    tag: tagFilter,
+  };
 
   return (
     <>
@@ -200,19 +208,24 @@ export default async function ClientsPage({
         currentPage={currentPage}
         totalPages={totalPages}
         totalCount={total}
-        pageSize={PAGE_SIZE}
+        pageSize={pageSize}
         buildHref={(p) =>
-            "/app/clients?" +
-            new URLSearchParams({
-              q: search,
-              sort,
-              city: cityFilter,
-              hasEmail: onlyWithEmail ? "1" : "",
-              tag: tagFilter,
-              page: String(p),
-            }).toString()
-          }
-        />
+          "/app/clients?" +
+          new URLSearchParams({
+            ...baseQuery,
+            size: String(pageSize),
+            page: String(p),
+          }).toString()
+        }
+        sizeHref={(s) =>
+          "/app/clients?" +
+          new URLSearchParams({
+            ...baseQuery,
+            size: String(s),
+            page: "1",
+          }).toString()
+        }
+      />
     </>
   );
 }
