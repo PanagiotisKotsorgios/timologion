@@ -3,46 +3,56 @@
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth/session";
-import { encryptSecret, decryptSecret } from "@/lib/crypto";
-import {
-  generateSecret,
-  buildOtpAuthUri,
-  buildQrDataUrl,
-  verifyTotp,
-} from "@/lib/auth/totp";
 import { verifyPassword } from "@/lib/auth/password";
 import { logAudit } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
+import { sendMfaCode, verifyMfaCode } from "@/lib/auth/mfa-otp";
+import { consume, LIMITS } from "@/lib/rate-limit";
 
 /**
- * Begin enrolment: generate a fresh secret + QR + otpauth URI. Nothing is
- * persisted yet — the secret must be confirmed by an OTP challenge in
- * confirmEnrollmentAction before it's saved to the user row.
+ * Begin enrolment — email the user a 6-digit code. The account isn't
+ * flipped to mfaEnabled until they type the code back in
+ * `confirmEnrollmentAction`.
  */
 export async function startEnrollmentAction(): Promise<
-  | { ok: true; secret: string; otpauth: string; qr: string }
-  | { ok: false; error: string }
+  { ok: true } | { ok: false; error: string }
 > {
   const session = await getSession();
   if (!session) return { ok: false, error: "Δεν είσαι συνδεδεμένος." };
 
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
-    select: { email: true, mfaEnabled: true },
+    select: { mfaEnabled: true, emailVerifiedAt: true, email: true },
   });
   if (!user) return { ok: false, error: "Δεν βρέθηκε ο λογαριασμός." };
   if (user.mfaEnabled)
     return { ok: false, error: "Το 2FA είναι ήδη ενεργοποιημένο." };
+  if (!user.emailVerifiedAt) {
+    return {
+      ok: false,
+      error:
+        "Επιβεβαίωσε πρώτα το email σου για να ενεργοποιήσεις 2FA. Δες τον σύνδεσμο που σου στείλαμε στα εισερχόμενα.",
+    };
+  }
 
-  const secret = generateSecret();
-  const otpauth = buildOtpAuthUri(user.email, secret);
-  const qr = await buildQrDataUrl(otpauth);
+  const rl = consume(
+    `mfa-enroll:${session.userId}`,
+    LIMITS.forgotPassword.capacity,
+    LIMITS.forgotPassword.refillMs,
+  );
+  if (!rl.ok) {
+    return {
+      ok: false,
+      error: `Πάρα πολλά αιτήματα. Δοκίμασε σε ${rl.retryAfter} δευτερόλεπτα.`,
+    };
+  }
 
-  return { ok: true, secret, otpauth, qr };
+  const res = await sendMfaCode(session.userId, "enroll");
+  if (!res.ok) return res;
+  return { ok: true };
 }
 
 const confirmSchema = z.object({
-  secret: z.string().min(10).max(200),
   code: z.string().min(6).max(10),
 });
 
@@ -53,26 +63,59 @@ export async function confirmEnrollmentAction(
   if (!session) return { ok: false, error: "Δεν είσαι συνδεδεμένος." };
 
   const parsed = confirmSchema.safeParse({
-    secret: String(formData.get("secret") ?? ""),
     code: String(formData.get("code") ?? ""),
   });
   if (!parsed.success) return { ok: false, error: "Δώσε έγκυρα στοιχεία." };
 
-  if (!verifyTotp(parsed.data.secret, parsed.data.code)) {
-    return { ok: false, error: "Ο κωδικός δεν είναι σωστός." };
-  }
+  const check = await verifyMfaCode(
+    session.userId,
+    "enroll",
+    parsed.data.code,
+  );
+  if (!check.ok) return { ok: false, error: check.error };
 
   await prisma.user.update({
     where: { id: session.userId },
     data: {
       mfaEnabled: true,
-      mfaSecretEnc: encryptSecret(parsed.data.secret),
+      // Legacy TOTP secret column no longer holds anything meaningful.
+      mfaSecretEnc: null,
       mfaVerifiedAt: new Date(),
     },
   });
   await logAudit({ userId: session.userId, action: "user.mfa.enable" });
   revalidatePath("/app/settings/account/2fa");
   revalidatePath("/app/settings/account");
+  return { ok: true };
+}
+
+/** Send a fresh disable-code to the user's mailbox. */
+export async function requestDisableCodeAction(): Promise<
+  { ok: true } | { ok: false; error: string }
+> {
+  const session = await getSession();
+  if (!session) return { ok: false, error: "Δεν είσαι συνδεδεμένος." };
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.userId },
+    select: { mfaEnabled: true },
+  });
+  if (!user?.mfaEnabled) return { ok: false, error: "Το 2FA δεν είναι ενεργό." };
+
+  const rl = consume(
+    `mfa-disable:${session.userId}`,
+    LIMITS.forgotPassword.capacity,
+    LIMITS.forgotPassword.refillMs,
+  );
+  if (!rl.ok) {
+    return {
+      ok: false,
+      error: `Πάρα πολλά αιτήματα. Δοκίμασε σε ${rl.retryAfter} δευτερόλεπτα.`,
+    };
+  }
+
+  const res = await sendMfaCode(session.userId, "disable");
+  if (!res.ok) return res;
   return { ok: true };
 }
 
@@ -95,23 +138,25 @@ export async function disable2faAction(
 
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
-    select: {
-      passwordHash: true,
-      mfaEnabled: true,
-      mfaSecretEnc: true,
-    },
+    select: { passwordHash: true, mfaEnabled: true },
   });
-  if (!user || !user.mfaEnabled) return { ok: false, error: "Το 2FA δεν είναι ενεργό." };
+  if (!user || !user.mfaEnabled)
+    return { ok: false, error: "Το 2FA δεν είναι ενεργό." };
 
   if (user.passwordHash) {
-    const ok = await verifyPassword(user.passwordHash, parsed.data.password ?? "");
+    const ok = await verifyPassword(
+      user.passwordHash,
+      parsed.data.password ?? "",
+    );
     if (!ok) return { ok: false, error: "Λάθος κωδικός." };
   }
 
-  const secret = user.mfaSecretEnc ? decryptSecret(user.mfaSecretEnc) : null;
-  if (!secret || !verifyTotp(secret, parsed.data.code)) {
-    return { ok: false, error: "Ο κωδικός 2FA δεν είναι σωστός." };
-  }
+  const check = await verifyMfaCode(
+    session.userId,
+    "disable",
+    parsed.data.code,
+  );
+  if (!check.ok) return { ok: false, error: check.error };
 
   await prisma.user.update({
     where: { id: session.userId },

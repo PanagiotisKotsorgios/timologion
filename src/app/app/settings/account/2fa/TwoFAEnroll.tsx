@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { QrCode, ShieldCheck } from "lucide-react";
+import { Mail, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Input";
 import { Alert } from "@/components/ui/Alert";
@@ -13,13 +13,7 @@ import {
 
 type Enrollment =
   | { status: "idle" }
-  | { status: "loading" }
-  | {
-      status: "shown";
-      secret: string;
-      otpauth: string;
-      qr: string;
-    }
+  | { status: "code_sent" }
   | { status: "confirmed" };
 
 export function TwoFAEnroll() {
@@ -29,30 +23,22 @@ export function TwoFAEnroll() {
   const [code, setCode] = useState("");
   const [pending, startTx] = useTransition();
 
-  function begin() {
+  function requestCode() {
     setError(null);
-    setState({ status: "loading" });
     startTx(async () => {
       const res = await startEnrollmentAction();
       if (!res.ok) {
         setError(res.error);
-        setState({ status: "idle" });
         return;
       }
-      setState({
-        status: "shown",
-        secret: res.secret,
-        otpauth: res.otpauth,
-        qr: res.qr,
-      });
+      setState({ status: "code_sent" });
     });
   }
 
   function confirm() {
-    if (state.status !== "shown") return;
+    if (state.status !== "code_sent") return;
     setError(null);
     const fd = new FormData();
-    fd.set("secret", state.secret);
     fd.set("code", code);
     startTx(async () => {
       const res = await confirmEnrollmentAction(fd);
@@ -70,89 +56,80 @@ export function TwoFAEnroll() {
       <div className="space-y-4">
         {error && <Alert tone="danger">{error}</Alert>}
         <p className="text-sm text-ink-700">
-          Ενεργοποιώντας το 2FA, θα σου ζητείται ένας 6-ψήφιος κωδικός από την
-          εφαρμογή Authenticator κάθε φορά που συνδέεσαι.
+          Ενεργοποιώντας το 2FA, κάθε φορά που συνδέεσαι θα σου στέλνουμε
+          έναν 6-ψήφιο κωδικό στο email σου. Χρειάζεσαι πρόσβαση στα
+          εισερχόμενά σου για να ολοκληρώσεις τη σύνδεση.
         </p>
         <Button
           type="button"
-          onClick={begin}
-          icon={ShieldCheck}
+          onClick={requestCode}
+          icon={Mail}
           disabled={pending}
         >
-          {pending ? "Παραγωγή κλειδιού..." : "Ενεργοποίηση 2FA"}
+          {pending
+            ? "Αποστολή κωδικού..."
+            : "Στείλε μου κωδικό στο email"}
         </Button>
       </div>
     );
   }
 
-  if (state.status === "loading") {
-    return <p className="text-sm text-ink-700">Παραγωγή κλειδιού...</p>;
-  }
-
   if (state.status === "confirmed") {
     return (
       <Alert tone="success" title="Ενεργοποιήθηκε">
-        Το 2FA είναι πλέον ενεργό στον λογαριασμό σου.
+        Το 2FA είναι πλέον ενεργό. Την επόμενη φορά που θα συνδεθείς θα σου
+        στείλουμε έναν κωδικό στο email σου.
       </Alert>
     );
   }
 
   return (
     <div className="space-y-6">
+      <Alert tone="info">
+        Σου στείλαμε έναν 6-ψήφιο κωδικό στα εισερχόμενά σου. Λήγει σε 10
+        λεπτά.
+      </Alert>
+
       {error && <Alert tone="danger">{error}</Alert>}
 
       <div>
         <p className="text-sm font-bold uppercase tracking-widest text-ink-500">
-          Βήμα 1 — Σκάναρε τον κωδικό QR
-        </p>
-        <div className="mt-3 flex flex-wrap items-start gap-6">
-          <div className="rounded-2xl border-2 border-ink-200 bg-white p-4">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={state.qr}
-              alt="QR code για 2FA"
-              className="h-40 w-40"
-            />
-          </div>
-          <div className="flex-1 space-y-3">
-            <p className="text-sm text-ink-700">
-              Άνοιξε την εφαρμογή Authenticator και σκάναρε τον κωδικό. Εναλλακτικά
-              πληκτρολόγησε χειροκίνητα το κλειδί:
-            </p>
-            <code className="block break-all rounded-lg border-2 border-ink-200 bg-ink-50 px-3 py-2 font-mono text-sm">
-              {state.secret}
-            </code>
-          </div>
-        </div>
-      </div>
-
-      <div className="border-t-2 border-ink-200 pt-6">
-        <p className="text-sm font-bold uppercase tracking-widest text-ink-500">
-          Βήμα 2 — Επιβεβαίωσε τον κωδικό
+          Πληκτρολόγησε τον κωδικό
         </p>
         <div className="mt-3 flex flex-wrap items-end gap-3">
-          <Field label="Κωδικός 6 ψηφίων" htmlFor="totp-code">
+          <Field label="Κωδικός 6 ψηφίων" htmlFor="mfa-code" required>
             <Input
-              id="totp-code"
+              id="mfa-code"
               value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              onChange={(e) =>
+                setCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+              }
               inputMode="numeric"
               autoComplete="one-time-code"
               maxLength={6}
-              className="max-w-[180px] font-mono text-xl tracking-widest"
-              placeholder="123456"
+              className="max-w-[200px] font-mono text-2xl tracking-[.35em]"
+              placeholder="000000"
             />
           </Field>
           <Button
             type="button"
             onClick={confirm}
-            icon={QrCode}
+            icon={ShieldCheck}
             disabled={pending || code.length !== 6}
           >
             {pending ? "Έλεγχος..." : "Ενεργοποίηση"}
           </Button>
         </div>
       </div>
+
+      <button
+        type="button"
+        onClick={requestCode}
+        disabled={pending}
+        className="text-sm font-bold text-brand-800 underline underline-offset-4 hover:text-brand-900 disabled:opacity-50"
+      >
+        Ξαναστείλε τον κωδικό
+      </button>
     </div>
   );
 }

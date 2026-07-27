@@ -96,6 +96,46 @@ export function emailVerifyTemplate({
   return { subject, html, text };
 }
 
+export function mfaCodeTemplate({
+  name,
+  code,
+  purpose,
+}: {
+  name: string;
+  code: string;
+  purpose: "enroll" | "login" | "disable";
+}) {
+  const heading =
+    purpose === "enroll"
+      ? "Ενεργοποίηση 2FA"
+      : purpose === "disable"
+        ? "Απενεργοποίηση 2FA"
+        : "Κωδικός σύνδεσης";
+  const intro =
+    purpose === "enroll"
+      ? "Χρησιμοποίησε τον παρακάτω κωδικό για να ολοκληρώσεις την ενεργοποίηση της επαλήθευσης σε δύο βήματα."
+      : purpose === "disable"
+        ? "Χρησιμοποίησε τον παρακάτω κωδικό για να απενεργοποιήσεις την επαλήθευση σε δύο βήματα."
+        : "Χρησιμοποίησε τον παρακάτω κωδικό για να ολοκληρώσεις τη σύνδεση.";
+  const subject = `${heading} — κωδικός ${code} · timologion`;
+  const html = shell(`
+    <p style="margin:0 0 8px;font-size:13px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:${BRAND_NAVY};opacity:.6;">Επαλήθευση 2 βημάτων</p>
+    <h1 style="margin:0 0 12px;font-size:26px;font-weight:800;letter-spacing:-.02em;color:${BRAND_NAVY};">${escapeHtml(heading)}</h1>
+    <p style="margin:0 0 8px;font-size:15px;line-height:1.6;">Γεια σου ${escapeHtml(name || "")},</p>
+    <p style="margin:0 0 20px;font-size:15px;line-height:1.6;">${escapeHtml(intro)}</p>
+    <div style="margin:24px 0;text-align:center;">
+      <div style="display:inline-block;background:#f1f5f9;border:2px solid ${BRAND_NAVY};border-radius:16px;padding:20px 32px;">
+        <p style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:${BRAND_NAVY};opacity:.6;">Ο κωδικός σου</p>
+        <p style="margin:0;font-family:'SFMono-Regular','Menlo','Monaco','Consolas',monospace;font-size:38px;font-weight:800;letter-spacing:.35em;color:${BRAND_NAVY};">${escapeHtml(code)}</p>
+      </div>
+    </div>
+    <p style="margin:0 0 8px;font-size:13px;color:#475569;">Ο κωδικός λήγει σε 10 λεπτά.</p>
+    <p style="margin:0;font-size:13px;color:#475569;">Αν δεν ζήτησες εσύ αυτόν τον κωδικό, μπορείς να αγνοήσεις το email — δεν θα γίνει καμία αλλαγή στον λογαριασμό σου.</p>
+  `);
+  const text = `${heading} · timologion\n\nΓεια σου ${name || ""},\n\n${intro}\n\nΚωδικός: ${code}\n\nΛήγει σε 10 λεπτά. Αν δεν τον ζήτησες εσύ, αγνόησέ το.\n`;
+  return { subject, html, text };
+}
+
 export function welcomeTemplate({
   name,
   appUrl,

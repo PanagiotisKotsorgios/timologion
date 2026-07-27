@@ -30,7 +30,7 @@ export default async function TwoFactorPage() {
     <>
       <PageHeader
         title="Επαλήθευση σε δύο βήματα (2FA)"
-        subtitle="Χρησιμοποίησε εφαρμογή Authenticator για να προστατέψεις τη σύνδεσή σου."
+        subtitle="Στέλνουμε 6-ψήφιο κωδικό στο email σου κάθε φορά που συνδέεσαι."
         actions={
           <LinkButton
             href="/app/settings/account"
@@ -80,19 +80,17 @@ export default async function TwoFactorPage() {
           />
           <CardBody className="space-y-3 text-sm text-ink-900">
             <p>
-              Κατέβασε μια εφαρμογή Authenticator στο κινητό σου.
-              Προτεινόμενες:
+              Δεν χρειάζεται εφαρμογή Authenticator ή QR code. Κάθε φορά που
+              συνδέεσαι:
             </p>
-            <ul className="list-disc space-y-1 pl-5 text-ink-700">
-              <li>Google Authenticator</li>
-              <li>Microsoft Authenticator</li>
-              <li>Authy</li>
-              <li>1Password / Bitwarden</li>
-            </ul>
+            <ol className="list-decimal space-y-1 pl-5 text-ink-700">
+              <li>Δίνεις το email και τον κωδικό σου</li>
+              <li>Σου στέλνουμε 6-ψήφιο κωδικό στα εισερχόμενά σου</li>
+              <li>Τον πληκτρολογείς για να ολοκληρώσεις τη σύνδεση</li>
+            </ol>
             <p className="text-xs text-ink-500">
-              Το κλειδί αποθηκεύεται κρυπτογραφημένο (AES-256-GCM). Ο κωδικός
-              6-ψηφίων ανανεώνεται κάθε 30 δευτερόλεπτα και δεν αποθηκεύεται
-              ποτέ.
+              Ο κωδικός λήγει σε 10 λεπτά. Χρειάζεται πρόσβαση στο email σου
+              για να συνδεθείς — φύλαξέ το ασφαλές.
             </p>
             {user.mfaVerifiedAt && (
               <p className="text-xs text-ink-500">

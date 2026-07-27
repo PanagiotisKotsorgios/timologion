@@ -64,7 +64,7 @@ export function LoginForm() {
             className="mb-3 flex items-center gap-2 text-base font-semibold text-black"
           >
             <ShieldCheck size={16} aria-hidden />
-            Κωδικός 2FA
+            Κωδικός επιβεβαίωσης
           </label>
           <input
             id="totp"
@@ -78,7 +78,7 @@ export function LoginForm() {
             className="big-input font-mono text-2xl tracking-widest"
           />
           <p className="mt-2 text-sm text-black/60">
-            Πάρε τον κωδικό από την εφαρμογή Authenticator.
+            Στείλαμε 6-ψήφιο κωδικό στο email σου. Ισχύει για 10 λεπτά.
           </p>
         </div>
       )}

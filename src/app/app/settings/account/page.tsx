@@ -72,7 +72,7 @@ export default async function AccountSettingsPage() {
           <Card>
             <CardHeader
               title="Επαλήθευση σε δύο βήματα (2FA)"
-              subtitle="Επιπλέον ασφάλεια με εφαρμογή Authenticator."
+              subtitle="Επιπλέον ασφάλεια με 6-ψήφιο κωδικό στο email."
               action={
                 user.mfaEnabled ? (
                   <Badge tone="success">Ενεργό</Badge>

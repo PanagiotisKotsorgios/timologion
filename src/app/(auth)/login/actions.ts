@@ -6,8 +6,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { verifyPassword } from "@/lib/auth/password";
 import { createSession, destroySession } from "@/lib/auth/session";
-import { verifyTotp } from "@/lib/auth/totp";
-import { decryptSecret } from "@/lib/crypto";
+import { sendMfaCode, verifyMfaCode } from "@/lib/auth/mfa-otp";
 import { logAudit } from "@/lib/audit";
 import { consume, LIMITS, clientIp } from "@/lib/rate-limit";
 import { t } from "@/lib/i18n";
@@ -55,7 +54,6 @@ export async function loginAction(
       passwordHash: true,
       platformRole: true,
       mfaEnabled: true,
-      mfaSecretEnc: true,
     },
   });
 
@@ -68,21 +66,26 @@ export async function loginAction(
     return { error: t.auth.invalidCredentials };
   }
 
-  // 2FA challenge — if user has MFA enabled, require + verify TOTP.
+  // 2FA challenge — email a 6-digit code and require verification. First
+  // pass through the form has no code, so we mint and send one; on the
+  // follow-up submit the user pastes the code and we verify it against
+  // the latest MfaChallenge row.
   if (user.mfaEnabled) {
     if (!parsed.data.totp) {
+      await sendMfaCode(user.id, "login");
       return {
         needsOtp: true,
         email: parsed.data.email,
-        error: "Δώσε τον 6-ψήφιο κωδικό από την εφαρμογή Authenticator.",
+        error:
+          "Σου στείλαμε 6-ψήφιο κωδικό στο email σου. Δώσ' τον για να συνεχίσεις.",
       };
     }
-    const secret = user.mfaSecretEnc ? decryptSecret(user.mfaSecretEnc) : null;
-    if (!secret || !verifyTotp(secret, parsed.data.totp)) {
+    const check = await verifyMfaCode(user.id, "login", parsed.data.totp);
+    if (!check.ok) {
       return {
         needsOtp: true,
         email: parsed.data.email,
-        error: "Ο κωδικός 2FA δεν είναι σωστός.",
+        error: check.error,
       };
     }
   }

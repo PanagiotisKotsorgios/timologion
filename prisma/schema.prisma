@@ -328,6 +328,7 @@ model User {
   announcements  PlatformAnnouncement[]
   passwordResets PasswordReset[]
   emailVerifications EmailVerification[]
+  mfaChallenges  MfaChallenge[]
   oauthAccounts  OAuthAccount[]
   crmTasks       CrmTask[]
   notifications  Notification[]
@@ -348,6 +349,30 @@ model EmailVerification {
 
   @@index([userId])
   @@map("email_verifications")
+}
+
+/// One-time 6-digit codes emailed to the user for MFA-by-email. Replaces
+/// the old Authenticator/TOTP secret model. Purposes:
+///   "enroll"  – confirm the user actually controls the mailbox before
+///               flipping mfaEnabled to true.
+///   "login"   – challenge issued after password success on an
+///               mfaEnabled account.
+///   "disable" – confirm ownership before turning MFA off.
+model MfaChallenge {
+  id         String    @id @default(cuid())
+  userId     String
+  codeHash   String    @db.VarChar(128)
+  purpose    String    @db.VarChar(20)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  attempts   Int       @default(0)
+  createdAt  DateTime  @default(now())
+
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, purpose])
+  @@index([expiresAt])
+  @@map("mfa_challenges")
 }
 
 enum NotificationTone {
