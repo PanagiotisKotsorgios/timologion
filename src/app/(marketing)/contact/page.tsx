@@ -72,37 +72,33 @@ export default function ContactPage() {
 
       <section id="feedback" className="bg-brand-900 text-white">
         <Container className="py-24 md:py-32">
-          <div className="grid gap-16 lg:grid-cols-12">
-            <div className="lg:col-span-4">
-              <p className="eyebrow text-white/60">Ανατροφοδότηση</p>
-              <h2 className="text-headline mt-8">
-                Ανέφερε πρόβλημα ή πρότεινε χαρακτηριστικό.
-              </h2>
-              <p className="mt-6 max-w-md text-lg text-white/70">
-                Το Τιμολόγιον χτίζεται με τη βοήθειά σου. Πες μας τι δεν
-                δουλεύει σωστά ή τι θα ήθελες να προστεθεί — κάθε αναφορά
-                διαβάζεται και ιεραρχείται.
-              </p>
+          <div className="max-w-4xl">
+            <p className="eyebrow text-white/60">Ανατροφοδότηση</p>
+            <h2 className="text-headline mt-8">
+              Ανέφερε πρόβλημα ή πρότεινε χαρακτηριστικό.
+            </h2>
+            <p className="mt-6 max-w-3xl text-lg text-white/70">
+              Το Τιμολόγιον χτίζεται με τη βοήθειά σου. Πες μας τι δεν
+              δουλεύει σωστά ή τι θα ήθελες να προστεθεί — κάθε αναφορά
+              διαβάζεται και ιεραρχείται.
+            </p>
 
-              <ul className="mt-10 space-y-4 text-base text-white/80">
-                <FeedbackPerk>
-                  Απάντηση εντός μιας εργάσιμης ημέρας από την ομάδα
-                  ανάπτυξης
-                </FeedbackPerk>
-                <FeedbackPerk>
-                  Bugs με blocker σοβαρότητα προτεραιοποιούνται άμεσα
-                </FeedbackPerk>
-                <FeedbackPerk>
-                  Οι προτάσεις που μαζεύουν ζήτηση μπαίνουν στο roadmap
-                </FeedbackPerk>
-              </ul>
-            </div>
+            <ul className="mt-10 grid gap-4 text-base text-white/80 md:grid-cols-3">
+              <FeedbackPerk>
+                Απάντηση εντός μιας εργάσιμης ημέρας από την ομάδα
+                ανάπτυξης
+              </FeedbackPerk>
+              <FeedbackPerk>
+                Bugs με blocker σοβαρότητα προτεραιοποιούνται άμεσα
+              </FeedbackPerk>
+              <FeedbackPerk>
+                Οι προτάσεις που μαζεύουν ζήτηση μπαίνουν στο roadmap
+              </FeedbackPerk>
+            </ul>
+          </div>
 
-            <div className="lg:col-span-8">
-              <div className="rounded-3xl bg-white p-8 text-black shadow-2xl md:p-12">
-                <FeedbackForm />
-              </div>
-            </div>
+          <div className="mt-14 rounded-3xl bg-white p-8 text-black shadow-2xl md:mt-16 md:p-12">
+            <FeedbackForm />
           </div>
         </Container>
       </section>
