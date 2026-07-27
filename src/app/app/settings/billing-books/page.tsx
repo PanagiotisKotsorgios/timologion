@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
 import { t } from "@/lib/i18n";
-import { BookForm } from "./BookForm";
+import { NewBookButton } from "./NewBookButton";
 import { deleteBillingBookAction } from "./actions";
 
 export default async function BillingBooksPage() {
@@ -32,87 +32,81 @@ export default async function BillingBooksPage() {
       <PageHeader
         title="Σειρές παραστατικών"
         subtitle="Ορισμός σειρών για κάθε τύπο παραστατικού. Ο αριθμός εκδίδεται αυτόματα."
+        actions={<NewBookButton branches={branches} />}
       />
 
-      <div className="grid gap-6 md:grid-cols-3">
-        <div className="md:col-span-2">
-          <Card>
-            <CardHeader
-              title={`Σειρές (${books.length})`}
-              subtitle="Μία προεπιλεγμένη ανά τύπο παραστατικού."
-            />
-            <CardBody className="p-0">
-              {books.length === 0 ? (
-                <div className="p-6">
-                  <EmptyState
-                    title="Δεν έχεις σειρές ακόμα."
-                    description="Δημιούργησε μία από το πλάι για να ξεκινήσεις."
-                  />
-                </div>
-              ) : (
-                <table className="w-full text-sm">
-                  <thead className="bg-ink-100 text-xs uppercase tracking-wide text-ink-500">
-                    <tr>
-                      <th className="px-4 py-2 text-left">Τύπος</th>
-                      <th className="px-4 py-2 text-left">Σειρά</th>
-                      <th className="px-4 py-2 text-left">Υποκατάστημα</th>
-                      <th className="px-4 py-2 text-right">Επόμενος #</th>
-                      <th className="px-4 py-2 text-right" />
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-ink-300/60">
-                    {books.map((b) => (
-                      <tr key={b.id}>
-                        <td className="px-4 py-2">
-                          {t.documents.types[b.documentType]}
-                        </td>
-                        <td className="px-4 py-2">
-                          <span className="font-medium text-ink-900">
-                            {b.series}
-                          </span>
-                          {b.isDefault && (
+      <Card>
+        <CardHeader
+          title={`Σειρές (${books.length})`}
+          subtitle="Μία προεπιλεγμένη ανά τύπο παραστατικού."
+        />
+        <CardBody className="p-0">
+          {books.length === 0 ? (
+            <div className="p-8">
+              <EmptyState
+                title="Δεν έχεις σειρές ακόμα."
+                description="Δημιούργησε μία από το κουμπί «Νέα σειρά» πάνω δεξιά."
+              />
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="border-b-2 border-ink-300 bg-ink-50 text-sm font-bold uppercase tracking-widest text-ink-500">
+                  <tr>
+                    <th className="px-6 py-4 text-left">Τύπος</th>
+                    <th className="px-6 py-4 text-left">Σειρά</th>
+                    <th className="px-6 py-4 text-left">Υποκατάστημα</th>
+                    <th className="px-6 py-4 text-right">Επόμενος #</th>
+                    <th className="px-6 py-4 text-right" />
+                  </tr>
+                </thead>
+                <tbody className="divide-y-2 divide-ink-200/70 text-base">
+                  {books.map((b) => (
+                    <tr key={b.id} className="transition-colors hover:bg-brand-50/40">
+                      <td className="px-6 py-4 font-semibold text-ink-900">
+                        {t.documents.types[b.documentType]}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="mono text-xl font-extrabold text-brand-900">
+                          {b.series}
+                        </span>
+                        {b.isDefault && (
+                          <span className="ml-2 inline-flex align-middle">
                             <Badge tone="brand">Προεπιλογή</Badge>
-                          )}
-                          {b.label && (
-                            <div className="text-xs text-ink-500">
-                              {b.label}
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-4 py-2 text-ink-700">
-                          {b.branch?.label ?? "—"}
-                        </td>
-                        <td className="px-4 py-2 text-right font-mono">
-                          {b.nextNumber}
-                        </td>
-                        <td className="px-4 py-2 text-right">
-                          <form action={deleteBillingBookAction}>
-                            <input type="hidden" name="id" value={b.id} />
-                            <Button
-                              type="submit"
-                              variant="ghost"
-                              size="sm"
-                            >
-                              Διαγραφή
-                            </Button>
-                          </form>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </CardBody>
-          </Card>
-        </div>
-
-        <Card>
-          <CardHeader title="Νέα σειρά" />
-          <CardBody>
-            <BookForm branches={branches} />
-          </CardBody>
-        </Card>
-      </div>
+                          </span>
+                        )}
+                        {b.label && (
+                          <div className="mt-1 text-sm text-ink-500">
+                            {b.label}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-ink-700">
+                        {b.branch?.label ?? "—"}
+                      </td>
+                      <td className="px-6 py-4 text-right mono text-lg font-bold text-ink-900">
+                        {b.nextNumber}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <form action={deleteBillingBookAction}>
+                          <input type="hidden" name="id" value={b.id} />
+                          <Button
+                            type="submit"
+                            variant="ghost"
+                            size="sm"
+                          >
+                            Διαγραφή
+                          </Button>
+                        </form>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardBody>
+      </Card>
     </>
   );
 }

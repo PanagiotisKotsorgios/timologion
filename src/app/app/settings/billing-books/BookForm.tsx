@@ -37,14 +37,20 @@ const DOC_TYPES: DocumentType[] = [
 export function BookForm({
   initial,
   branches,
+  onSaved,
 }: {
   initial?: BookLike;
   branches: { id: string; label: string }[];
+  onSaved?: () => void;
 }) {
   const [state, formAction, pending] = useActionState<
     BillingBookFormState,
     FormData
-  >(saveBillingBookAction, undefined);
+  >(async (prev, fd) => {
+    const res = await saveBillingBookAction(prev, fd);
+    if (res && "success" in res && res.success && onSaved) onSaved();
+    return res;
+  }, undefined);
 
   return (
     <form action={formAction} className="space-y-4">

@@ -40,8 +40,8 @@ export default async function WrappSettingsPage() {
             subtitle="Ενημέρωση μέσω της Wrapp API"
             action={<StatusBadge status={status} />}
           />
-          <CardBody className="space-y-3">
-            <Row label="Wrapp user ID" value={wrapp?.wrappUserId ?? "—"} />
+          <CardBody className="space-y-5 p-6 md:p-8">
+            <Row label="Wrapp user ID" value={wrapp?.wrappUserId ?? "—"} mono />
             <Row
               label="Ενεργό πρόγραμμα"
               value={wrapp?.hasPlan ? t.common.yes : t.common.no}
@@ -62,7 +62,7 @@ export default async function WrappSettingsPage() {
                 Ανανέωση κατάστασης
               </Button>
             </form>
-            <p className="text-xs text-ink-500">
+            <p className="text-sm text-ink-500">
               Σε αυτή τη φάση η σύνδεση είναι σε προσομοίωση. Θα ενεργοποιηθεί
               πλήρως μετά τη σύνδεση με τη Wrapp API στο επόμενο milestone.
             </p>
@@ -86,11 +86,28 @@ function StatusBadge({ status }: { status: string }) {
   }
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Row({
+  label,
+  value,
+  mono,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
   return (
-    <div className="flex items-center justify-between border-b border-ink-300/60 pb-2 text-sm last:border-b-0 last:pb-0">
-      <span className="text-ink-500">{label}</span>
-      <span className="font-medium text-ink-900">{value}</span>
+    <div className="border-b-2 border-ink-200/60 pb-4 last:border-b-0 last:pb-0">
+      <p className="text-xs font-bold uppercase tracking-widest text-ink-500">
+        {label}
+      </p>
+      <p
+        className={
+          "mt-2 break-all text-lg font-semibold leading-snug text-ink-900 " +
+          (mono ? "mono text-base" : "")
+        }
+      >
+        {value}
+      </p>
     </div>
   );
 }
