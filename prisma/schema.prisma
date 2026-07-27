@@ -336,6 +336,7 @@ model User {
   oauthAccounts  OAuthAccount[]
   crmTasks       CrmTask[]
   notifications  Notification[]
+  appointments   Appointment[] @relation("AppointmentStaff")
 
   @@index([platformRole])
   @@map("users")
@@ -510,6 +511,7 @@ model Business {
   expenses          Expense[]
   expensePayments   ExpensePayment[]
   pluginActivations PluginActivation[]
+  appointments      Appointment[]
 
   @@index([vatNumber])
   @@map("businesses")
@@ -644,6 +646,7 @@ model Client {
   payments      Payment[]
   recurringDocs RecurringDocument[]
   tagLinks      ClientTag[]
+  appointments  Appointment[]
 
   @@index([businessId, legalName])
   @@index([businessId, vatNumber])
@@ -715,6 +718,7 @@ model Item {
   documentLines  DocumentLine[]
   stockMovements StockMovement[]
   prices         ItemPrice[]
+  appointments   Appointment[]
 
   @@index([businessId, kind])
   @@index([businessId, name])
@@ -814,6 +818,7 @@ model Document {
   billingBook         BillingBook?   @relation(fields: [billingBookId], references: [id], onDelete: SetNull)
   lines               DocumentLine[]
   payments            Payment[]
+  appointments        Appointment[]  @relation("AppointmentInvoice")
 
   @@index([businessId, status])
   @@index([businessId, issueDate])
@@ -1121,4 +1126,53 @@ model PluginActivation {
   @@unique([businessId, pluginCode])
   @@index([businessId, status])
   @@map("plugin_activations")
+}
+
+// ─── Appointments (Ραντεβού & ημερολόγιο) ───────────────────────────────
+// Bookings for services in the item catalogue. Optional staffUserId ties
+// the slot to a specific team member; NULL = "any" or reception-managed.
+// One-click convert-to-invoice writes convertedDocumentId so we don't
+// re-issue the same appointment twice.
+
+enum AppointmentStatus {
+  scheduled
+  completed
+  cancelled
+  no_show
+}
+
+model Appointment {
+  id                   String            @id @default(cuid())
+  businessId           String
+  staffUserId          String?
+  clientId             String?
+  itemId               String?
+  // Free-form service name — used when no itemId is picked or as a
+  // display fallback so the row still reads clearly if the linked
+  // item is later deleted.
+  serviceName          String            @db.VarChar(200)
+  startAt              DateTime
+  endAt                DateTime
+  status               AppointmentStatus @default(scheduled)
+  // Price snapshot at booking time. Falls back to the item's defaultPrice
+  // when null, so the calendar can show a total even for legacy rows.
+  priceOverride        Decimal?          @db.Decimal(12, 2)
+  vatRate              Decimal?          @db.Decimal(4, 2)
+  notes                String?           @db.Text
+  convertedDocumentId  String?
+  reminderSentAt       DateTime?
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  business             Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  staff                User?             @relation("AppointmentStaff", fields: [staffUserId], references: [id], onDelete: SetNull)
+  client               Client?           @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  item                 Item?             @relation(fields: [itemId], references: [id], onDelete: SetNull)
+  convertedDocument    Document?         @relation("AppointmentInvoice", fields: [convertedDocumentId], references: [id], onDelete: SetNull)
+
+  @@index([businessId, startAt])
+  @@index([businessId, status])
+  @@index([staffUserId, startAt])
+  @@index([clientId])
+  @@map("appointments")
 }
