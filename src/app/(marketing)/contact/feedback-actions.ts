@@ -7,21 +7,7 @@ import { formatZodError } from "@/lib/zod-el";
 import { getSession } from "@/lib/auth/session";
 import { sendEmail } from "@/lib/email/send";
 import { consume, clientIp } from "@/lib/rate-limit";
-
-export const FEEDBACK_CATEGORIES = [
-  "Παραστατικά",
-  "Πελάτες",
-  "Είδη & Υπηρεσίες",
-  "Πληρωμές",
-  "Έξοδα",
-  "Ραντεβού",
-  "CRM",
-  "POS",
-  "Αναφορές",
-  "Σύνδεση με Wrapp / myDATA",
-  "Ρυθμίσεις / Λογαριασμός",
-  "Άλλο",
-] as const;
+import { FEEDBACK_CATEGORIES } from "./feedback-config";
 
 const feedbackSchema = z.object({
   type: z.enum(["bug", "feature", "other"]),

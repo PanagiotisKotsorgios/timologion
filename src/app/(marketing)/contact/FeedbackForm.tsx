@@ -3,9 +3,9 @@
 import { useActionState, useEffect, useState } from "react";
 import {
   submitFeedbackAction,
-  FEEDBACK_CATEGORIES,
   type FeedbackState,
 } from "./feedback-actions";
+import { FEEDBACK_CATEGORIES } from "./feedback-config";
 
 const TYPES: {
   value: "bug" | "feature" | "other";
