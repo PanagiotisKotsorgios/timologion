@@ -235,34 +235,97 @@ export default function TermsPage() {
             </p>
           </Section>
 
-          <Section title="9. Υπηρεσίες τρίτων">
-            <p>Η Υπηρεσία διασυνδέεται με:</p>
-            <ul className="mt-2 list-disc space-y-2 pl-5">
-              <li>
-                <strong>Wrapp</strong> — πιστοποιημένος πάροχος ΥΠΑΗΕΣ για
-                διαβίβαση στο myDATA.
-              </li>
-              <li>
-                <strong>ΑΑΔΕ/ΓΓΠΣ</strong> — αναζήτηση ΑΦΜ (μέσω των
-                διαπιστευτηρίων που ο Χρήστης παρέχει).
-              </li>
-              <li>
-                <strong>Google & Facebook</strong> — προαιρετική σύνδεση
-                OAuth για επιτάχυνση εγγραφής.
-              </li>
-              <li>
-                <strong>Brevo (Sendinblue)</strong> — αποστολή
-                transactional email.
-              </li>
-              <li>
-                <strong>Coolify / Πάροχος cloud</strong> — φιλοξενία της
-                εφαρμογής.
-              </li>
-            </ul>
-            <p className="mt-3">
-              Δεν φέρουμε ευθύνη για διακοπές, βλάβες ή αστοχίες που
-              προκαλούνται από αυτές τις υπηρεσίες, καθώς οι δικοί τους
-              όροι διέπουν τη σχέση σου μαζί τους.
+          <Section title="9. Υπηρεσίες τρίτων & δικοί τους όροι">
+            <p>
+              Η Υπηρεσία διασυνδέεται με τους παρακάτω τρίτους παρόχους.
+              Χρησιμοποιώντας το timologion αναγνωρίζεις ότι οι δικές
+              τους αντίστοιχες συμβατικές δεσμεύσεις (Όροι Χρήσης,
+              Πολιτική Απορρήτου) διέπουν τη σχέση σου μαζί τους. Είναι
+              δική σου ευθύνη να τους διαβάσεις.
+            </p>
+
+            <div className="mt-4 overflow-x-auto rounded-2xl border-2 border-black/10">
+              <table className="w-full min-w-[720px] text-left text-sm">
+                <thead className="bg-brand-50/60">
+                  <tr>
+                    <th className="px-4 py-3 text-brand-900">Πάροχος</th>
+                    <th className="px-4 py-3 text-brand-900">Σκοπός</th>
+                    <th className="px-4 py-3 text-brand-900">Έδρα</th>
+                    <th className="px-4 py-3 text-brand-900">Όροι / Απόρρητο</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-black/[0.06]">
+                  <ThirdPartyRow
+                    name="Wrapp"
+                    purpose="Πιστοποιημένος πάροχος ΥΠΑΗΕΣ — φοροσήμανση & διαβίβαση στο myDATA"
+                    hq="Ελλάδα (ΕΕ)"
+                    links={[
+                      { label: "Ιστοσελίδα", href: "https://wrapp.ai" },
+                    ]}
+                  />
+                  <ThirdPartyRow
+                    name="Brevo (πρώην Sendinblue)"
+                    purpose="Αποστολή transactional email (επιβεβαίωση, OTP, ειδοποιήσεις)"
+                    hq="Γαλλία (ΕΕ)"
+                    links={[
+                      { label: "Terms", href: "https://www.brevo.com/legal/termsofuse/" },
+                      { label: "Privacy", href: "https://www.brevo.com/legal/privacypolicy/" },
+                    ]}
+                  />
+                  <ThirdPartyRow
+                    name="Google (OAuth)"
+                    purpose="Προαιρετική σύνδεση με λογαριασμό Google"
+                    hq="ΗΠΑ (SCC 2021/914)"
+                    links={[
+                      { label: "Terms", href: "https://policies.google.com/terms" },
+                      { label: "Privacy", href: "https://policies.google.com/privacy" },
+                    ]}
+                  />
+                  <ThirdPartyRow
+                    name="Meta / Facebook (OAuth)"
+                    purpose="Προαιρετική σύνδεση με λογαριασμό Facebook"
+                    hq="ΗΠΑ (SCC 2021/914)"
+                    links={[
+                      { label: "Terms", href: "https://www.facebook.com/legal/terms" },
+                      { label: "Privacy", href: "https://www.facebook.com/policy.php" },
+                    ]}
+                  />
+                  <ThirdPartyRow
+                    name="Sentry"
+                    purpose="Παρακολούθηση σφαλμάτων εφαρμογής"
+                    hq="ΗΠΑ (SCC 2021/914)"
+                    links={[
+                      { label: "Terms", href: "https://sentry.io/terms/" },
+                      { label: "Privacy", href: "https://sentry.io/privacy/" },
+                    ]}
+                  />
+                  <ThirdPartyRow
+                    name="ΑΑΔΕ / ΓΓΠΣ"
+                    purpose="Αναζήτηση ΑΦΜ μέσω των δικών σου διαπιστευτηρίων ΓΓΠΣ"
+                    hq="Ελλάδα (δημόσια αρχή)"
+                    links={[
+                      { label: "aade.gr", href: "https://www.aade.gr" },
+                    ]}
+                  />
+                  <ThirdPartyRow
+                    name="Πάροχος cloud hosting"
+                    purpose="Φιλοξενία εφαρμογής & βάσης δεδομένων"
+                    hq="ΕΕ"
+                    links={[
+                      { label: "coolify.io", href: "https://coolify.io" },
+                    ]}
+                  />
+                </tbody>
+              </table>
+            </div>
+
+            <p className="mt-4 text-sm text-black/60">
+              Δεν φέρουμε ευθύνη για διακοπές, βλάβες, αλλαγές τιμολογιακής
+              πολιτικής ή αστοχίες που προκαλούνται από τις παραπάνω
+              υπηρεσίες. Οι δικοί τους όροι διέπουν τη σχέση σου μαζί τους
+              και σε ορισμένες περιπτώσεις (π.χ. Google, Facebook, Sentry)
+              μπορεί να απαιτείται διαβίβαση δεδομένων εκτός ΕΕ βάσει των
+              τυποποιημένων συμβατικών ρητρών (SCC 2021/914).
             </p>
           </Section>
 
@@ -415,5 +478,40 @@ function Section({
         {children}
       </div>
     </div>
+  );
+}
+
+function ThirdPartyRow({
+  name,
+  purpose,
+  hq,
+  links,
+}: {
+  name: string;
+  purpose: string;
+  hq: string;
+  links: { label: string; href: string }[];
+}) {
+  return (
+    <tr>
+      <td className="px-4 py-3 font-semibold text-brand-900">{name}</td>
+      <td className="px-4 py-3 text-black/70">{purpose}</td>
+      <td className="px-4 py-3 text-black/60">{hq}</td>
+      <td className="px-4 py-3">
+        <div className="flex flex-wrap gap-x-3 gap-y-1">
+          {links.map((l) => (
+            <a
+              key={l.href}
+              href={l.href}
+              target="_blank"
+              rel="noreferrer"
+              className="text-sm font-semibold text-brand-800 underline underline-offset-4 hover:text-brand-900"
+            >
+              {l.label} →
+            </a>
+          ))}
+        </div>
+      </td>
+    </tr>
   );
 }

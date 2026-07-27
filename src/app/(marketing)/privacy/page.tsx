@@ -197,31 +197,108 @@ export default function PrivacyPage() {
           </Section>
 
           <Section title="6. Παραλήπτες & εκτελούντες την επεξεργασία">
-            <ul className="mt-2 list-disc space-y-2 pl-5">
-              <li>
-                <strong>Wrapp</strong> (πάροχος ΥΠΑΗΕΣ) — διαβίβαση
-                παραστατικών στο myDATA.
-              </li>
-              <li>
-                <strong>Brevo (Sendinblue) — EU</strong> — αποστολή
-                transactional email (OTP, ειδοποιήσεις).
-              </li>
-              <li>
-                <strong>Coolify / πάροχος cloud</strong> — φιλοξενία στην
-                ΕΕ.
-              </li>
-              <li>
-                <strong>Google / Facebook</strong> — μόνο αν επιλέξεις να
-                συνδεθείς με OAuth.
-              </li>
-              <li>
-                <strong>Δημόσιες αρχές</strong> — μόνο όπου το επιβάλλει ο
-                νόμος.
-              </li>
-            </ul>
-            <p className="mt-3 text-sm text-black/60">
-              Με κάθε εκτελούντα επεξεργασία έχουμε συνάψει σύμβαση κατά
-              το Άρθρο 28 GDPR.
+            <p>
+              Χρησιμοποιούμε τους παρακάτω τρίτους παρόχους ως εκτελούντες
+              την επεξεργασία (Άρθρο 28 GDPR). Με κάθε έναν έχουμε συνάψει
+              σύμβαση επεξεργασίας (DPA) που δεσμεύει τον πάροχο να
+              χρησιμοποιεί τα δεδομένα αποκλειστικά για τους σκοπούς που
+              καθορίζουμε. Οι δικές τους Πολιτικές Απορρήτου διέπουν την
+              επεξεργασία που κάνουν στο πλαίσιο των υπηρεσιών τους — τις
+              συνδέουμε παρακάτω για διαφάνεια.
+            </p>
+
+            <div className="mt-4 overflow-x-auto rounded-2xl border-2 border-black/10">
+              <table className="w-full min-w-[720px] text-left text-sm">
+                <thead className="bg-brand-50/60">
+                  <tr>
+                    <th className="px-4 py-3 text-brand-900">Πάροχος</th>
+                    <th className="px-4 py-3 text-brand-900">Ρόλος</th>
+                    <th className="px-4 py-3 text-brand-900">Δεδομένα</th>
+                    <th className="px-4 py-3 text-brand-900">Έδρα</th>
+                    <th className="px-4 py-3 text-brand-900">DPA / Privacy</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-black/[0.06]">
+                  <SubProcessorRow
+                    name="Wrapp"
+                    role="Πάροχος ΥΠΑΗΕΣ (myDATA)"
+                    categories="Στοιχεία πελατών, ΑΦΜ, ποσά παραστατικών"
+                    hq="Ελλάδα (ΕΕ)"
+                    links={[{ label: "Site", href: "https://wrapp.ai" }]}
+                  />
+                  <SubProcessorRow
+                    name="Brevo (πρώην Sendinblue)"
+                    role="Transactional email"
+                    categories="Email, ονοματεπώνυμο, περιεχόμενο μηνύματος"
+                    hq="Γαλλία (ΕΕ)"
+                    links={[
+                      {
+                        label: "Privacy",
+                        href: "https://www.brevo.com/legal/privacypolicy/",
+                      },
+                      {
+                        label: "DPA",
+                        href: "https://www.brevo.com/legal/dpa/",
+                      },
+                    ]}
+                  />
+                  <SubProcessorRow
+                    name="Google (OAuth)"
+                    role="Προαιρετική ταυτοποίηση"
+                    categories="Email, όνομα, avatar (αν εγκρίνεις)"
+                    hq="ΗΠΑ (SCC 2021/914)"
+                    links={[
+                      {
+                        label: "Privacy",
+                        href: "https://policies.google.com/privacy",
+                      },
+                    ]}
+                  />
+                  <SubProcessorRow
+                    name="Meta / Facebook (OAuth)"
+                    role="Προαιρετική ταυτοποίηση"
+                    categories="Email, όνομα (αν εγκρίνεις)"
+                    hq="ΗΠΑ (SCC 2021/914)"
+                    links={[
+                      {
+                        label: "Privacy",
+                        href: "https://www.facebook.com/policy.php",
+                      },
+                    ]}
+                  />
+                  <SubProcessorRow
+                    name="Sentry"
+                    role="Παρακολούθηση σφαλμάτων"
+                    categories="Stack traces, IP, user-agent"
+                    hq="ΗΠΑ (SCC 2021/914)"
+                    links={[
+                      { label: "Privacy", href: "https://sentry.io/privacy/" },
+                      { label: "DPA", href: "https://sentry.io/legal/dpa/" },
+                    ]}
+                  />
+                  <SubProcessorRow
+                    name="ΑΑΔΕ / ΓΓΠΣ"
+                    role="Αναζήτηση ΑΦΜ"
+                    categories="ΑΦΜ, δημόσια στοιχεία μητρώου"
+                    hq="Ελλάδα (δημόσια αρχή)"
+                    links={[{ label: "aade.gr", href: "https://www.aade.gr" }]}
+                  />
+                  <SubProcessorRow
+                    name="Πάροχος cloud hosting"
+                    role="Φιλοξενία εφαρμογής & βάσης δεδομένων"
+                    categories="Όλα τα δεδομένα εφαρμογής"
+                    hq="ΕΕ"
+                    links={[{ label: "coolify.io", href: "https://coolify.io" }]}
+                  />
+                </tbody>
+              </table>
+            </div>
+
+            <p className="mt-4 text-sm text-black/60">
+              Πέραν των παραπάνω, ενδέχεται να διαβιβάσουμε δεδομένα σε
+              δημόσιες αρχές (π.χ. ΑΑΔΕ) όπου το επιβάλλει ο νόμος. Δεν
+              πουλάμε και δεν μοιραζόμαστε προσωπικά δεδομένα για
+              διαφημιστικούς σκοπούς.
             </p>
           </Section>
 
@@ -388,5 +465,43 @@ function Section({
         {children}
       </div>
     </div>
+  );
+}
+
+function SubProcessorRow({
+  name,
+  role,
+  categories,
+  hq,
+  links,
+}: {
+  name: string;
+  role: string;
+  categories: string;
+  hq: string;
+  links: { label: string; href: string }[];
+}) {
+  return (
+    <tr>
+      <td className="px-4 py-3 font-semibold text-brand-900">{name}</td>
+      <td className="px-4 py-3 text-black/70">{role}</td>
+      <td className="px-4 py-3 text-black/70">{categories}</td>
+      <td className="px-4 py-3 text-black/60">{hq}</td>
+      <td className="px-4 py-3">
+        <div className="flex flex-wrap gap-x-3 gap-y-1">
+          {links.map((l) => (
+            <a
+              key={l.href}
+              href={l.href}
+              target="_blank"
+              rel="noreferrer"
+              className="text-sm font-semibold text-brand-800 underline underline-offset-4 hover:text-brand-900"
+            >
+              {l.label} →
+            </a>
+          ))}
+        </div>
+      </td>
+    </tr>
   );
 }
