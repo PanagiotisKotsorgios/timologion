@@ -8,6 +8,7 @@ import {
   CalendarDays,
   CalendarRange,
   Calendar,
+  Clock3,
   List,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -16,6 +17,7 @@ import { LinkButton } from "@/components/ui/Button";
 import { NewAppointmentButton } from "../NewAppointmentButton";
 import { MonthCalendar } from "./MonthCalendar";
 import { WeekCalendar } from "./WeekCalendar";
+import { DayCalendar } from "./DayCalendar";
 
 export const dynamic = "force-dynamic";
 
@@ -49,7 +51,7 @@ const GREEK_MONTHS_SHORT = [
   "Δεκ",
 ];
 
-type ViewMode = "month" | "week";
+type ViewMode = "month" | "week" | "day";
 
 function mondayOf(d: Date): Date {
   const day = d.getDay();
@@ -80,7 +82,12 @@ export default async function AppointmentsCalendarPage({
   assertCan(ctx.role, "client:read");
 
   const params = await searchParams;
-  const view: ViewMode = params.view === "week" ? "week" : "month";
+  const view: ViewMode =
+    params.view === "week"
+      ? "week"
+      : params.view === "day"
+        ? "day"
+        : "month";
   const now = new Date();
   const staffFilter = params.staff?.trim() ?? "";
 
@@ -90,10 +97,22 @@ export default async function AppointmentsCalendarPage({
   let month = now.getMonth();
   let year = now.getFullYear();
   let weekMonday = mondayOf(now);
+  let dayAnchor = new Date(now);
+  dayAnchor.setHours(0, 0, 0, 0);
 
-  if (view === "week") {
+  if (view === "day") {
+    dayAnchor = params.d ? new Date(params.d) : new Date(now);
+    dayAnchor.setHours(0, 0, 0, 0);
+    rangeStart = new Date(dayAnchor);
+    rangeEnd = new Date(dayAnchor);
+    rangeEnd.setDate(rangeEnd.getDate() + 1);
+    year = dayAnchor.getFullYear();
+    month = dayAnchor.getMonth();
+    weekMonday = mondayOf(dayAnchor);
+  } else if (view === "week") {
     const anchor = params.d ? new Date(params.d) : now;
     weekMonday = mondayOf(anchor);
+    dayAnchor = new Date(weekMonday);
     rangeStart = new Date(weekMonday);
     rangeEnd = new Date(weekMonday);
     rangeEnd.setDate(rangeEnd.getDate() + 7);
@@ -105,6 +124,7 @@ export default async function AppointmentsCalendarPage({
     const anchor = new Date(rawYear, rawMonth, 1);
     year = anchor.getFullYear();
     month = anchor.getMonth();
+    dayAnchor = new Date(year, month, 1);
     // Include spill days so cells from prev/next months still render chips.
     rangeStart = new Date(year, month, 1);
     rangeStart.setDate(rangeStart.getDate() - 7);
@@ -188,7 +208,21 @@ export default async function AppointmentsCalendarPage({
   let nextHref: string;
   let todayHref: string;
 
-  if (view === "week") {
+  if (view === "day") {
+    headerLabel = dayAnchor.toLocaleDateString("el-GR", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+    const prev = new Date(dayAnchor);
+    prev.setDate(prev.getDate() - 1);
+    const next = new Date(dayAnchor);
+    next.setDate(next.getDate() + 1);
+    prevHref = `/app/appointments/calendar?view=day&d=${toDateInput(prev)}${staffParam}`;
+    nextHref = `/app/appointments/calendar?view=day&d=${toDateInput(next)}${staffParam}`;
+    todayHref = `/app/appointments/calendar?view=day${staffParam ? "&staff=" + staffFilter : ""}`;
+  } else if (view === "week") {
     // "3–9 Μαρ 2026" — trim year if both ends are same year.
     const startMon = GREEK_MONTHS_SHORT[weekMonday.getMonth()];
     const endMon = GREEK_MONTHS_SHORT[weekSunday.getMonth()];
@@ -218,17 +252,31 @@ export default async function AppointmentsCalendarPage({
   }
 
   const visibleCount = appointments.filter((a) => {
+    if (view === "day") {
+      return (
+        a.startAt.getFullYear() === dayAnchor.getFullYear() &&
+        a.startAt.getMonth() === dayAnchor.getMonth() &&
+        a.startAt.getDate() === dayAnchor.getDate()
+      );
+    }
     if (view === "week") {
       return a.startAt >= weekMonday && a.startAt < new Date(weekMonday.getTime() + 7 * 86_400_000);
     }
     return a.startAt.getMonth() === month && a.startAt.getFullYear() === year;
   }).length;
 
+  const visibleUnitLabel =
+    view === "day"
+      ? "ραντεβού την ημέρα"
+      : view === "week"
+        ? "ραντεβού την εβδομάδα"
+        : "ραντεβού τον μήνα";
+
   return (
     <>
       <PageHeader
         title="Ημερολόγιο ραντεβού"
-        subtitle={`${headerLabel} · ${visibleCount} ${view === "week" ? "ραντεβού την εβδομάδα" : "ραντεβού τον μήνα"} · ${todayCount} σήμερα`}
+        subtitle={`${headerLabel} · ${visibleCount} ${visibleUnitLabel} · ${todayCount} σήμερα`}
         actions={
           <>
             <LinkButton
@@ -252,6 +300,7 @@ export default async function AppointmentsCalendarPage({
           <div className="flex flex-wrap items-center gap-2">
             <ViewToggle
               view={view}
+              dayHref={`/app/appointments/calendar?view=day&d=${toDateInput(dayAnchor)}${staffParam}`}
               weekHref={`/app/appointments/calendar?view=week&d=${toDateInput(weekMonday)}${staffParam}`}
               monthHref={`/app/appointments/calendar?y=${year}&m=${month + 1}${staffParam}`}
             />
@@ -285,7 +334,9 @@ export default async function AppointmentsCalendarPage({
           </div>
           <form method="get" className="flex items-center gap-2">
             <input type="hidden" name="view" value={view} />
-            {view === "week" ? (
+            {view === "day" ? (
+              <input type="hidden" name="d" value={toDateInput(dayAnchor)} />
+            ) : view === "week" ? (
               <input type="hidden" name="d" value={toDateInput(weekMonday)} />
             ) : (
               <>
@@ -319,7 +370,23 @@ export default async function AppointmentsCalendarPage({
         </CardBody>
       </Card>
 
-      {view === "week" ? (
+      {view === "day" ? (
+        <DayCalendar
+          date={dayAnchor.toISOString()}
+          appointments={appointments.map((a) => ({
+            id: a.id,
+            startAt: a.startAt.toISOString(),
+            endAt: a.endAt.toISOString(),
+            serviceName: a.serviceName,
+            clientName: a.client?.legalName ?? null,
+            staffId: a.staffUserId ?? null,
+            staffName: a.staff?.fullName ?? null,
+            status: a.status,
+            locationType: a.locationType,
+            locationDetail: a.locationDetail,
+          }))}
+        />
+      ) : view === "week" ? (
         <WeekCalendar
           weekStart={weekMonday.toISOString()}
           appointments={appointments.map((a) => ({
@@ -358,13 +425,22 @@ function ViewToggle({
   view,
   monthHref,
   weekHref,
+  dayHref,
 }: {
   view: ViewMode;
   monthHref: string;
   weekHref: string;
+  dayHref: string;
 }) {
   return (
     <div className="inline-flex overflow-hidden rounded-full border-2 border-ink-300 bg-white">
+      <ToggleLink
+        href={dayHref}
+        active={view === "day"}
+        icon={<Clock3 size={14} aria-hidden />}
+      >
+        Ημέρα
+      </ToggleLink>
       <ToggleLink
         href={weekHref}
         active={view === "week"}
