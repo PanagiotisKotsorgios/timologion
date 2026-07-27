@@ -145,6 +145,57 @@ export async function updateAppointmentStatusAction(formData: FormData) {
 }
 
 /**
+ * Move an appointment to a new time slot. Called by drag-and-drop on
+ * the calendar views. Preserves the original duration unless an
+ * explicit endAt is supplied.
+ */
+export async function rescheduleAppointmentAction(formData: FormData) {
+  const ctx = await requireTenant();
+  assertCan(ctx.role, "client:write");
+  const id = String(formData.get("id") ?? "");
+  const startAtRaw = String(formData.get("startAt") ?? "");
+  const endAtRaw = String(formData.get("endAt") ?? "");
+  if (!id || !startAtRaw) return;
+
+  const startAt = new Date(startAtRaw);
+  if (Number.isNaN(startAt.getTime())) return;
+
+  const existing = await prisma.appointment.findFirst({
+    where: { id, businessId: ctx.businessId },
+    select: { id: true, startAt: true, endAt: true },
+  });
+  if (!existing) return;
+
+  let endAt: Date;
+  if (endAtRaw) {
+    endAt = new Date(endAtRaw);
+    if (Number.isNaN(endAt.getTime())) return;
+  } else {
+    // Preserve duration.
+    const duration =
+      existing.endAt.getTime() - existing.startAt.getTime();
+    endAt = new Date(startAt.getTime() + duration);
+  }
+  if (endAt.getTime() <= startAt.getTime()) return;
+
+  await prisma.appointment.update({
+    where: { id },
+    data: { startAt, endAt },
+  });
+
+  await logAudit({
+    userId: ctx.userId,
+    businessId: ctx.businessId,
+    action: "appointment.reschedule",
+    entityType: "Appointment",
+    entityId: id,
+    meta: { startAt, endAt },
+  });
+
+  revalidatePath("/app/appointments");
+}
+
+/**
  * Duplicate an appointment n days forward. Used for lightweight
  * "recurring" support without needing a background job — the user
  * fires it manually and gets a fresh row they can tweak.

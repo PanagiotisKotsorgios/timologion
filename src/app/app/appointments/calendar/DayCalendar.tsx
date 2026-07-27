@@ -1,11 +1,13 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { AppointmentStatus } from "@prisma/client";
 import { Card } from "@/components/ui/Card";
 import { MapPin, Video, Phone, User2 } from "lucide-react";
 import { colorForStaff } from "../staff-color";
+import { rescheduleAppointmentAction } from "../actions";
 
 type DayAppointment = {
   id: string;
@@ -27,6 +29,8 @@ const START_HOUR = 7;
 const END_HOUR = 22;
 const HOUR_PX = 72;
 const GRID_HEIGHT = (END_HOUR - START_HOUR) * HOUR_PX;
+const SNAP_MINUTES = 15;
+const SNAP_PX = (SNAP_MINUTES / 60) * HOUR_PX;
 
 function isSameDay(a: Date, b: Date) {
   return (
@@ -67,6 +71,7 @@ export function DayCalendar({
   date: string;
   appointments: DayAppointment[];
 }) {
+  const router = useRouter();
   const day = useMemo(() => new Date(date), [date]);
   const today = new Date();
   const isToday = isSameDay(day, today);
@@ -80,6 +85,88 @@ export function DayCalendar({
     [appointments],
   );
   const packed = useMemo(() => packColumns(sorted), [sorted]);
+
+  const dayColRef = useRef<HTMLDivElement>(null);
+  const [drag, setDrag] = useState<{
+    id: string;
+    duration: number;
+    startMin: number | null;
+  } | null>(null);
+  const dragMoved = useRef(false);
+
+  function onBlockPointerDown(
+    e: React.PointerEvent<HTMLElement>,
+    item: DayAppointment,
+  ) {
+    if (e.button !== 0 || e.metaKey || e.ctrlKey) return;
+    const target = e.currentTarget;
+    target.setPointerCapture(e.pointerId);
+    dragMoved.current = false;
+    const duration =
+      new Date(item.endAt).getTime() - new Date(item.startAt).getTime();
+    const startClientX = e.clientX;
+    const startClientY = e.clientY;
+    setDrag({ id: item.id, duration, startMin: null });
+
+    function handleMove(ev: PointerEvent) {
+      const dx = ev.clientX - startClientX;
+      const dy = ev.clientY - startClientY;
+      if (!dragMoved.current && Math.hypot(dx, dy) < 6) return;
+      dragMoved.current = true;
+      const grid = dayColRef.current;
+      if (!grid) return;
+      const rect = grid.getBoundingClientRect();
+      const y = ev.clientY - rect.top;
+      const snappedPx = Math.round(y / SNAP_PX) * SNAP_PX;
+      const startMin = Math.max(
+        0,
+        Math.min(
+          (END_HOUR - START_HOUR) * 60 - SNAP_MINUTES,
+          (snappedPx / HOUR_PX) * 60,
+        ),
+      );
+      setDrag((prev) => (prev ? { ...prev, startMin } : prev));
+    }
+
+    function handleUp() {
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+      target.releasePointerCapture(e.pointerId);
+      setDrag((prev) => {
+        if (!prev || prev.startMin == null || !dragMoved.current) return null;
+        commitReschedule(item, prev.startMin, prev.duration);
+        return null;
+      });
+    }
+
+    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointerup", handleUp);
+  }
+
+  function commitReschedule(
+    item: DayAppointment,
+    startMin: number,
+    durationMs: number,
+  ) {
+    const target = new Date(day);
+    target.setHours(
+      START_HOUR + Math.floor(startMin / 60),
+      startMin % 60,
+      0,
+      0,
+    );
+    const endAt = new Date(target.getTime() + durationMs);
+    const orig = new Date(item.startAt);
+    if (orig.getTime() === target.getTime()) return;
+
+    const fd = new FormData();
+    fd.set("id", item.id);
+    fd.set("startAt", target.toISOString());
+    fd.set("endAt", endAt.toISOString());
+    rescheduleAppointmentAction(fd)
+      .then(() => router.refresh())
+      .catch(() => router.refresh());
+  }
 
   const hourLabels = Array.from(
     { length: END_HOUR - START_HOUR },
@@ -150,7 +237,7 @@ export function DayCalendar({
           ))}
         </div>
 
-        <div className="relative">
+        <div ref={dayColRef} className="relative select-none" style={{ touchAction: "none" }}>
           {hourLabels.map((_, i) => (
             <div
               key={i}
@@ -189,25 +276,32 @@ export function DayCalendar({
               item.status === "cancelled" || item.status === "no_show";
             const widthPct = 100 / totalCols;
             const LocIcon = locationIcon(item.locationType);
+            const isDragging = drag?.id === item.id;
             return (
               <Link
                 key={item.id}
                 href={`/app/appointments?q=${encodeURIComponent(item.serviceName)}`}
+                onPointerDown={(e) => onBlockPointerDown(e, item)}
+                onClick={(e) => {
+                  if (dragMoved.current) e.preventDefault();
+                }}
                 className={
                   "absolute overflow-hidden rounded-xl border-l-4 px-3 py-2 shadow-sm ring-1 ring-inset ring-black/5 transition-shadow hover:shadow-md " +
                   c.bg +
                   " " +
                   c.text +
                   " " +
-                  (cancelled ? "line-through opacity-60" : "")
+                  (cancelled ? "line-through opacity-60 " : "") +
+                  (isDragging ? "cursor-grabbing opacity-40 " : "cursor-grab ")
                 }
                 style={{
                   top,
                   height: Math.max(height, 44),
                   left: `calc(${widthPct * col}% + 4px)`,
                   width: `calc(${widthPct}% - 8px)`,
+                  touchAction: "none",
                 }}
-                title={`${formatTime(item.startAt)} — ${formatTime(item.endAt)} · ${item.serviceName}${item.clientName ? " · " + item.clientName : ""}`}
+                title={`${formatTime(item.startAt)} — ${formatTime(item.endAt)} · ${item.serviceName}${item.clientName ? " · " + item.clientName : ""} · Σύρε για επαναπρογραμματισμό`}
               >
                 <p className="text-[11px] font-black uppercase tracking-widest opacity-80">
                   {formatTime(item.startAt)} — {formatTime(item.endAt)}
@@ -237,9 +331,39 @@ export function DayCalendar({
               </Link>
             );
           })}
+          {drag?.startMin != null && (
+            <GhostBlock
+              startMin={drag.startMin}
+              durationMs={drag.duration}
+            />
+          )}
         </div>
       </div>
     </Card>
+  );
+}
+
+function GhostBlock({
+  startMin,
+  durationMs,
+}: {
+  startMin: number;
+  durationMs: number;
+}) {
+  const durationMin = durationMs / 60_000;
+  const top = (startMin / 60) * HOUR_PX;
+  const height = Math.max(44, (durationMin / 60) * HOUR_PX);
+  const hh = String(START_HOUR + Math.floor(startMin / 60)).padStart(2, "0");
+  const mm = String(Math.round(startMin % 60)).padStart(2, "0");
+  return (
+    <div
+      className="pointer-events-none absolute left-1 right-1 rounded-xl border-2 border-dashed border-brand-800 bg-brand-100/70 text-brand-900 shadow-sm"
+      style={{ top, height }}
+    >
+      <p className="p-2 text-xs font-black uppercase tracking-widest">
+        Επαναπρογραμματισμός · {hh}:{mm}
+      </p>
+    </div>
   );
 }
 

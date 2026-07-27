@@ -1,11 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { AppointmentStatus } from "@prisma/client";
 import { Card, CardBody } from "@/components/ui/Card";
 import { X } from "lucide-react";
 import { colorForStaff } from "../staff-color";
+import { rescheduleAppointmentAction } from "../actions";
 
 type CalendarAppointment = {
   id: string;
@@ -51,8 +53,91 @@ export function MonthCalendar({
   appointments: CalendarAppointment[];
   staff: { id: string; fullName: string }[];
 }) {
+  const router = useRouter();
   const today = new Date();
   const [selectedIso, setSelectedIso] = useState<string | null>(null);
+
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [drag, setDrag] = useState<{
+    id: string;
+    targetDay: Date | null;
+  } | null>(null);
+  const dragMoved = useRef(false);
+
+  function onChipPointerDown(
+    e: React.PointerEvent<HTMLElement>,
+    item: CalendarAppointment,
+  ) {
+    if (e.button !== 0 || e.metaKey || e.ctrlKey) return;
+    e.stopPropagation();
+    const target = e.currentTarget;
+    target.setPointerCapture(e.pointerId);
+    dragMoved.current = false;
+    const startClientX = e.clientX;
+    const startClientY = e.clientY;
+    setDrag({ id: item.id, targetDay: null });
+
+    function handleMove(ev: PointerEvent) {
+      const dx = ev.clientX - startClientX;
+      const dy = ev.clientY - startClientY;
+      if (!dragMoved.current && Math.hypot(dx, dy) < 8) return;
+      dragMoved.current = true;
+      const grid = gridRef.current;
+      if (!grid) return;
+      const rect = grid.getBoundingClientRect();
+      const col = Math.floor(
+        ((ev.clientX - rect.left) / rect.width) * 7,
+      );
+      const rowHeight = rect.height / 6;
+      const row = Math.floor((ev.clientY - rect.top) / rowHeight);
+      if (col < 0 || col > 6 || row < 0 || row > 5) {
+        setDrag((prev) => (prev ? { ...prev, targetDay: null } : prev));
+        return;
+      }
+      const cellIndex = row * 7 + col;
+      const targetDay = new Date(grid.dataset.gridStart ?? "");
+      targetDay.setDate(targetDay.getDate() + cellIndex);
+      setDrag((prev) => (prev ? { ...prev, targetDay } : prev));
+    }
+
+    function handleUp() {
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+      target.releasePointerCapture(e.pointerId);
+      setDrag((prev) => {
+        if (!prev || !prev.targetDay || !dragMoved.current) return null;
+        commitReschedule(item, prev.targetDay);
+        return null;
+      });
+    }
+
+    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointerup", handleUp);
+  }
+
+  function commitReschedule(item: CalendarAppointment, targetDay: Date) {
+    const origStart = new Date(item.startAt);
+    const origEnd = new Date(item.endAt);
+    // Preserve the time-of-day; only shift the date.
+    const newStart = new Date(targetDay);
+    newStart.setHours(
+      origStart.getHours(),
+      origStart.getMinutes(),
+      origStart.getSeconds(),
+      origStart.getMilliseconds(),
+    );
+    if (newStart.getTime() === origStart.getTime()) return;
+    const duration = origEnd.getTime() - origStart.getTime();
+    const newEnd = new Date(newStart.getTime() + duration);
+
+    const fd = new FormData();
+    fd.set("id", item.id);
+    fd.set("startAt", newStart.toISOString());
+    fd.set("endAt", newEnd.toISOString());
+    rescheduleAppointmentAction(fd)
+      .then(() => router.refresh())
+      .catch(() => router.refresh());
+  }
 
   const grid = useMemo(() => {
     const first = new Date(year, month, 1);
@@ -104,23 +189,38 @@ export function MonthCalendar({
             </div>
           ))}
         </div>
-        <div className="grid grid-cols-7">
+        <div
+          ref={gridRef}
+          className="grid grid-cols-7 select-none"
+          data-grid-start={grid[0]?.toISOString()}
+        >
           {grid.map((d, idx) => {
             const inMonth = d.getMonth() === month;
             const isToday = isSameDay(d, today);
             const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
             const items = dayMap.get(key) ?? [];
             const isWeekend = d.getDay() === 6 || d.getDay() === 0;
+            const isDropTarget =
+              drag?.targetDay &&
+              d.getFullYear() === drag.targetDay.getFullYear() &&
+              d.getMonth() === drag.targetDay.getMonth() &&
+              d.getDate() === drag.targetDay.getDate();
 
             return (
               <button
                 type="button"
                 key={idx}
-                onClick={() => setSelectedIso(d.toISOString())}
+                onClick={() => {
+                  if (dragMoved.current) return;
+                  setSelectedIso(d.toISOString());
+                }}
                 className={
                   "group relative flex min-h-[110px] flex-col items-stretch gap-1 border-b border-r border-ink-200 p-2 text-left transition-colors hover:bg-brand-50/40 " +
                   (inMonth ? "" : "bg-ink-50/60 text-ink-400 ") +
-                  (isWeekend && inMonth ? "bg-ink-50/40 " : "")
+                  (isWeekend && inMonth ? "bg-ink-50/40 " : "") +
+                  (isDropTarget
+                    ? "bg-brand-100 outline outline-2 outline-brand-900 "
+                    : "")
                 }
               >
                 <div className="flex items-center justify-between">
@@ -148,20 +248,24 @@ export function MonthCalendar({
                     const c = colorForStaff(a.staffId);
                     const cancelled =
                       a.status === "cancelled" || a.status === "no_show";
+                    const isDragging = drag?.id === a.id;
                     return (
                       <span
                         key={a.id}
+                        onPointerDown={(e) => onChipPointerDown(e, a)}
                         className={
-                          "block truncate rounded-md px-1.5 py-0.5 text-[11px] font-semibold ring-1 " +
+                          "block cursor-grab touch-none truncate rounded-md px-1.5 py-0.5 text-[11px] font-semibold ring-1 " +
                           c.bg +
                           " " +
                           c.text +
                           " ring-inset ring-black/5 " +
-                          (cancelled ? "line-through opacity-60" : "")
+                          (cancelled ? "line-through opacity-60 " : "") +
+                          (isDragging ? "opacity-40" : "")
                         }
+                        style={{ touchAction: "none" }}
                         title={`${formatTime(a.startAt)} — ${a.serviceName}${
                           a.clientName ? " · " + a.clientName : ""
-                        }`}
+                        } · Σύρε σε άλλη μέρα για επαναπρογραμματισμό`}
                       >
                         {formatTime(a.startAt)}{" "}
                         {a.clientName ?? a.serviceName}

@@ -1,10 +1,12 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { AppointmentStatus } from "@prisma/client";
 import { Card } from "@/components/ui/Card";
 import { colorForStaff } from "../staff-color";
+import { rescheduleAppointmentAction } from "../actions";
 
 type WeekAppointment = {
   id: string;
@@ -27,6 +29,10 @@ const START_HOUR = 7;
 const END_HOUR = 22;
 const HOUR_PX = 56;
 const GRID_HEIGHT = (END_HOUR - START_HOUR) * HOUR_PX;
+// Snap drag-drop to 15-minute increments. Keeps the schedule tidy and
+// matches how humans actually book slots.
+const SNAP_MINUTES = 15;
+const SNAP_PX = (SNAP_MINUTES / 60) * HOUR_PX;
 
 function isSameDay(a: Date, b: Date) {
   return (
@@ -65,6 +71,7 @@ export function WeekCalendar({
   weekStart: string;
   appointments: WeekAppointment[];
 }) {
+  const router = useRouter();
   const today = new Date();
   const monday = useMemo(() => new Date(weekStart), [weekStart]);
   const days = useMemo(() => {
@@ -95,6 +102,107 @@ export function WeekCalendar({
     }
     return map;
   }, [appointments]);
+
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [drag, setDrag] = useState<{
+    id: string;
+    duration: number;
+    ghost: { dayIdx: number; startMin: number } | null;
+  } | null>(null);
+  const dragMoved = useRef(false);
+
+  function onBlockPointerDown(
+    e: React.PointerEvent<HTMLElement>,
+    item: WeekAppointment,
+  ) {
+    // Skip when a modifier is held (user probably wants to open a link).
+    if (e.button !== 0 || e.metaKey || e.ctrlKey) return;
+    const target = e.currentTarget;
+    target.setPointerCapture(e.pointerId);
+    dragMoved.current = false;
+    const duration =
+      new Date(item.endAt).getTime() - new Date(item.startAt).getTime();
+    const startClientX = e.clientX;
+    const startClientY = e.clientY;
+    setDrag({
+      id: item.id,
+      duration,
+      ghost: null,
+    });
+
+    function handleMove(ev: PointerEvent) {
+      const dx = ev.clientX - startClientX;
+      const dy = ev.clientY - startClientY;
+      if (!dragMoved.current && Math.hypot(dx, dy) < 6) return;
+      dragMoved.current = true;
+      const grid = gridRef.current;
+      if (!grid) return;
+      const rect = grid.getBoundingClientRect();
+      // 72px time rail on the left, 7 equal columns after.
+      const colX = ev.clientX - rect.left - 72;
+      const colWidth = (rect.width - 72) / 7;
+      const dayIdx = Math.max(0, Math.min(6, Math.floor(colX / colWidth)));
+      const y = ev.clientY - rect.top;
+      const snappedPx = Math.round(y / SNAP_PX) * SNAP_PX;
+      const startMin = Math.max(
+        0,
+        Math.min(
+          (END_HOUR - START_HOUR) * 60 - SNAP_MINUTES,
+          (snappedPx / HOUR_PX) * 60,
+        ),
+      );
+      setDrag((prev) =>
+        prev
+          ? { ...prev, ghost: { dayIdx, startMin } }
+          : prev,
+      );
+    }
+
+    function handleUp() {
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+      target.releasePointerCapture(e.pointerId);
+      setDrag((prev) => {
+        if (!prev || !prev.ghost || !dragMoved.current) return null;
+        commitReschedule(item, prev.ghost.dayIdx, prev.ghost.startMin, prev.duration);
+        return null;
+      });
+    }
+
+    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointerup", handleUp);
+  }
+
+  function commitReschedule(
+    item: WeekAppointment,
+    dayIdx: number,
+    startMin: number,
+    durationMs: number,
+  ) {
+    const target = new Date(monday);
+    target.setDate(monday.getDate() + dayIdx);
+    target.setHours(
+      START_HOUR + Math.floor(startMin / 60),
+      startMin % 60,
+      0,
+      0,
+    );
+    const endAt = new Date(target.getTime() + durationMs);
+
+    // Optimistic: no state mutation needed, we let router.refresh()
+    // pick up the DB change. But if the user drops to the same slot
+    // we no-op instead of round-tripping.
+    const orig = new Date(item.startAt);
+    if (orig.getTime() === target.getTime()) return;
+
+    const fd = new FormData();
+    fd.set("id", item.id);
+    fd.set("startAt", target.toISOString());
+    fd.set("endAt", endAt.toISOString());
+    rescheduleAppointmentAction(fd)
+      .then(() => router.refresh())
+      .catch(() => router.refresh());
+  }
 
   const hourLabels = Array.from(
     { length: END_HOUR - START_HOUR },
@@ -138,7 +246,8 @@ export function WeekCalendar({
 
       <div className="overflow-x-auto">
         <div
-          className="relative grid"
+          ref={gridRef}
+          className="relative grid select-none"
           style={{
             gridTemplateColumns: "72px repeat(7, minmax(140px, 1fr))",
             height: GRID_HEIGHT,
@@ -191,32 +300,40 @@ export function WeekCalendar({
                   const cancelled =
                     item.status === "cancelled" || item.status === "no_show";
                   const widthPct = 100 / totalCols;
+                  const isDragging = drag?.id === item.id;
                   return (
                     <Link
                       key={item.id}
                       href={`/app/appointments?q=${encodeURIComponent(
                         item.serviceName,
                       )}`}
+                      onPointerDown={(e) => onBlockPointerDown(e, item)}
+                      onClick={(e) => {
+                        if (dragMoved.current) e.preventDefault();
+                      }}
                       className={
                         "absolute overflow-hidden rounded-lg border-l-4 px-2 py-1 text-[11px] font-semibold shadow-sm ring-1 ring-inset ring-black/5 transition-shadow hover:shadow-md " +
                         c.bg +
                         " " +
                         c.text +
                         " " +
-                        (cancelled ? "line-through opacity-60" : "")
+                        (cancelled ? "line-through opacity-60 " : "") +
+                        (isDragging
+                          ? "cursor-grabbing opacity-40 "
+                          : "cursor-grab ")
                       }
                       style={{
                         top,
                         height: Math.max(height, 22),
                         left: `calc(${widthPct * col}% + 2px)`,
                         width: `calc(${widthPct}% - 4px)`,
-                        borderLeftColor: `rgb(from currentColor r g b / 1)`,
+                        touchAction: "none",
                       }}
                       title={`${formatTime(item.startAt)} — ${formatTime(
                         item.endAt,
                       )} · ${item.serviceName}${
                         item.clientName ? " · " + item.clientName : ""
-                      }`}
+                      } · Σύρε για επαναπρογραμματισμό`}
                     >
                       <p className="truncate text-[10px] font-black uppercase tracking-widest opacity-75">
                         {formatTime(item.startAt)}
@@ -232,12 +349,42 @@ export function WeekCalendar({
                     </Link>
                   );
                 })}
+                {drag?.ghost?.dayIdx === dayIdx && drag.id && (
+                  <GhostBlock
+                    startMin={drag.ghost.startMin}
+                    durationMs={drag.duration}
+                  />
+                )}
               </div>
             );
           })}
         </div>
       </div>
     </Card>
+  );
+}
+
+function GhostBlock({
+  startMin,
+  durationMs,
+}: {
+  startMin: number;
+  durationMs: number;
+}) {
+  const durationMin = durationMs / 60_000;
+  const top = (startMin / 60) * HOUR_PX;
+  const height = Math.max(22, (durationMin / 60) * HOUR_PX);
+  const hh = String(START_HOUR + Math.floor(startMin / 60)).padStart(2, "0");
+  const mm = String(Math.round(startMin % 60)).padStart(2, "0");
+  return (
+    <div
+      className="pointer-events-none absolute left-1 right-1 rounded-lg border-2 border-dashed border-brand-800 bg-brand-100/60 text-[11px] font-black text-brand-900"
+      style={{ top, height }}
+    >
+      <p className="p-1">
+        {hh}:{mm}
+      </p>
+    </div>
   );
 }
 
