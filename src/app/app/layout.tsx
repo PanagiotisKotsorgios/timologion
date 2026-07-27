@@ -19,6 +19,11 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false, nocache: true },
 };
 
+// Layout reads plugin activations to build the sidebar — force dynamic so
+// activation / deactivation is reflected on the very next render instead of
+// waiting for a full route rebuild.
+export const dynamic = "force-dynamic";
+
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const session = await getSession();
   if (!session) redirect("/login");

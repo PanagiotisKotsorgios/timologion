@@ -30,8 +30,11 @@ export async function activatePluginAction(formData: FormData) {
     meta: { code },
   });
 
-  revalidatePath("/app/plugins");
-  revalidatePath("/app");
+  // Layout-level invalidation — the sidebar (rendered in /app/layout.tsx)
+  // reads the plugin runtime, so a plain revalidatePath("/app") only busts
+  // the dashboard page and leaves the sidebar showing stale data. The
+  // "layout" second arg re-runs the layout tree and every page under it.
+  revalidatePath("/app", "layout");
   redirect(res.activation ? `/app/plugins?activated=${code}` : "/app/plugins");
 }
 
@@ -65,7 +68,10 @@ export async function deactivatePluginAction(formData: FormData) {
     meta: { code },
   });
 
-  revalidatePath("/app/plugins");
-  revalidatePath("/app");
+  // Layout-level invalidation — the sidebar (rendered in /app/layout.tsx)
+  // reads the plugin runtime, so a plain revalidatePath("/app") only busts
+  // the dashboard page and leaves the sidebar showing stale data. The
+  // "layout" second arg re-runs the layout tree and every page under it.
+  revalidatePath("/app", "layout");
   redirect(`/app/plugins?deactivated=${code}`);
 }
