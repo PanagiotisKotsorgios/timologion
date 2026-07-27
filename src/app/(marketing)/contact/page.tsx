@@ -70,21 +70,21 @@ export default function ContactPage() {
         </Container>
       </section>
 
-      <section id="feedback" className="border-t-2 border-black/10 bg-ink-50">
+      <section id="feedback" className="bg-brand-900 text-white">
         <Container className="py-24 md:py-32">
           <div className="grid gap-16 lg:grid-cols-12">
             <div className="lg:col-span-4">
-              <p className="eyebrow text-brand-900/70">Ανατροφοδότηση</p>
-              <h2 className="text-headline mt-8 text-brand-900">
+              <p className="eyebrow text-white/60">Ανατροφοδότηση</p>
+              <h2 className="text-headline mt-8">
                 Ανέφερε πρόβλημα ή πρότεινε χαρακτηριστικό.
               </h2>
-              <p className="mt-6 max-w-md text-lg text-black/70">
+              <p className="mt-6 max-w-md text-lg text-white/70">
                 Το Τιμολόγιον χτίζεται με τη βοήθειά σου. Πες μας τι δεν
                 δουλεύει σωστά ή τι θα ήθελες να προστεθεί — κάθε αναφορά
                 διαβάζεται και ιεραρχείται.
               </p>
 
-              <ul className="mt-10 space-y-4 text-base text-black/70">
+              <ul className="mt-10 space-y-4 text-base text-white/80">
                 <FeedbackPerk>
                   Απάντηση εντός μιας εργάσιμης ημέρας από την ομάδα
                   ανάπτυξης
@@ -99,7 +99,7 @@ export default function ContactPage() {
             </div>
 
             <div className="lg:col-span-8">
-              <div className="rounded-3xl border-2 border-black/10 bg-white p-8 md:p-12">
+              <div className="rounded-3xl bg-white p-8 text-black shadow-2xl md:p-12">
                 <FeedbackForm />
               </div>
             </div>
@@ -115,7 +115,7 @@ function FeedbackPerk({ children }: { children: React.ReactNode }) {
     <li className="flex items-start gap-3">
       <span
         aria-hidden
-        className="mt-1.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-brand-900 text-white"
+        className="mt-1.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-white text-brand-900"
       >
         <svg viewBox="0 0 24 24" width="12" height="12" fill="none">
           <path
