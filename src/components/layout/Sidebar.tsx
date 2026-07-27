@@ -11,6 +11,7 @@ import {
   Users,
   Package,
   Wallet,
+  Receipt,
   Puzzle,
   Settings,
   UserCircle,
@@ -40,6 +41,7 @@ const primary: NavItem[] = [
   { href: "/app/clients", label: t.nav.clients, icon: Users },
   { href: "/app/items", label: t.nav.items, icon: Package },
   { href: "/app/payments", label: "Πληρωμές", icon: Wallet },
+  { href: "/app/expenses", label: "Έξοδα", icon: Receipt },
   { href: "/app/plugins", label: "Πρόσθετα", icon: Puzzle },
 ];
 

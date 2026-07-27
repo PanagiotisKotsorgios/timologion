@@ -62,18 +62,18 @@ export default async function ClientDetailPage({
           </CardBody>
         </Card>
       ) : (
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="grid gap-8 md:grid-cols-3">
           <div className="md:col-span-2">
             <Card>
               <CardHeader title="Στοιχεία" />
-              <CardBody className="grid gap-4 sm:grid-cols-2">
+              <CardBody className="grid gap-6 p-6 sm:grid-cols-2 md:p-8">
                 <Detail label="Νόμιμη επωνυμία" value={client.legalName} />
                 <Detail label="Διακριτικός τίτλος" value={client.tradeName} />
-                <Detail label="ΑΦΜ" value={client.vatNumber} />
+                <Detail label="ΑΦΜ" value={client.vatNumber} mono />
                 <Detail label="ΔΟΥ" value={client.taxOffice} />
                 <Detail label="Δραστηριότητα" value={client.activity} />
                 <Detail label="Email" value={client.email} />
-                <Detail label="Τηλέφωνο" value={client.phone} />
+                <Detail label="Τηλέφωνο" value={client.phone} mono />
                 <Detail
                   label="Διεύθυνση"
                   value={[client.addressLine, client.postalCode, client.city]
@@ -83,18 +83,24 @@ export default async function ClientDetailPage({
               </CardBody>
             </Card>
           </div>
-          <div className="space-y-6">
+          <div className="space-y-8">
             <Card>
               <CardHeader title="Δραστηριότητα" />
-              <CardBody>
-                <Detail
-                  label="Παραστατικά"
-                  value={String(client._count.documents)}
-                />
+              <CardBody className="p-6 md:p-8">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-widest text-ink-500">
+                    Παραστατικά
+                  </p>
+                  <p className="mt-2 text-4xl font-extrabold text-brand-900">
+                    {client._count.documents}
+                  </p>
+                </div>
                 {client.notes && (
-                  <div className="mt-4">
-                    <p className="text-xs font-medium text-ink-500">Σημειώσεις</p>
-                    <p className="mt-1 whitespace-pre-line text-sm text-ink-700">
+                  <div className="mt-6 border-t-2 border-ink-200 pt-6">
+                    <p className="text-sm font-semibold uppercase tracking-widest text-ink-500">
+                      Σημειώσεις
+                    </p>
+                    <p className="mt-2 whitespace-pre-line text-base leading-relaxed text-ink-900">
                       {client.notes}
                     </p>
                   </div>
@@ -106,9 +112,9 @@ export default async function ClientDetailPage({
               <Card>
                 <CardHeader
                   title="Ετικέτες"
-                  action={<TagIcon size={16} className="text-ink-500" />}
+                  action={<TagIcon size={18} className="text-ink-500" />}
                 />
-                <CardBody>
+                <CardBody className="p-6 md:p-8">
                   <TagPicker
                     clientId={client.id}
                     allTags={allTags.map((t) => ({
@@ -131,15 +137,26 @@ export default async function ClientDetailPage({
 function Detail({
   label,
   value,
+  mono,
 }: {
   label: string;
   value?: string | null;
+  mono?: boolean;
 }) {
+  const empty = !value || value.length === 0;
   return (
     <div>
-      <p className="text-xs font-medium text-ink-500">{label}</p>
-      <p className="mt-0.5 text-sm text-ink-900">
-        {value && value.length > 0 ? value : "—"}
+      <p className="text-sm font-semibold uppercase tracking-widest text-ink-500">
+        {label}
+      </p>
+      <p
+        className={
+          "mt-2 text-lg leading-snug " +
+          (empty ? "text-ink-400 " : "font-semibold text-ink-900 ") +
+          (mono ? "mono" : "")
+        }
+      >
+        {empty ? "—" : value}
       </p>
     </div>
   );
