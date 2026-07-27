@@ -1,5 +1,6 @@
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { LinkButton } from "@/components/ui/Button";
+import { PageSizeSelect } from "@/components/ui/PageSizeSelect";
 
 export const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
 export const DEFAULT_PAGE_SIZE = 10;
@@ -70,27 +71,19 @@ export function Pagination({
           </span>
         )}
         {sizeHref && typeof pageSize === "number" && (
-          <span className="flex flex-wrap items-center gap-1.5">
+          <span className="flex items-center gap-2">
             <span className="text-ink-500">·</span>
-            <span className="mr-1 text-ink-500">Ανά σελίδα:</span>
-            {pageSizeOptions.map((size) => {
-              const active = size === pageSize;
-              return (
-                <a
-                  key={size}
-                  href={sizeHref(size)}
-                  aria-current={active ? "true" : undefined}
-                  className={
-                    "inline-flex h-8 min-w-[2.25rem] items-center justify-center rounded-full border-2 px-2 text-sm font-bold transition-colors " +
-                    (active
-                      ? "border-brand-900 bg-brand-900 text-white"
-                      : "border-ink-300 bg-white text-ink-700 hover:border-brand-800 hover:text-brand-900")
-                  }
-                >
-                  {size}
-                </a>
-              );
-            })}
+            <label
+              htmlFor="page-size-select"
+              className="text-ink-500"
+            >
+              Ανά σελίδα:
+            </label>
+            <PageSizeSelect
+              value={pageSize}
+              options={pageSizeOptions}
+              sizeHref={sizeHref}
+            />
           </span>
         )}
       </div>
