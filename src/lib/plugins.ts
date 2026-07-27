@@ -20,7 +20,7 @@ import type { PluginActivation, PluginStatus } from "@prisma/client";
  * `PluginActivation.priceMonthly` — so a later price change never
  * retro-bills an existing tenant.
  */
-export type PluginCode = "pos" | "crm" | "reports" | "appointments";
+export type PluginCode = "pos" | "crm" | "reports";
 
 export type PluginDefinition = {
   code: PluginCode;
@@ -85,22 +85,6 @@ export const PLUGIN_CATALOG: PluginDefinition[] = [
     href: "/app/reports",
     iconName: "FileSpreadsheet",
     availability: "available",
-  },
-  {
-    code: "appointments",
-    name: "Ραντεβού & ημερολόγιο",
-    tagline: "Κράτηση χρόνου, υπενθυμίσεις πελάτη — έρχεται.",
-    perks: [
-      "Ημερολόγιο πολλαπλών χρηστών",
-      "Υπηρεσίες συνδεδεμένες με τιμοκατάλογο",
-      "Μετατροπή ραντεβού σε παραστατικό",
-    ],
-    priceMonthly: 0,
-    trialDays: 365,
-    sidebarLabel: "Ραντεβού",
-    href: "/app/appointments",
-    iconName: "CalendarClock",
-    availability: "coming_soon",
   },
 ];
 

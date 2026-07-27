@@ -9,7 +9,13 @@ import { saveOpportunityAction } from "./actions";
 
 type LeadOpt = { id: string; fullName: string };
 
-export function OpportunityForm({ leads }: { leads: LeadOpt[] }) {
+export function OpportunityForm({
+  leads,
+  onSaved,
+}: {
+  leads: LeadOpt[];
+  onSaved?: () => void;
+}) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState<
     { error?: string } | null,
@@ -22,6 +28,7 @@ export function OpportunityForm({ leads }: { leads: LeadOpt[] }) {
         `form[data-form="opp"]`,
       );
       form?.reset();
+      onSaved?.();
       return null;
     }
     return { error: res.error };

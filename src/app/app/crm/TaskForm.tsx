@@ -9,8 +9,10 @@ import { saveTaskAction } from "./actions";
 
 export function TaskForm({
   assignees,
+  onSaved,
 }: {
   assignees: { id: string; fullName: string }[];
+  onSaved?: () => void;
 }) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState<
@@ -24,6 +26,7 @@ export function TaskForm({
         `form[data-form="task"]`,
       );
       form?.reset();
+      onSaved?.();
       return null;
     }
     return { error: res.error };

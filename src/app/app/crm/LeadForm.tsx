@@ -9,6 +9,7 @@ import { saveLeadAction } from "./actions";
 
 export function LeadForm({
   initial,
+  onSaved,
 }: {
   initial?: {
     id?: string;
@@ -20,6 +21,7 @@ export function LeadForm({
     status?: string;
     notes?: string | null;
   };
+  onSaved?: () => void;
 }) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState<
@@ -33,6 +35,7 @@ export function LeadForm({
         `form[data-form="lead"]`,
       );
       form?.reset();
+      onSaved?.();
       return null;
     }
     return { error: res.error };

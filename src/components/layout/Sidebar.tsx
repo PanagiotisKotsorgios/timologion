@@ -21,6 +21,7 @@ import {
   Users2,
   FileSpreadsheet,
   CalendarClock,
+  CalendarDays,
   Sparkles,
   type LucideIcon,
 } from "lucide-react";
@@ -69,6 +70,7 @@ const primary: NavItem[] = [
   { href: "/app/items", label: t.nav.items, icon: Package },
   { href: "/app/payments", label: "Πληρωμές", icon: Wallet },
   { href: "/app/expenses", label: "Έξοδα", icon: Receipt },
+  { href: "/app/appointments", label: "Ραντεβού", icon: CalendarDays },
   { href: "/app/plugins", label: "Πρόσθετα", icon: Puzzle },
 ];
 
