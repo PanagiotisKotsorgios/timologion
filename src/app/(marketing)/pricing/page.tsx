@@ -26,7 +26,7 @@ import { PricingSwitcher } from "./PricingSwitcher";
 export const metadata: Metadata = pageMetadata({
   title: "Κόστος & Πακέτα Ηλεκτρονικής Τιμολόγησης",
   description:
-    "Απλή, διάφανη τιμολόγηση για το Τιμολόγιον. Πακέτα Starter, Business και Advanced με ηλεκτρονική τιμολόγηση myDATA, POS και CRM. Ξεκίνα δωρεάν, χωρίς κάρτα.",
+    "Απλή, διάφανη τιμολόγηση για το Τιμολόγιον. Πακέτα Basic, Growth, Scale, Pro, Enterprise και Corporate με ηλεκτρονική τιμολόγηση myDATA. Από 35,96€/έτος. Ξεκίνα δωρεάν, χωρίς κάρτα.",
   path: "/pricing",
   keywords: [
     "τιμές τιμολόγηση",
@@ -53,9 +53,9 @@ const COMPARE_GROUPS: {
     icon: LucideIcon;
     label: string;
     tooltip?: string;
-    starter: CellValue;
-    business: CellValue;
-    advanced: CellValue;
+    basic: CellValue;
+    growth: CellValue;
+    scale: CellValue;
   }[];
 }[] = [
   {
@@ -65,31 +65,31 @@ const COMPARE_GROUPS: {
       {
         icon: FileText,
         label: "Παραστατικά ανά έτος",
-        starter: "1.500",
-        business: "6.000",
-        advanced: "18.000",
+        basic: "1.500",
+        growth: "6.000",
+        scale: "18.000",
       },
       {
         icon: UserRound,
         label: "Χρήστες με πρόσβαση",
-        starter: "1",
-        business: "5",
-        advanced: "infinity",
+        basic: "1",
+        growth: "3",
+        scale: "5",
       },
       {
         icon: Search,
         label: "Πελατολόγιο με αναζήτηση ΑΦΜ",
         tooltip: "Αυτόματη συμπλήρωση από ΓΓΠΣ",
-        starter: true,
-        business: true,
-        advanced: true,
+        basic: true,
+        growth: true,
+        scale: true,
       },
       {
         icon: Repeat,
         label: "Επαναλαμβανόμενα παραστατικά",
-        starter: false,
-        business: true,
-        advanced: true,
+        basic: false,
+        growth: true,
+        scale: true,
       },
     ],
   },
@@ -100,16 +100,16 @@ const COMPARE_GROUPS: {
       {
         icon: ShoppingCart,
         label: "POS & Ταμείο",
-        starter: false,
-        business: false,
-        advanced: true,
+        basic: false,
+        growth: false,
+        scale: true,
       },
       {
         icon: Megaphone,
         label: "CRM (leads, ευκαιρίες, tasks)",
-        starter: false,
-        business: false,
-        advanced: true,
+        basic: false,
+        growth: false,
+        scale: true,
       },
     ],
   },
@@ -120,9 +120,9 @@ const COMPARE_GROUPS: {
       {
         icon: Headphones,
         label: "Επίπεδο υποστήριξης",
-        starter: "Email",
-        business: "Email",
-        advanced: "Email",
+        basic: "Email",
+        growth: "Email",
+        scale: "Προτεραιότητα",
       },
     ],
   },
@@ -130,32 +130,44 @@ const COMPARE_GROUPS: {
 
 const FAQ = [
   {
+    q: "Το Τιμολόγιον έχει δικό του κόστος;",
+    a: "Όχι. Η πλατφόρμα timologion — dashboard, πελατολόγιο, είδη, ραντεβού, αναφορές — προσφέρεται δωρεάν. Το κόστος που βλέπεις εδώ είναι για τη συνδρομή του πιστοποιημένου παρόχου ηλεκτρονικής τιμολόγησης (Wrapp), που είναι υποχρεωτική για τη φοροσήμανση και διαβίβαση στο myDATA.",
+  },
+  {
     q: "Χρειάζομαι κάρτα για να ξεκινήσω;",
-    a: "Όχι. Δημιουργείς λογαριασμό, στήνεις τα στοιχεία της επιχείρησης, εξοικειώνεσαι με την εφαρμογή — όλα χωρίς να δώσεις στοιχεία πληρωμής. Πληρώνεις μόνο όταν είσαι έτοιμος να εκδώσεις το πρώτο πραγματικό παραστατικό.",
+    a: "Όχι. Δημιουργείς λογαριασμό, στήνεις τα στοιχεία της επιχείρησης, εξοικειώνεσαι με την εφαρμογή — όλα χωρίς στοιχεία πληρωμής. Πληρώνεις μόνο όταν είσαι έτοιμος να εκδώσεις το πρώτο πραγματικό παραστατικό μέσω του παρόχου.",
+  },
+  {
+    q: "Ποιο πακέτο μου ταιριάζει;",
+    a: "Basic (35,96€/έτος) για freelancers με ~120 παραστατικά τον μήνα. Growth (122,76€/έτος) για μικρές επιχειρήσεις έως 500 παραστατικά μηνιαίως — προτεινόμενο. Scale (209,56€/έτος) για ώριμες επιχειρήσεις με ομάδα και έως 1.500 παραστατικά μηνιαίως. Για μεγαλύτερους όγκους δες Pro, Enterprise, Corporate.",
   },
   {
     q: "Είναι μηνιαία ή ετήσια χρέωση;",
-    a: "Ετήσια, με πλήρες πακέτο 12 μηνών. Δεν υπάρχει αυτή τη στιγμή μηνιαία επιλογή — θα προστεθεί σε επόμενη φάση.",
+    a: "Ετήσια, με πλήρες πακέτο 12 μηνών. Ο πάροχος (Wrapp) δεν προσφέρει αυτή τη στιγμή μηνιαία επιλογή — θα προστεθεί σε επόμενη φάση.",
   },
   {
     q: "Πώς λειτουργεί η ανανέωση;",
-    a: "Η περίοδος κλείνει με ό,τι έρθει πρώτο: 12 μήνες ή η ολοκλήρωση των παραστατικών του πακέτου. Δεν χρεώνεσαι για υπέρβαση — απλά ανανεώνεται νέα πλήρης περίοδος (νέο 12μηνο, νέο όριο).",
+    a: "Η περίοδος κλείνει με ό,τι έρθει πρώτο: 12 μήνες ή η ολοκλήρωση των παραστατικών του πακέτου. Στο τέλος ανανεώνεται νέα πλήρης περίοδος (νέο 12μηνο, νέο όριο) και η χρέωση γίνεται απευθείας από τον πάροχο.",
   },
   {
     q: "Μπορώ να αλλάξω πακέτο αργότερα;",
-    a: "Ναι, αναβάθμιση οποιαδήποτε στιγμή. Τα δεδομένα σου παραμένουν πάντα διαθέσιμα.",
+    a: "Ναι, αναβάθμιση οποιαδήποτε στιγμή από τις ρυθμίσεις συνδρομής. Τα δεδομένα σου παραμένουν πάντα διαθέσιμα — αλλάζει μόνο το ετήσιο όριο παραστατικών.",
   },
   {
     q: "Πώς γίνεται η έκδοση και η διαβίβαση στο myDATA;",
-    a: "Η φοροσήμανση και η διαβίβαση γίνονται από τον συνεργαζόμενο πιστοποιημένο πάροχο ηλεκτρονικής τιμολόγησης, με τον οποίο υπογράφεις σύμβαση μία φορά κατά την ενεργοποίηση.",
+    a: "Η φοροσήμανση και η διαβίβαση γίνονται από τη Wrapp, πιστοποιημένο πάροχο ηλεκτρονικής τιμολόγησης (ΥΠΑΗΕΣ). Υπογράφεις σύμβαση μία φορά κατά την ενεργοποίηση μέσα από το timologion — δεν χρειάζεται δεύτερη εγγραφή.",
   },
   {
-    q: "Το κόστος του πακέτου περιλαμβάνει τον πάροχο;",
-    a: "Ναι — η δική σου πλευρά (timologion) χρεώνει το πακέτο, και εμείς διαχειριζόμαστε τη σχέση με τον πάροχο για λογαριασμό σου. Δεν λαμβάνεις δεύτερο τιμολόγιο.",
+    q: "Ποιος τιμολογεί το πακέτο;",
+    a: "Ο πάροχος (Wrapp) τιμολογεί απευθείας τη συνδρομή στη διεύθυνση χρέωσης που έχεις καταχωρήσει. Στο timologion βλέπεις όλο το ιστορικό παραστατικών, αλλά η ίδια η χρέωση γίνεται από τον πάροχο.",
+  },
+  {
+    q: "Τι γίνεται αν ξεπεράσω το όριο του πακέτου;",
+    a: "Ο πάροχος δεν επιτρέπει έκδοση πέρα από το ετήσιο όριο. Το dashboard σε ενημερώνει καθώς πλησιάζεις το 90% ώστε να έχεις χρόνο για αναβάθμιση χωρίς διακοπή.",
   },
   {
     q: "Χρειάζομαι B2G (Business to Government);",
-    a: "Αν πρέπει να εκδίδεις παραστατικά προς Δημόσιο, ζήτησέ μας το add-on. Δεν είναι ενεργοποιημένο by default.",
+    a: "Αν πρέπει να εκδίδεις παραστατικά προς Δημόσιο, ζήτησέ μας το add-on στο support@timologion.gr. Δεν είναι ενεργοποιημένο by default.",
   },
 ];
 
@@ -228,13 +240,13 @@ export default function PricingPage() {
                       Λειτουργία
                     </p>
                   </th>
-                  <ThHead name="Starter" />
+                  <ThHead name="Basic" />
                   <ThHead
-                    name="Business"
+                    name="Growth"
                     featured
                     badge={{ icon: Star, label: "Προτεινόμενο" }}
                   />
-                  <ThHead name="Advanced" />
+                  <ThHead name="Scale" />
                 </tr>
               </thead>
               <tbody>
@@ -273,9 +285,9 @@ export default function PricingPage() {
                                 </span>
                               </span>
                             </td>
-                            <TdCell value={row.starter} />
-                            <TdCell value={row.business} featured />
-                            <TdCell value={row.advanced} />
+                            <TdCell value={row.basic} />
+                            <TdCell value={row.growth} featured />
+                            <TdCell value={row.scale} />
                           </tr>
                         );
                       })}
@@ -288,9 +300,9 @@ export default function PricingPage() {
                   <td className="sticky left-0 bg-white px-6 py-6 font-semibold text-brand-900">
                     Ξεκίνα σήμερα
                   </td>
-                  <TdCta href="/register" label="Δωρεάν" />
+                  <TdCta href="/register" label="Ξεκίνα δωρεάν" />
                   <TdCta href="/register" label="Ξεκίνα δωρεάν" featured />
-                  <TdCta href="/contact" label="Επικοινωνία" />
+                  <TdCta href="/register" label="Ξεκίνα δωρεάν" />
                 </tr>
               </tbody>
             </table>

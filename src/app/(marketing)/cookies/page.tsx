@@ -5,9 +5,54 @@ import { pageMetadata } from "@/lib/seo";
 export const metadata: Metadata = pageMetadata({
   title: "Πολιτική Cookies",
   description:
-    "Πώς και γιατί χρησιμοποιεί cookies το Τιμολόγιον για τη λειτουργία της ηλεκτρονικής τιμολόγησης και ποιες επιλογές έχεις για τη διαχείρισή τους.",
+    "Πώς και γιατί χρησιμοποιεί cookies το Τιμολόγιον για τη λειτουργία της ηλεκτρονικής τιμολόγησης και ποιες επιλογές έχεις για τη διαχείρισή τους. Συμμόρφωση με ePrivacy & Ν. 3471/2006.",
   path: "/cookies",
 });
+
+const LAST_UPDATED = "27/07/2026";
+
+type CookieRow = {
+  name: string;
+  provider: string;
+  purpose: string;
+  duration: string;
+  type: "necessary" | "functional";
+};
+
+const COOKIES: CookieRow[] = [
+  {
+    name: "session",
+    provider: "timologion.gr",
+    purpose:
+      "Διατηρεί τη σύνδεση του χρήστη μετά το login. Απαραίτητο για τη λειτουργία της εφαρμογής.",
+    duration: "Σύνοδος ή έως 30 μέρες με «Να με θυμάσαι»",
+    type: "necessary",
+  },
+  {
+    name: "csrf",
+    provider: "timologion.gr",
+    purpose:
+      "Προστασία από επιθέσεις cross-site request forgery. Επικυρώνει ότι οι υποβολές φορμών προέρχονται από τη νόμιμη σελίδα.",
+    duration: "Σύνοδος",
+    type: "necessary",
+  },
+  {
+    name: "locale",
+    provider: "timologion.gr",
+    purpose:
+      "Θυμάται την προτίμηση γλώσσας του χρήστη (ελληνικά / αγγλικά).",
+    duration: "1 έτος",
+    type: "functional",
+  },
+  {
+    name: "cookieConsent",
+    provider: "timologion.gr",
+    purpose:
+      "Αποθηκεύει την επιλογή του χρήστη σχετικά με τη χρήση cookies ώστε να μην ρωτάμε ξανά.",
+    duration: "12 μήνες",
+    type: "necessary",
+  },
+];
 
 export default function CookiesPage() {
   return (
@@ -19,10 +64,12 @@ export default function CookiesPage() {
             Πολιτική Cookies
           </h1>
           <p className="mt-6 max-w-2xl text-lg text-white/70">
-            Τι είναι τα cookies και πώς τα χρησιμοποιούμε στο timologion.
+            Πώς και γιατί χρησιμοποιούμε cookies και παρόμοιες τεχνολογίες.
+            Σε συμμόρφωση με την Οδηγία ePrivacy 2002/58/EΚ, τον Ν.
+            3471/2006 και τον GDPR.
           </p>
           <p className="mt-6 text-sm text-white/50">
-            Τελευταία ενημέρωση: {new Date().toLocaleDateString("el-GR")}
+            Τελευταία ενημέρωση: {LAST_UPDATED}
           </p>
         </Container>
       </section>
@@ -34,90 +81,115 @@ export default function CookiesPage() {
         >
           <Section title="1. Τι είναι τα cookies">
             <p>
-              Τα cookies είναι μικρά αρχεία κειμένου που αποθηκεύονται στη
-              συσκευή σου όταν επισκέπτεσαι έναν ιστότοπο. Χρησιμοποιούνται για
-              τη λειτουργία, την ασφάλεια και τη βελτίωση της εμπειρίας σου.
+              Τα cookies είναι μικρά αρχεία κειμένου που ένας ιστότοπος
+              αποθηκεύει στη συσκευή σου (browser) όταν τον επισκέπτεσαι.
+              Χρησιμοποιούνται για να θυμάται προτιμήσεις, να διατηρεί
+              συνόδους σύνδεσης και να καταλαβαίνει πώς χρησιμοποιείται μια
+              υπηρεσία.
+            </p>
+            <p className="mt-3">
+              Ο όρος «cookies» στην παρούσα πολιτική περιλαμβάνει και
+              παρόμοιες τεχνολογίες όπως local storage και session storage.
             </p>
           </Section>
 
-          <Section title="2. Ποια cookies χρησιμοποιούμε">
-            <p>Διακρίνονται σε τρεις κατηγορίες:</p>
-            <div className="mt-4 space-y-4">
-              <CookieBlock
-                title="Απαραίτητα cookies"
-                required
-                items={[
-                  {
-                    name: "etl_session",
-                    purpose:
-                      "Διατηρεί τη σύνδεσή σου (session). Χωρίς αυτό δεν λειτουργεί η εφαρμογή.",
-                    duration: "12 ώρες / 30 ημέρες (remember me)",
-                  },
-                  {
-                    name: "etl_cookie_consent",
-                    purpose:
-                      "Αποθηκεύει την επιλογή σου για τα cookies και εμποδίζει την επανεμφάνιση του banner.",
-                    duration: "6 μήνες",
-                  },
-                  {
-                    name: "etl_oauth_state",
-                    purpose:
-                      "Προστασία CSRF κατά τη σύνδεση με Google/Facebook.",
-                    duration: "10 λεπτά",
-                  },
-                ]}
-              />
-              <CookieBlock
-                title="Cookies λειτουργικότητας"
-                required={false}
-                items={[
-                  {
-                    name: "etl_admin_return",
-                    purpose:
-                      "Επιτρέπει σε προσωπικό υποστήριξης να επιστρέψει από impersonation στον δικό του λογαριασμό.",
-                    duration: "Συνεδρία",
-                  },
-                ]}
-              />
-              <CookieBlock
-                title="Cookies ανάλυσης / marketing"
-                required={false}
-                items={[
-                  {
-                    name: "—",
-                    purpose:
-                      "Δεν χρησιμοποιούμε cookies τρίτων για ανάλυση ή διαφήμιση στην τρέχουσα έκδοση.",
-                    duration: "—",
-                  },
-                ]}
-              />
+          <Section title="2. Κατηγορίες cookies που χρησιμοποιούμε">
+            <p>
+              Χρησιμοποιούμε <strong>μόνο</strong> τεχνικά αναγκαία και
+              λειτουργικά cookies. <strong>Δεν χρησιμοποιούμε</strong>{" "}
+              cookies τρίτων για διαφήμιση, remarketing, tracking ή
+              analytics.
+            </p>
+
+            <h3 className="mt-6 text-lg font-bold text-brand-900">
+              2.1 Αυστηρώς αναγκαία (strictly necessary)
+            </h3>
+            <p className="mt-2">
+              Απαιτούνται για τη βασική λειτουργία της εφαρμογής και δεν
+              χρειάζονται συγκατάθεση (Άρθρο 4 παρ. 5 Ν. 3471/2006). Χωρίς
+              αυτά δεν μπορείς να συνδεθείς ή να υποβάλλεις φόρμες.
+            </p>
+
+            <h3 className="mt-6 text-lg font-bold text-brand-900">
+              2.2 Λειτουργικά (functional)
+            </h3>
+            <p className="mt-2">
+              Βελτιώνουν την εμπειρία χρήσης θυμούμενα προτιμήσεις (γλώσσα,
+              τη σελίδα που είδες τελευταία). Αποθηκεύονται μόνο μετά από
+              συγκατάθεση όπου το επιβάλλει ο νόμος.
+            </p>
+          </Section>
+
+          <Section title="3. Λεπτομερής πίνακας cookies">
+            <div className="mt-6 overflow-x-auto rounded-2xl border-2 border-black/10">
+              <table className="w-full min-w-[720px] text-left text-sm">
+                <thead className="bg-brand-50/60">
+                  <tr>
+                    <th className="px-4 py-3 text-brand-900">Όνομα</th>
+                    <th className="px-4 py-3 text-brand-900">Πάροχος</th>
+                    <th className="px-4 py-3 text-brand-900">Σκοπός</th>
+                    <th className="px-4 py-3 text-brand-900">Διάρκεια</th>
+                    <th className="px-4 py-3 text-brand-900">Τύπος</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-black/[0.06]">
+                  {COOKIES.map((c) => (
+                    <tr key={c.name}>
+                      <td className="px-4 py-3 mono font-semibold">
+                        {c.name}
+                      </td>
+                      <td className="px-4 py-3 text-black/70">
+                        {c.provider}
+                      </td>
+                      <td className="px-4 py-3 text-black/70">
+                        {c.purpose}
+                      </td>
+                      <td className="px-4 py-3 text-black/70">
+                        {c.duration}
+                      </td>
+                      <td className="px-4 py-3">
+                        {c.type === "necessary" ? (
+                          <span className="inline-flex rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-black uppercase tracking-widest text-emerald-800">
+                            Αναγκαίο
+                          </span>
+                        ) : (
+                          <span className="inline-flex rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-black uppercase tracking-widest text-amber-800">
+                            Λειτουργικό
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </Section>
 
-          <Section title="3. Οι επιλογές σου">
-            <p>
-              Την πρώτη φορά που επισκέπτεσαι τον ιστότοπο, εμφανίζεται banner με
-              επιλογές «Αποδέχομαι όλα» ή «Μόνο απαραίτητα». Την επιλογή σου
-              μπορείς να την αλλάξεις κάθε στιγμή διαγράφοντας το cookie{" "}
-              <code>etl_cookie_consent</code> από τις ρυθμίσεις του browser σου.
-            </p>
-            <p className="mt-3">
-              Τα απαραίτητα cookies δεν μπορούν να απενεργοποιηθούν καθώς είναι
-              απαραίτητα για τη σύνδεση και τη λειτουργία της εφαρμογής.
-            </p>
-          </Section>
-
           <Section title="4. Cookies τρίτων">
-            <p>
-              Το login μέσω Google μπορεί να προκαλέσει τη δημιουργία cookies
-              από τον πάροχο κατά τη διάρκεια της διαδικασίας εξουσιοδότησης.
-              Δες την αντίστοιχη πολιτική απορρήτου του Google για λεπτομέρειες.
+            <p>Δεν χρησιμοποιούμε cookies τρίτων παρόχων.</p>
+            <p className="mt-3">
+              Εξαίρεση: όταν επιλέξεις να συνδεθείς μέσω Google ή Facebook
+              (OAuth), αυτοί οι πάροχοι μπορεί να ορίσουν δικά τους cookies
+              στους τομείς τους (όχι στο timologion.gr) σύμφωνα με τις
+              δικές τους πολιτικές. Δεν έχουμε πρόσβαση σε αυτά.
             </p>
           </Section>
 
-          <Section title="5. Επικοινωνία">
+          <Section title="5. Συγκατάθεση & διαχείριση">
             <p>
-              Ερωτήσεις για την πολιτική cookies:{" "}
+              Την πρώτη φορά που επισκέπτεσαι την ιστοσελίδα σου εμφανίζεται
+              ενημερωτικό banner. Μπορείς:
+            </p>
+            <ul className="mt-2 list-disc space-y-1 pl-5">
+              <li>
+                Να αποδεχθείς μόνο τα αναγκαία (default συμπεριφορά αν
+                κλείσεις το banner).
+              </li>
+              <li>Να αποδεχθείς όλα (αναγκαία + λειτουργικά).</li>
+            </ul>
+            <p className="mt-3">
+              Μπορείς να ανακαλέσεις τη συγκατάθεση οποιαδήποτε στιγμή
+              καθαρίζοντας τα cookies του browser ή στέλνοντας email στο{" "}
               <a
                 className="font-semibold text-brand-800 underline"
                 href="mailto:support@timologion.gr"
@@ -125,6 +197,103 @@ export default function CookiesPage() {
                 support@timologion.gr
               </a>
               .
+            </p>
+          </Section>
+
+          <Section title="6. Πώς απενεργοποιείς cookies">
+            <p>
+              Όλοι οι σύγχρονοι browsers σου επιτρέπουν να δεις, να
+              διαγράψεις ή να αποκλείσεις cookies. Οδηγοί:
+            </p>
+            <ul className="mt-2 list-disc space-y-1 pl-5">
+              <li>
+                <a
+                  href="https://support.google.com/chrome/answer/95647"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-semibold text-brand-800 underline"
+                >
+                  Google Chrome
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://support.mozilla.org/kb/cookies-information-websites-store-on-your-computer"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-semibold text-brand-800 underline"
+                >
+                  Mozilla Firefox
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://support.apple.com/guide/safari/manage-cookies-sfri11471/mac"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-semibold text-brand-800 underline"
+                >
+                  Safari
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://support.microsoft.com/microsoft-edge/delete-cookies-in-microsoft-edge-63947406-40ac-c3b8-57b9-2a946a29ae09"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-semibold text-brand-800 underline"
+                >
+                  Microsoft Edge
+                </a>
+              </li>
+            </ul>
+            <p className="mt-3 text-sm text-black/60">
+              Σημείωση: η απενεργοποίηση των αυστηρώς αναγκαίων cookies θα
+              αποτρέψει τη σύνδεση στην εφαρμογή.
+            </p>
+          </Section>
+
+          <Section title="7. Do Not Track">
+            <p>
+              Δεν έχουμε mechanism για διαφημιστικό tracking, οπότε το
+              σήμα «Do Not Track» δεν παίζει ρόλο στην ιστοσελίδα μας — τα
+              cookies που θέτουμε είναι είτε αναγκαία είτε λειτουργικά με
+              συγκατάθεση.
+            </p>
+          </Section>
+
+          <Section title="8. Νομική βάση">
+            <ul className="mt-2 list-disc space-y-2 pl-5">
+              <li>
+                <strong>Αυστηρώς αναγκαία cookies</strong>: εννόμα συμφέρον
+                (Άρθρο 6(1)(στ) GDPR) — απαραίτητα για την παροχή της
+                υπηρεσίας.
+              </li>
+              <li>
+                <strong>Λειτουργικά cookies</strong>: συγκατάθεση (Άρθρο
+                6(1)(α) GDPR & Άρθρο 4 παρ. 5 Ν. 3471/2006).
+              </li>
+            </ul>
+          </Section>
+
+          <Section title="9. Αλλαγές στην πολιτική">
+            <p>
+              Ενδέχεται να ενημερώσουμε την παρούσα πολιτική. Ουσιώδεις
+              αλλαγές γνωστοποιούνται με email τουλάχιστον 15 ημέρες πριν
+              την εφαρμογή τους.
+            </p>
+          </Section>
+
+          <Section title="10. Επικοινωνία">
+            <p>
+              Για ερωτήσεις σχετικά με τα cookies ή την προστασία δεδομένων:{" "}
+              <a
+                className="font-semibold text-brand-800 underline"
+                href="mailto:support@timologion.gr"
+              >
+                support@timologion.gr
+              </a>
+              , +30 2631 028 971.
             </p>
           </Section>
         </Container>
@@ -147,56 +316,6 @@ function Section({
       </h2>
       <div className="mt-4 text-base leading-relaxed text-black/80 md:text-lg">
         {children}
-      </div>
-    </div>
-  );
-}
-
-function CookieBlock({
-  title,
-  required,
-  items,
-}: {
-  title: string;
-  required: boolean;
-  items: { name: string; purpose: string; duration: string }[];
-}) {
-  return (
-    <div className="rounded-2xl border-2 border-ink-200 bg-ink-50 p-5">
-      <div className="flex items-center gap-3">
-        <p className="text-lg font-bold text-brand-900">{title}</p>
-        <span
-          className={
-            "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-widest " +
-            (required
-              ? "bg-brand-900 text-white"
-              : "bg-white text-ink-700 border border-ink-300")
-          }
-        >
-          {required ? "Απαραίτητα" : "Προαιρετικά"}
-        </span>
-      </div>
-      <div className="mt-4 overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-ink-300 text-left text-[11px] font-bold uppercase tracking-widest text-ink-500">
-              <th className="py-2 pr-3">Όνομα</th>
-              <th className="py-2 pr-3">Σκοπός</th>
-              <th className="py-2">Διάρκεια</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((it, i) => (
-              <tr key={i} className="border-b border-ink-200 last:border-b-0">
-                <td className="py-2 pr-3 font-mono text-xs text-brand-900">
-                  {it.name}
-                </td>
-                <td className="py-2 pr-3 text-ink-900">{it.purpose}</td>
-                <td className="py-2 text-ink-700">{it.duration}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
       </div>
     </div>
   );
