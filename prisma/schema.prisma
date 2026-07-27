@@ -318,6 +318,10 @@ model User {
   mfaSecretEnc   String?       @db.Text
   mfaVerifiedAt  DateTime?
   platformRole   PlatformRole?
+  // Minutes of inactivity before the app auto-logs the user out. Range
+  // enforced in code (5–480). Falls back to a 60-min default when the
+  // user hasn't touched the setting yet.
+  sessionTimeoutMinutes Int    @default(60)
   suspendedAt    DateTime?
   suspendedReason String?      @db.VarChar(255)
   createdAt      DateTime      @default(now())

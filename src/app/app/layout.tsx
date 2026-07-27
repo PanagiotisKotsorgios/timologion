@@ -25,7 +25,11 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const [user, memberships] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.userId },
-      select: { fullName: true, email: true },
+      select: {
+        fullName: true,
+        email: true,
+        sessionTimeoutMinutes: true,
+      },
     }),
     prisma.businessMember.findMany({
       where: { userId: session.userId },
@@ -74,6 +78,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           <Topbar
             userName={user.fullName || user.email}
             activeBusinessId={active.businessId}
+            sessionTimeoutMinutes={user.sessionTimeoutMinutes}
             businesses={memberships.map((m) => ({
               id: m.businessId,
               label: m.business.tradeName ?? m.business.legalName,

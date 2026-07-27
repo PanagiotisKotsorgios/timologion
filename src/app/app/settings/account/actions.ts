@@ -37,6 +37,39 @@ export async function updateFullNameAction(
   return { success: "Το ονοματεπώνυμο ενημερώθηκε." };
 }
 
+const SESSION_TIMEOUT_OPTIONS = [15, 30, 60, 120, 240, 480] as const;
+
+const sessionTimeoutSchema = z.object({
+  minutes: z.coerce
+    .number()
+    .refine((n) => (SESSION_TIMEOUT_OPTIONS as readonly number[]).includes(n), {
+      message: "Μη έγκυρη επιλογή χρόνου.",
+    }),
+});
+
+export async function updateSessionTimeoutAction(
+  _prev: { error?: string; success?: string } | undefined,
+  formData: FormData,
+) {
+  const session = await getSession();
+  if (!session) return { error: "Δεν είσαι συνδεδεμένος." };
+  const parsed = sessionTimeoutSchema.safeParse({
+    minutes: formData.get("minutes"),
+  });
+  if (!parsed.success) return { error: formatZodError(parsed.error) };
+
+  await prisma.user.update({
+    where: { id: session.userId },
+    data: { sessionTimeoutMinutes: parsed.data.minutes },
+  });
+  await logAudit({
+    userId: session.userId,
+    action: "user.session_timeout.update",
+    meta: { minutes: parsed.data.minutes },
+  });
+  return { success: "Ο χρόνος αυτόματης αποσύνδεσης ενημερώθηκε." };
+}
+
 const changePasswordSchema = z
   .object({
     current: z.string().min(1),

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { BusinessSwitcher } from "./BusinessSwitcher";
 import { NotificationsBell } from "./NotificationsBell";
 import { SidebarTrigger } from "./Sidebar";
+import { InactivityWatchdog } from "./InactivityWatchdog";
 import {
   getPublishedAnnouncements,
   getUserNotifications,
@@ -20,12 +21,14 @@ type BusinessOption = {
 type TopbarProps = {
   userName: string;
   activeBusinessId: string;
+  sessionTimeoutMinutes: number;
   businesses: BusinessOption[];
 };
 
 export async function Topbar({
   userName,
   activeBusinessId,
+  sessionTimeoutMinutes,
   businesses,
 }: TopbarProps) {
   const session = await getSession();
@@ -48,6 +51,7 @@ export async function Topbar({
         />
       </div>
       <div className="flex items-center gap-2 md:gap-4">
+        <InactivityWatchdog timeoutMinutes={sessionTimeoutMinutes} />
         <NotificationsBell items={items} />
         <div className="hidden text-right lg:block">
           <p className="text-xs font-semibold uppercase tracking-widest text-ink-500">

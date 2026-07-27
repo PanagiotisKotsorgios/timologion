@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { User, Shield, Monitor, AlertTriangle, ShieldCheck } from "lucide-react";
+import { User, Shield, Monitor, AlertTriangle, ShieldCheck, Clock } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth/session";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -8,6 +8,7 @@ import { LinkButton } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { AccountForms, DeleteAccountForm } from "./AccountForms";
 import { SessionsList } from "./SessionsList";
+import { SessionTimeoutForm } from "./SessionTimeoutForm";
 import { listSessionsForCurrentUser } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +26,7 @@ export default async function AccountSettingsPage() {
         passwordHash: true,
         createdAt: true,
         mfaEnabled: true,
+        sessionTimeoutMinutes: true,
         oauthAccounts: { select: { provider: true, email: true } },
       },
     }),
@@ -66,6 +68,19 @@ export default async function AccountSettingsPage() {
             />
             <CardBody className="p-0">
               <SessionsList sessions={sessions} />
+            </CardBody>
+          </Card>
+
+          <Card>
+            <CardHeader
+              title="Αυτόματη αποσύνδεση"
+              subtitle="Πόσο θέλεις να μείνει ανοιχτή η συνεδρία σου χωρίς δραστηριότητα."
+              action={<Clock size={16} className="text-ink-500" />}
+            />
+            <CardBody>
+              <SessionTimeoutForm
+                currentMinutes={user.sessionTimeoutMinutes}
+              />
             </CardBody>
           </Card>
 
