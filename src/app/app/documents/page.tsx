@@ -4,7 +4,7 @@ import { requireTenant } from "@/lib/tenant";
 import { assertCan } from "@/lib/rbac";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
-import { FilePlus2, BarChart3, Search, Download } from "lucide-react";
+import { FilePlus2, BarChart3, Search, Download, Repeat } from "lucide-react";
 import { LinkButton, Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
@@ -135,6 +135,13 @@ export default async function DocumentsPage({
               icon={BarChart3}
             >
               Στατιστικά
+            </LinkButton>
+            <LinkButton
+              href="/app/documents/repeating"
+              variant="secondary"
+              icon={Repeat}
+            >
+              Επαναλαμβανόμενα
             </LinkButton>
             <LinkButton href="/app/documents/new" icon={FilePlus2}>
               Νέο Παραστατικό

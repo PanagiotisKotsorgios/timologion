@@ -3,6 +3,8 @@ import { requireTenant } from "@/lib/tenant";
 import { assertCan } from "@/lib/rbac";
 import { ensureDefaultBillingBook } from "@/lib/billing-books";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { LinkButton } from "@/components/ui/Button";
+import { Repeat } from "lucide-react";
 import { DraftEditor } from "../DraftEditor";
 import type { DocumentType } from "@prisma/client";
 
@@ -117,6 +119,15 @@ export default async function NewDocumentPage({
       <PageHeader
         title="Έκδοση Παραστατικού"
         subtitle="Συμπλήρωσε τα στοιχεία και αποθήκευσε ως πρόχειρο."
+        actions={
+          <LinkButton
+            href="/app/documents/repeating/new"
+            variant="secondary"
+            icon={Repeat}
+          >
+            Το ίδιο κάθε μήνα;
+          </LinkButton>
+        }
       />
       <DraftEditor
         initialType={initialType}
