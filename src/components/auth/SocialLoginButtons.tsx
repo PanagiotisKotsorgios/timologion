@@ -1,10 +1,19 @@
+import { isProviderConfigured } from "@/lib/auth/oauth";
+
 /**
- * Google-only social login button. Facebook was removed while the FB app is
- * pending review — the previous implementation showed a "coming soon" modal,
- * but the client asked to drop it entirely from the auth pages.
+ * Server-rendered OAuth entry points. Each button is gated on the
+ * presence of real provider credentials — if `GOOGLE_CLIENT_ID` +
+ * `GOOGLE_CLIENT_SECRET` aren't set in the env, the Google button
+ * doesn't render at all instead of letting the user click through to a
+ * dead-end `?error=oauth_disabled` page.
  */
 export function SocialLoginButtons({ mode }: { mode: "login" | "register" }) {
   const verb = mode === "login" ? "Σύνδεση" : "Εγγραφή";
+  const googleOn = isProviderConfigured("google");
+
+  // Both providers unconfigured — hide the whole divider strip so the
+  // page doesn't have a lonely "ή σύνδεση με" separator with no buttons.
+  if (!googleOn) return null;
 
   return (
     <div>
@@ -17,13 +26,15 @@ export function SocialLoginButtons({ mode }: { mode: "login" | "register" }) {
         </span>
       </div>
 
-      <a
-        href="/api/auth/google/start"
-        className="inline-flex h-16 w-full items-center justify-center gap-3 rounded-full border-2 border-black/40 bg-white text-lg font-semibold text-black transition-transform hover:-translate-y-0.5 hover:border-black hover:shadow-md"
-      >
-        <GoogleIcon />
-        {verb} με Google
-      </a>
+      {googleOn && (
+        <a
+          href="/api/auth/google/start"
+          className="inline-flex h-16 w-full items-center justify-center gap-3 rounded-full border-2 border-black/40 bg-white text-lg font-semibold text-black transition-transform hover:-translate-y-0.5 hover:border-black hover:shadow-md"
+        >
+          <GoogleIcon />
+          {verb} με Google
+        </a>
+      )}
     </div>
   );
 }
