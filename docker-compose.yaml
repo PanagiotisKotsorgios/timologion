@@ -28,9 +28,13 @@ services:
       # network. Coolify auto-generates the password once and persists it.
       - "DATABASE_URL=mysql://timologion:${SERVICE_PASSWORD_MYSQL}@mysql:3306/timologion"
       - "SESSION_SECRET=${SERVICE_PASSWORD_64_SESSION}"
-      # APP_BASE_URL needs the full scheme+host (env is validated with .url()).
-      # SERVICE_URL_APP includes the protocol; SERVICE_FQDN_APP does not.
-      - "APP_BASE_URL=${SERVICE_URL_APP}"
+      # APP_BASE_URL must be the full https:// URL — used for OAuth
+      # redirect_uri construction, magic-link emails, and canonical SEO
+      # tags. Prefers the value set in the Coolify UI (manual override);
+      # falls back to Coolify's auto-generated SERVICE_URL_APP if the
+      # override is empty. SERVICE_URL_APP defaults to http:// so relying
+      # on it alone breaks Google OAuth in production.
+      - "APP_BASE_URL=${APP_BASE_URL:-${SERVICE_URL_APP}}"
       - "NODE_ENV=production"
 
       # ─── Initial admin (created on first boot only) ────────────────
