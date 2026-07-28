@@ -72,6 +72,61 @@ export async function createClientAction(
   redirect(`/app/clients/${client.id}`);
 }
 
+/**
+ * Lightweight client-add used from quick-add modals (e.g. inside the
+ * document editor). Same validation as createClientAction but returns
+ * the created row instead of redirecting, so the caller can drop it
+ * into its own state and select it inline.
+ */
+export async function quickCreateClientAction(formData: FormData): Promise<
+  | { ok: true; id: string; label: string; vatNumber: string | null }
+  | { ok: false; error: string }
+> {
+  const ctx = await requireTenant();
+  assertCan(ctx.role, "client:write");
+
+  const parsed = clientSchema.safeParse(
+    Object.fromEntries(formData.entries()),
+  );
+  if (!parsed.success) {
+    return { ok: false, error: formatZodError(parsed.error) };
+  }
+
+  const client = await prisma.client.create({
+    data: {
+      businessId: ctx.businessId,
+      vatNumber: o(parsed.data.vatNumber),
+      legalName: parsed.data.legalName,
+      tradeName: o(parsed.data.tradeName),
+      taxOffice: o(parsed.data.taxOffice),
+      activity: o(parsed.data.activity),
+      addressLine: o(parsed.data.addressLine),
+      city: o(parsed.data.city),
+      postalCode: o(parsed.data.postalCode),
+      email: o(parsed.data.email),
+      phone: o(parsed.data.phone),
+      notes: o(parsed.data.notes),
+    },
+  });
+
+  await logAudit({
+    userId: ctx.userId,
+    businessId: ctx.businessId,
+    action: "client.create",
+    entityType: "Client",
+    entityId: client.id,
+    meta: { via: "quick-add" },
+  });
+
+  revalidatePath("/app/clients");
+  return {
+    ok: true,
+    id: client.id,
+    label: client.tradeName ?? client.legalName,
+    vatNumber: client.vatNumber,
+  };
+}
+
 export async function updateClientAction(
   clientId: string,
   _prev: ClientFormState,

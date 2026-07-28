@@ -75,6 +75,65 @@ export async function createItemAction(
   redirect(`/app/items/${item.id}`);
 }
 
+/**
+ * Lightweight item-add used from quick-add modals (e.g. from inside a
+ * document line row). Same validation as createItemAction but returns
+ * the created row instead of redirecting so the caller can slot it
+ * into its own picker state and select it immediately.
+ */
+export async function quickCreateItemAction(formData: FormData): Promise<
+  | {
+      ok: true;
+      id: string;
+      name: string;
+      unit: string;
+      defaultPrice: string;
+      vatRate: string;
+    }
+  | { ok: false; error: string }
+> {
+  const ctx = await requireTenant();
+  assertCan(ctx.role, "item:write");
+
+  const parsed = itemSchema.safeParse(Object.fromEntries(formData.entries()));
+  if (!parsed.success) {
+    return { ok: false, error: formatZodError(parsed.error) };
+  }
+
+  const item = await prisma.item.create({
+    data: {
+      businessId: ctx.businessId,
+      kind: parsed.data.kind,
+      code: o(parsed.data.code),
+      name: parsed.data.name,
+      description: o(parsed.data.description),
+      unit: parsed.data.unit || "τμχ",
+      defaultPrice: parsed.data.defaultPrice,
+      vatRate: parsed.data.vatRate,
+      vatCategory: o(parsed.data.vatCategory),
+    },
+  });
+
+  await logAudit({
+    userId: ctx.userId,
+    businessId: ctx.businessId,
+    action: "item.create",
+    entityType: "Item",
+    entityId: item.id,
+    meta: { via: "quick-add" },
+  });
+
+  revalidatePath("/app/items");
+  return {
+    ok: true,
+    id: item.id,
+    name: item.name,
+    unit: item.unit,
+    defaultPrice: item.defaultPrice.toString(),
+    vatRate: item.vatRate.toString(),
+  };
+}
+
 export async function updateItemAction(
   itemId: string,
   _prev: ItemFormState,

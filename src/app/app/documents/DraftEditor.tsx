@@ -26,6 +26,8 @@ import {
   attemptIssueAction,
   type DraftInput,
 } from "./actions";
+import { QuickAddClientButton } from "./QuickAddClientButton";
+import { QuickAddItemButton } from "./QuickAddItemButton";
 
 type ClientOption = {
   id: string;
@@ -151,6 +153,11 @@ export function DraftEditor({
   const [type, setType] = useState<DraftInput["type"]>(
     editing?.type ?? initialType ?? "invoice",
   );
+  // Local mirrors so the "Νέος πελάτης" / "Νέο είδος" quick-add modals
+  // can push freshly created rows into the pickers without a route
+  // refresh. Server-side sources still authoritative on next render.
+  const [clientOptions, setClientOptions] = useState<ClientOption[]>(clients);
+  const [itemOptions, setItemOptions] = useState<ItemOption[]>(items);
   const [clientId, setClientId] = useState(editing?.clientId ?? "");
   const [branchId, setBranchId] = useState(
     () => editing?.branchId || branches.find((b) => b.isDefault)?.id || "",
@@ -229,8 +236,8 @@ export function DraftEditor({
 
   const totals = useMemo(() => computeTotals(lines), [lines]);
   const selectedClient = useMemo(
-    () => clients.find((c) => c.id === clientId) ?? null,
-    [clientId, clients],
+    () => clientOptions.find((c) => c.id === clientId) ?? null,
+    [clientId, clientOptions],
   );
   const selectedBook = useMemo(
     () => availableBooks.find((b) => b.id === billingBookId) ?? null,
@@ -244,7 +251,7 @@ export function DraftEditor({
   }
 
   function pickItem(key: number, itemId: string) {
-    const found = items.find((i) => i.id === itemId);
+    const found = itemOptions.find((i) => i.id === itemId);
     if (!found) {
       updateLine(key, { itemId: "" });
       return;
@@ -434,12 +441,28 @@ export function DraftEditor({
           <CardHeader
             title="Πελάτης"
             action={
-              <Link
-                href="/app/clients/new"
-                className="text-sm font-semibold text-brand-800 hover:text-brand-900"
-              >
-                + Νέος πελάτης
-              </Link>
+              <QuickAddClientButton
+                onCreated={(c) => {
+                  setClientOptions((prev) => [
+                    ...prev,
+                    {
+                      id: c.id,
+                      label: c.label,
+                      vatNumber: c.vatNumber,
+                      taxOffice: c.taxOffice,
+                      addressLine: c.addressLine,
+                      city: c.city,
+                      postalCode: c.postalCode,
+                      country: c.country,
+                      activity: c.activity,
+                      email: c.email,
+                      phone: c.phone,
+                    },
+                  ]);
+                  setClientId(c.id);
+                  toast.success("Ο πελάτης προστέθηκε.");
+                }}
+              />
             }
           />
           <CardBody className="space-y-6">
@@ -450,7 +473,7 @@ export function DraftEditor({
                 onChange={(e) => setClientId(e.target.value)}
               >
                 <option value="">— Επιλέξτε πελάτη —</option>
-                {clients.map((c) => (
+                {clientOptions.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.label}
                   </option>
@@ -656,18 +679,29 @@ export function DraftEditor({
                     return (
                       <tr key={l.key}>
                         <td className="px-3 py-2.5">
-                          <select
-                            value={l.itemId}
-                            onChange={(e) => pickItem(l.key, e.target.value)}
-                            className="row-select"
-                          >
-                            <option value="">— Επιλογή —</option>
-                            {items.map((it) => (
-                              <option key={it.id} value={it.id}>
-                                {it.name}
-                              </option>
-                            ))}
-                          </select>
+                          <div className="flex items-center gap-1.5">
+                            <select
+                              value={l.itemId}
+                              onChange={(e) => pickItem(l.key, e.target.value)}
+                              className="row-select"
+                            >
+                              <option value="">— Επιλογή —</option>
+                              {itemOptions.map((it) => (
+                                <option key={it.id} value={it.id}>
+                                  {it.name}
+                                </option>
+                              ))}
+                            </select>
+                            <QuickAddItemButton
+                              compact
+                              label="Νέο"
+                              onCreated={(it) => {
+                                setItemOptions((prev) => [...prev, it]);
+                                pickItem(l.key, it.id);
+                                toast.success("Το είδος προστέθηκε.");
+                              }}
+                            />
+                          </div>
                         </td>
                         <td className="px-3 py-2.5">
                           <input
