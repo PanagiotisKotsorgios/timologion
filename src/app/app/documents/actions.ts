@@ -867,6 +867,38 @@ export async function attemptIssueAction(documentId: string) {
           lastWrappError: null,
         },
       });
+
+      // Auto-payment: retail-style docs (11.x) paid immediately with
+      // cash/card/IRIS are settled on the spot at the counter, so record
+      // a Payment row automatically. Makes "Εισπράξεις μήνα" on
+      // /app/payments reflect POS-style sales without the user having
+      // to open the payment modal for every receipt. Only fires on the
+      // three retail types + the three genuinely immediate methods.
+      const autoPayment = detectAutoPayment(
+        doc.type,
+        doc.paymentMethod,
+      );
+      if (autoPayment) {
+        const amount = Math.abs(Number(doc.totalAmount));
+        if (amount > 0) {
+          await prisma.payment.create({
+            data: {
+              businessId: ctx.businessId,
+              clientId: doc.clientId,
+              documentId: doc.id,
+              amount,
+              method: autoPayment,
+              receivedAt: doc.issueDate,
+              notes: "Αυτόματη είσπραξη κατά την έκδοση",
+            },
+          });
+          await prisma.document.update({
+            where: { id: doc.id },
+            data: { paymentStatus: "paid" },
+          });
+        }
+      }
+
       await logAudit({
         userId: ctx.userId,
         businessId: ctx.businessId,
@@ -1002,4 +1034,33 @@ function buildDeliveryDetail(input: DispatchInput) {
     to_city: "-",
     to_zipcode: "00000",
   };
+}
+
+// ─── Auto-payment detection for retail issuance ─────────────────────────
+//
+// Retail-style docs (11.1 / 11.2 / 11.3) settled at the counter with
+// cash / card / IRIS get an automatic Payment row on issuance so the user
+// doesn't have to open a modal for every receipt. Bank transfer, cheque,
+// and επί πιστώσει are excluded — those settle after the fact.
+//
+// paymentMethod on Document is stored as the free-form Greek label the
+// user picked in the dropdown (there's no enum coercion on the column),
+// so we match by substring. Return null when the combination isn't a
+// safe auto-payment candidate — the caller skips the insert entirely.
+function detectAutoPayment(
+  type: DocumentType,
+  paymentMethod: string | null | undefined,
+): "cash" | "card" | "iris" | null {
+  const isRetailType =
+    type === "retail_receipt" ||
+    type === "service_receipt" ||
+    type === "simplified_invoice";
+  if (!isRetailType) return null;
+  if (!paymentMethod) return null;
+  const raw = paymentMethod.toLowerCase();
+  if (raw.includes("μετρητ") || raw === "cash") return "cash";
+  if (raw.includes("κάρτα") || raw.includes("καρτα") || raw === "card")
+    return "card";
+  if (raw === "iris" || raw.includes("iris")) return "iris";
+  return null;
 }
