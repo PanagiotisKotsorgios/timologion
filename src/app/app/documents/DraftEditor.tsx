@@ -76,11 +76,13 @@ const DOC_TYPE_OPTIONS: { value: DraftInput["type"]; label: string }[] = [
   { value: "service_invoice", label: "Τιμολόγιο παροχής (2.1)" },
   { value: "retail_receipt", label: "Απόδειξη λιανικής (11.1)" },
   { value: "service_receipt", label: "Απόδειξη παροχής υπηρεσιών (11.4)" },
-  { value: "credit_note", label: "Πιστωτικό (5.1)" },
+  { value: "simplified_invoice", label: "Απλοποιημένο τιμολόγιο (11.3)" },
+  { value: "credit_note", label: "Πιστωτικό (5.2)" },
+  { value: "credit_note_correlated", label: "Πιστωτικό συσχετισμένο (5.1)" },
+  { value: "delivery_note", label: "Δελτίο αποστολής" },
   { value: "proforma", label: "Προτιμολόγιο" },
   { value: "quote", label: "Προσφορά" },
   { value: "order", label: "Παραγγελία" },
-  { value: "delivery_note", label: "Δελτίο αποστολής" },
 ];
 
 const PAYMENT_METHODS = [

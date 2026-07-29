@@ -14,11 +14,13 @@ const DEFAULT_SERIES: Record<DocumentType, string> = {
   service_invoice: "P",
   retail_receipt: "R",
   service_receipt: "S",
+  simplified_invoice: "SI",
   credit_note: "C",
+  credit_note_correlated: "CC",
+  delivery_note: "D",
   proforma: "PF",
   quote: "Q",
   order: "O",
-  delivery_note: "D",
 };
 
 const DEFAULT_LABEL: Record<DocumentType, string> = {
@@ -26,11 +28,13 @@ const DEFAULT_LABEL: Record<DocumentType, string> = {
   service_invoice: "Τιμολόγια παροχής υπηρεσιών",
   retail_receipt: "Αποδείξεις λιανικής",
   service_receipt: "Αποδείξεις παροχής υπηρεσιών",
+  simplified_invoice: "Απλοποιημένα τιμολόγια",
   credit_note: "Πιστωτικά",
+  credit_note_correlated: "Πιστωτικά (συσχετισμένα)",
+  delivery_note: "Δελτία αποστολής",
   proforma: "Προτιμολόγια",
   quote: "Προσφορές",
   order: "Παραγγελίες",
-  delivery_note: "Δελτία αποστολής",
 };
 
 /**
@@ -43,11 +47,13 @@ const WRAPP_LATIN_NAME: Record<DocumentType, string> = {
   service_invoice: "Timologia Parochis",
   retail_receipt: "Apodeixeis Lianikis",
   service_receipt: "Apodeixeis Parochis",
+  simplified_invoice: "Aplopoimeno Timologio",
   credit_note: "Pistotika NonCorrelated",
+  credit_note_correlated: "Pistotika Correlated",
+  delivery_note: "Deltia Apostolis",
   proforma: "Protimologia",
   quote: "Prosfores",
   order: "Paraggelies",
-  delivery_note: "Deltia Apostolis",
 };
 
 /**

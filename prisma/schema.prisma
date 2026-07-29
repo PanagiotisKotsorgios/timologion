@@ -285,11 +285,13 @@ enum DocumentType {
   service_invoice
   retail_receipt
   service_receipt
+  simplified_invoice
   credit_note
+  credit_note_correlated
+  delivery_note
   proforma
   quote
   order
-  delivery_note
 }
 
 enum DocumentStatus {
@@ -820,9 +822,19 @@ model Document {
   payments            Payment[]
   appointments        Appointment[]  @relation("AppointmentInvoice")
 
+  // Correlated credit-note reference — only populated when
+  // type == credit_note_correlated. Either the internal parent doc id
+  // (preferred) or a raw MARK for parents issued outside timologion.
+  // Wrapp requires the parent's myDATA MARK on 5.1 payloads.
+  correlatedDocumentId    String?
+  correlatedMarkOverride  String?    @db.VarChar(80)
+  correlatedDocument      Document?  @relation("CreditNoteParent", fields: [correlatedDocumentId], references: [id], onDelete: SetNull)
+  reverseCorrelated       Document[] @relation("CreditNoteParent")
+
   @@index([businessId, status])
   @@index([businessId, issueDate])
   @@index([businessId, clientId])
+  @@index([correlatedDocumentId])
   @@map("documents")
 }
 

@@ -30,11 +30,13 @@ const DOCUMENT_TYPES = [
   "service_invoice",
   "retail_receipt",
   "service_receipt",
+  "simplified_invoice",
   "credit_note",
+  "credit_note_correlated",
+  "delivery_note",
   "proforma",
   "quote",
   "order",
-  "delivery_note",
 ] as const;
 
 /**
