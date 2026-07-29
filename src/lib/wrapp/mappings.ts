@@ -19,11 +19,16 @@ export function mapDocumentTypeToWrapp(type: DocumentType): string | null {
       return "11.1"; // Απόδειξη Λιανικής Πώλησης
     case "service_receipt":
       return "11.2"; // Απόδειξη Παροχής Υπηρεσιών
+    case "simplified_invoice":
+      return "11.3"; // Απλοποιημένο Τιμολόγιο
     case "credit_note":
-      // Non-correlated credit note. Correlated (5.1) would require the
-      // parent's myDATA MARK in `correlated_invoices`, which we don't
-      // always have — 5.2 is standalone and works everywhere.
+      // Non-correlated credit note. Standalone — no parent MARK.
       return "5.2";
+    case "credit_note_correlated":
+      // Correlated credit note. Wrapp requires the parent's myDATA MARK
+      // in `correlated_invoices`; attemptIssueAction refuses to submit
+      // without one.
+      return "5.1";
     case "delivery_note":
       return "9.3"; // Δελτίο Αποστολής
     case "proforma":
@@ -87,9 +92,18 @@ export function classificationFor(type: DocumentType): {
 } {
   if (type === "delivery_note")
     return { category: "category3", type: "_" };
-  if (type === "invoice" || type === "service_invoice" || type === "credit_note")
+  if (
+    type === "invoice" ||
+    type === "service_invoice" ||
+    type === "credit_note" ||
+    type === "credit_note_correlated"
+  )
     return { category: "category1_3", type: "E3_561_001" };
-  if (type === "retail_receipt" || type === "service_receipt")
+  if (
+    type === "retail_receipt" ||
+    type === "service_receipt" ||
+    type === "simplified_invoice"
+  )
     return { category: "category1_3", type: "E3_561_003" };
   return { category: "category1_3", type: "E3_561_001" };
 }
