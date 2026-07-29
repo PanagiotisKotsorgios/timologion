@@ -159,13 +159,30 @@ input[type="number"]:hover::-webkit-outer-spin-button {
    h-11/base so the invoice editor doesn't feel cramped next to the rest
    of the app's larger controls. */
 .row-input {
-  @apply h-11 w-full rounded-lg border-2 border-ink-300 bg-white px-3 text-base text-ink-900 placeholder:text-ink-500 transition-colors;
+  @apply h-11 w-full rounded-lg border-2 border-ink-300 bg-white px-3 text-base font-semibold text-ink-900 placeholder:text-ink-500 transition-colors;
 }
 .row-input:hover { border-color: rgba(15, 31, 57, 0.4); }
 .row-input:focus {
   outline: none;
   border-color: #0f1f39;
   box-shadow: 0 0 0 3px rgba(15, 31, 57, 0.15);
+}
+/* Number spin buttons on inline table cells eat horizontal space and hide
+   the actual price/quantity text (users complained the numbers were being
+   covered by the up/down arrows). Hide them entirely on row inputs — line
+   values are typed or pasted, never incremented by 1. */
+.row-input[type="number"] {
+  padding-right: 0.75rem !important;
+  text-align: right;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.row-input[type="number"]::-webkit-inner-spin-button,
+.row-input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+  display: none;
 }
 
 .row-select {

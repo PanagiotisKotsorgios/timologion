@@ -228,7 +228,11 @@ export function QuickAddClientButton({
               {error && <Alert tone="danger">{error}</Alert>}
 
               <div className="grid gap-4 md:grid-cols-3">
-                <Field label="ΑΦΜ" htmlFor="qa-vat">
+                <Field
+                  label="ΑΦΜ"
+                  htmlFor="qa-vat"
+                  help="Ο 9-ψήφιος Αριθμός Φορολογικού Μητρώου του πελάτη. Πάτα «Αναζήτηση» για αυτόματη συμπλήρωση επωνυμίας, ΔΟΥ, διεύθυνσης και δραστηριότητας."
+                >
                   <div className="flex gap-2">
                     <Input
                       id="qa-vat"
@@ -254,6 +258,7 @@ export function QuickAddClientButton({
                   htmlFor="qa-legalName"
                   className="md:col-span-2"
                   required
+                  help="Η επίσημη επωνυμία της επιχείρησης όπως εμφανίζεται στο μητρώο ΑΑΔΕ. Για ιδιώτες, συμπλήρωσε ονοματεπώνυμο."
                 >
                   <Input
                     id="qa-legalName"
@@ -273,7 +278,11 @@ export function QuickAddClientButton({
               )}
 
               <div className="grid gap-4 md:grid-cols-3">
-                <Field label="Διακριτικός τίτλος" htmlFor="qa-tradeName">
+                <Field
+                  label="Διακριτικός τίτλος"
+                  htmlFor="qa-tradeName"
+                  help="Το εμπορικό όνομα με το οποίο ο πελάτης είναι γνωστός στην αγορά, αν διαφέρει από τη νόμιμη επωνυμία."
+                >
                   <Input
                     id="qa-tradeName"
                     value={values.tradeName}
@@ -281,7 +290,11 @@ export function QuickAddClientButton({
                     maxLength={160}
                   />
                 </Field>
-                <Field label="ΔΟΥ" htmlFor="qa-taxOffice">
+                <Field
+                  label="ΔΟΥ"
+                  htmlFor="qa-taxOffice"
+                  help="Δημόσια Οικονομική Υπηρεσία στην οποία υπάγεται φορολογικά ο πελάτης (π.χ. «Α΄ Αθηνών»)."
+                >
                   <Input
                     id="qa-taxOffice"
                     value={values.taxOffice}
@@ -289,7 +302,11 @@ export function QuickAddClientButton({
                     maxLength={120}
                   />
                 </Field>
-                <Field label="Δραστηριότητα" htmlFor="qa-activity">
+                <Field
+                  label="Δραστηριότητα"
+                  htmlFor="qa-activity"
+                  help="Κύρια οικονομική δραστηριότητα (π.χ. «Λιανικό εμπόριο ενδυμάτων», «Παροχή λογιστικών υπηρεσιών»)."
+                >
                   <Input
                     id="qa-activity"
                     value={values.activity}

@@ -1,5 +1,6 @@
 import { forwardRef, type InputHTMLAttributes, type ReactNode } from "react";
 import clsx from "clsx";
+import { HelpTip } from "./HelpTip";
 
 type FieldProps = {
   label?: ReactNode;
@@ -9,6 +10,13 @@ type FieldProps = {
   children: ReactNode;
   htmlFor?: string;
   required?: boolean;
+  /**
+   * Optional short help text. When set, a "?" icon appears next to the
+   * label and shows the text on hover/focus. Use to explain Greek tax
+   * terminology to first-time users (e.g. "ΔΟΥ", "Διακριτικός τίτλος",
+   * "μονάδα μέτρησης").
+   */
+  help?: string;
 };
 
 export function Field({
@@ -19,20 +27,24 @@ export function Field({
   className,
   htmlFor,
   required,
+  help,
 }: FieldProps) {
   return (
     <div className={clsx("space-y-2", className)}>
       {label && (
         <label
           htmlFor={htmlFor}
-          className="block text-base font-bold text-ink-900"
+          className="flex items-center gap-1.5 text-base font-bold text-ink-900"
         >
-          {label}
-          {required && (
-            <span aria-hidden className="ml-1 text-red-600">
-              *
-            </span>
-          )}
+          <span>
+            {label}
+            {required && (
+              <span aria-hidden className="ml-1 text-red-600">
+                *
+              </span>
+            )}
+          </span>
+          {help && <HelpTip text={help} />}
         </label>
       )}
       {children}

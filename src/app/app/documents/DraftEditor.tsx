@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Select, Textarea } from "@/components/ui/Input";
+import { HelpTip } from "@/components/ui/HelpTip";
 import { Alert } from "@/components/ui/Alert";
 import { useToast } from "@/components/ui/Toast";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
@@ -444,7 +445,11 @@ export function DraftEditor({
         <Card>
           <CardHeader title="Στοιχεία παραστατικού" />
           <CardBody className="space-y-6">
-            <Field label="Εγκατάσταση" htmlFor="branchId">
+            <Field
+              label="Εγκατάσταση"
+              htmlFor="branchId"
+              help="Το φυσικό υποκατάστημα από όπου εκδίδεται το παραστατικό — π.χ. έδρα, αποθήκη, κατάστημα. Δηλώνεται στην ΑΑΔΕ."
+            >
               {branches.length > 0 ? (
                 <Select
                   id="branchId"
@@ -466,7 +471,12 @@ export function DraftEditor({
             </Field>
 
             <div className="grid gap-4 md:grid-cols-2">
-              <Field label="Τύπος παραστατικού" htmlFor="type" required>
+              <Field
+                label="Τύπος παραστατικού"
+                htmlFor="type"
+                required
+                help="Ο κωδικός myDATA καθορίζει τι δηλώνεται στην ΑΑΔΕ. Για πωλήσεις με ΑΦΜ → Τιμολόγιο. Για λιανική/ιδιώτες → Απόδειξη. Για ακύρωση παλιότερου → Πιστωτικό."
+              >
                 <Select
                   id="type"
                   value={type}
@@ -480,7 +490,12 @@ export function DraftEditor({
                   ))}
                 </Select>
               </Field>
-              <Field label="Ημ. έκδοσης" htmlFor="issueDate" required>
+              <Field
+                label="Ημ. έκδοσης"
+                htmlFor="issueDate"
+                required
+                help="Η ημερομηνία που εκδίδεται το παραστατικό. Συνήθως σήμερα. Δεν μπορεί να τροποποιηθεί μετά την οριστική έκδοση στην ΑΑΔΕ."
+              >
                 <Input
                   id="issueDate"
                   type="date"
@@ -490,7 +505,12 @@ export function DraftEditor({
                 />
               </Field>
 
-              <Field label="Σειρά" htmlFor="billingBookId" required>
+              <Field
+                label="Σειρά"
+                htmlFor="billingBookId"
+                required
+                help="Η σειρά αρίθμησης (π.χ. Α, Β) που θα ενημερώσει τη Wrapp / ΑΑΔΕ. Δημιουργείται αυτόματα αν δεν έχεις ορίσει καμία στα «Στοιχεία επιχείρησης»."
+              >
                 <Select
                   id="billingBookId"
                   value={billingBookId}
@@ -563,7 +583,11 @@ export function DraftEditor({
             }
           />
           <CardBody className="space-y-6">
-            <Field label="Όνομα" htmlFor="clientId">
+            <Field
+              label="Όνομα"
+              htmlFor="clientId"
+              help="Ο πελάτης για τον οποίο εκδίδεται το παραστατικό. Αν δεν υπάρχει, πάτησε «Νέος πελάτης» — μπορείς να συμπληρώσεις ΑΦΜ και τα υπόλοιπα στοιχεία τραβιούνται αυτόματα."
+            >
               <Select
                 id="clientId"
                 value={clientId}
@@ -690,7 +714,11 @@ export function DraftEditor({
                   </option>
                 </Select>
               </Field>
-              <Field label="Μέθοδος πληρωμής" htmlFor="paymentMethod">
+              <Field
+                label="Μέθοδος πληρωμής"
+                htmlFor="paymentMethod"
+                help="Πώς θα εξοφληθεί το παραστατικό. Προσοχή: στην Ελλάδα πληρωμές άνω των 500€ δεν επιτρέπονται με μετρητά — χρησιμοποίησε κάρτα ή τραπεζική μεταφορά."
+              >
                 <Select
                   id="paymentMethod"
                   value={paymentMethod}
@@ -780,30 +808,51 @@ export function DraftEditor({
           />
           <CardBody className="p-0">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[960px] text-base">
+              <table className="w-full min-w-[1120px] text-base">
                 <thead className="bg-brand-100 text-[12px] uppercase tracking-widest text-brand-900">
                   <tr>
                     <th className="px-4 py-4 text-left" style={{ width: "220px" }}>
-                      Είδος/Υπηρεσία
+                      <span className="inline-flex items-center gap-1.5">
+                        Είδος/Υπηρεσία
+                        <HelpTip text="Επίλεξε ένα αποθηκευμένο είδος ή υπηρεσία. Αν δεν υπάρχει, πάτησε «Νέο» για να το προσθέσεις χωρίς να φύγεις από την οθόνη." />
+                      </span>
                     </th>
                     <th className="px-4 py-4 text-left">
-                      Περιγραφή
-                      <span aria-hidden className="ml-1 text-red-600">*</span>
-                    </th>
-                    <th className="px-4 py-4 text-right" style={{ width: "120px" }}>
-                      Ποσότητα
-                    </th>
-                    <th className="px-4 py-4 text-right" style={{ width: "130px" }}>
-                      Τιμή
-                    </th>
-                    <th className="px-4 py-4 text-right" style={{ width: "100px" }}>
-                      Έκπτ. %
-                    </th>
-                    <th className="px-4 py-4 text-right" style={{ width: "100px" }}>
-                      ΦΠΑ %
+                      <span className="inline-flex items-center gap-1.5">
+                        Περιγραφή
+                        <span aria-hidden className="text-red-600">*</span>
+                        <HelpTip text="Γράψε τι πουλάς — αυτό εμφανίζεται στο παραστατικό. Αν επέλεξες είδος, συμπληρώνεται αυτόματα και μπορείς να το επεξεργαστείς." />
+                      </span>
                     </th>
                     <th className="px-4 py-4 text-right" style={{ width: "140px" }}>
-                      Σύνολο
+                      <span className="inline-flex items-center gap-1.5">
+                        Ποσότητα
+                        <HelpTip text="Πόσα τεμάχια/μονάδες. Δέχεται δεκαδικά (π.χ. 1,5 ώρες)." />
+                      </span>
+                    </th>
+                    <th className="px-4 py-4 text-right" style={{ width: "170px" }}>
+                      <span className="inline-flex items-center gap-1.5">
+                        Τιμή
+                        <HelpTip text="Τιμή μονάδας ΧΩΡΙΣ ΦΠΑ σε ευρώ. Ο ΦΠΑ υπολογίζεται αυτόματα από τη στήλη ΦΠΑ %." />
+                      </span>
+                    </th>
+                    <th className="px-4 py-4 text-right" style={{ width: "120px" }}>
+                      <span className="inline-flex items-center gap-1.5">
+                        Έκπτ. %
+                        <HelpTip text="Ποσοστό έκπτωσης στη συγκεκριμένη γραμμή (0-100). Άφησέ το 0 αν δεν υπάρχει έκπτωση." />
+                      </span>
+                    </th>
+                    <th className="px-4 py-4 text-right" style={{ width: "120px" }}>
+                      <span className="inline-flex items-center gap-1.5">
+                        ΦΠΑ %
+                        <HelpTip text="Συντελεστής ΦΠΑ. Συνήθως 24 (κανονικός), 13 (μειωμένος), 6 (υπερμειωμένος) ή 0 (απαλλαγή/ενδοκοινοτικές)." />
+                      </span>
+                    </th>
+                    <th className="px-4 py-4 text-right" style={{ width: "160px" }}>
+                      <span className="inline-flex items-center gap-1.5 justify-end w-full">
+                        Σύνολο
+                        <HelpTip text="Αυτόματο σύνολο γραμμής (Ποσότητα × Τιμή − Έκπτωση + ΦΠΑ)." />
+                      </span>
                     </th>
                     <th style={{ width: "44px" }} />
                   </tr>
@@ -1024,7 +1073,11 @@ function CurrencyExchangeCard({
         EUR στην ημερομηνία έκδοσης.
       </p>
       <div className="mt-4 grid gap-4 md:grid-cols-2">
-        <Field label="Νόμισμα (ISO)" htmlFor="currency">
+        <Field
+          label="Νόμισμα (ISO)"
+          htmlFor="currency"
+          help="Ο τριγράμματος κωδικός νομίσματος (π.χ. USD, GBP, CHF) όταν εκδίδεις σε ξένο νόμισμα. Για ευρώ άφησέ το κενό."
+        >
           <Input
             id="currency"
             value={currency}
@@ -1038,6 +1091,7 @@ function CurrencyExchangeCard({
           label="Ισοτιμία προς EUR"
           htmlFor="exchangeRate"
           hint="π.χ. 1.0862 για 1 USD → EUR"
+          help="Πόσα ευρώ αντιστοιχούν σε 1 μονάδα ξένου νομίσματος την ημέρα έκδοσης. Χρησιμοποίησε την ισοτιμία της ΕΚΤ (Ευρωπαϊκής Κεντρικής Τράπεζας)."
         >
           <Input
             id="exchangeRate"
@@ -1083,7 +1137,11 @@ function StayTaxCard({
         του φόρου διαμονής που εισπράχθηκε.
       </p>
       <div className="mt-4 grid gap-4 md:grid-cols-2">
-        <Field label="Κατηγορία καταλύματος" htmlFor="stayTaxCategory">
+        <Field
+          label="Κατηγορία καταλύματος"
+          htmlFor="stayTaxCategory"
+          help="Καθορίζει το ποσό του φόρου διαμονής ανά διανυκτέρευση σύμφωνα με τον Ν. 4389/2016 (10€/7€/3€/1.5€/0.5€)."
+        >
           <Select
             id="stayTaxCategory"
             value={category}
@@ -1097,7 +1155,11 @@ function StayTaxCard({
             ))}
           </Select>
         </Field>
-        <Field label="Συνολικό ποσό φόρου (€)" htmlFor="stayTaxAmount">
+        <Field
+          label="Συνολικό ποσό φόρου (€)"
+          htmlFor="stayTaxAmount"
+          help="Ποσό φόρου διαμονής × αριθμός διανυκτερεύσεων. Π.χ. για ξενοδοχείο 4 αστέρων 3 βράδια: 7 × 3 = 21€."
+        >
           <Input
             id="stayTaxAmount"
             type="number"
@@ -1334,7 +1396,11 @@ function DispatchInfoCard({
         subtitle="Απαιτούμενα από τη myDATA για Δελτίο Αποστολής (9.3)."
       />
       <CardBody className="space-y-4">
-        <Field label="Ημ/νία & ώρα αποστολής" htmlFor="dispatchAt">
+        <Field
+          label="Ημ/νία & ώρα αποστολής"
+          htmlFor="dispatchAt"
+          help="Πότε αναχωρούν τα αγαθά από την επιχείρησή σου. Υποχρεωτικό στα Δελτία Αποστολής (9.3)."
+        >
           <Input
             id="dispatchAt"
             type="datetime-local"
@@ -1343,7 +1409,11 @@ function DispatchInfoCard({
           />
         </Field>
 
-        <Field label="Σκοπός διακίνησης" htmlFor="dispatchReason">
+        <Field
+          label="Σκοπός διακίνησης"
+          htmlFor="dispatchReason"
+          help="Γιατί μεταφέρονται τα αγαθά — π.χ. Πώληση, Δωρεά, Επιστροφή, Δείγμα."
+        >
           <Select
             id="dispatchReason"
             value={dispatchReason}
@@ -1357,7 +1427,11 @@ function DispatchInfoCard({
           </Select>
         </Field>
 
-        <Field label="Λόγος διακίνησης" htmlFor="dispatchPurpose">
+        <Field
+          label="Λόγος διακίνησης"
+          htmlFor="dispatchPurpose"
+          help="Επίσημος λόγος διακίνησης βάσει ΚΦΑΣ (π.χ. Πώληση, Παρακαταθήκη, Δωρεάν διάθεση)."
+        >
           <Select
             id="dispatchPurpose"
             value={dispatchPurpose}
@@ -1371,7 +1445,11 @@ function DispatchInfoCard({
           </Select>
         </Field>
 
-        <Field label="Διεύθυνση προορισμού" htmlFor="destinationAddress">
+        <Field
+          label="Διεύθυνση προορισμού"
+          htmlFor="destinationAddress"
+          help="Πού μεταφέρονται τα αγαθά. Συνήθως η διεύθυνση του παραλήπτη ή η αποθήκη προορισμού."
+        >
           <Input
             id="destinationAddress"
             value={destinationAddress}
@@ -1382,7 +1460,11 @@ function DispatchInfoCard({
         </Field>
 
         <div className="grid gap-3 md:grid-cols-2">
-          <Field label="Αρ. οχήματος" htmlFor="vehicleNumber">
+          <Field
+            label="Αρ. οχήματος"
+            htmlFor="vehicleNumber"
+            help="Πινακίδα κυκλοφορίας του οχήματος μεταφοράς."
+          >
             <Input
               id="vehicleNumber"
               value={vehicleNumber}
@@ -1392,7 +1474,11 @@ function DispatchInfoCard({
               className="mono uppercase"
             />
           </Field>
-          <Field label="Οδηγός / μεταφορέας" htmlFor="driverName">
+          <Field
+            label="Οδηγός / μεταφορέας"
+            htmlFor="driverName"
+            help="Όνομα οδηγού ή επωνυμία εταιρίας μεταφοράς."
+          >
             <Input
               id="driverName"
               value={driverName}
