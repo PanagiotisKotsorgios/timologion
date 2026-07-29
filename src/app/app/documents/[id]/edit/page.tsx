@@ -109,6 +109,10 @@ export default async function EditDocumentPage({
           notIn: [
             "credit_note",
             "credit_note_correlated",
+            "retail_credit_note",
+            "retail_refund_receipt",
+            "complementary_invoice",
+            "complementary_service_invoice",
             "delivery_note",
             "proforma",
             "quote",

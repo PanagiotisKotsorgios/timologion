@@ -39,6 +39,21 @@ const DOCUMENT_TYPES = [
   "credit_note_correlated",
   "delivery_note",
   "stay_tax_receipt",
+  "third_party_sale_invoice",
+  "third_party_sale_clearing",
+  "complementary_invoice",
+  "complementary_service_invoice",
+  "purchase_title",
+  "purchase_title_refused",
+  "self_delivery",
+  "self_use",
+  "contract_income",
+  "rental_income",
+  "retail_refund_receipt",
+  "pos_income_receipt",
+  "pos_payment_receipt",
+  "retail_credit_note",
+  "third_party_retail_receipt",
   "proforma",
   "quote",
   "order",
@@ -56,6 +71,10 @@ const FOREIGN_TYPES: readonly (typeof DOCUMENT_TYPES)[number][] = [
 const CORRELATED_TYPES: readonly (typeof DOCUMENT_TYPES)[number][] = [
   "credit_note_correlated",
   "stay_tax_receipt",
+  "complementary_invoice",
+  "complementary_service_invoice",
+  "retail_refund_receipt",
+  "retail_credit_note",
 ];
 
 /**
@@ -855,28 +874,29 @@ export async function attemptIssueAction(documentId: string) {
         })
       : undefined;
 
-  // Correlated credit note (5.1) — Wrapp requires the parent's myDATA
-  // MARK in `correlated_invoices`. We prefer the linked local doc's
-  // stored MARK; the manual override is the escape hatch for pre-
-  // migration parents that live outside timologion.
+  // Correlated types (5.1, 8.2, 1.6, 2.4, 8.4, 11.4) — Wrapp requires
+  // the parent's myDATA MARK in `correlated_invoices`. We prefer the
+  // linked local doc's stored MARK; the manual override is the escape
+  // hatch for pre-migration parents that live outside timologion.
+  const correlatedTypeLabels: Partial<Record<DocumentType, string>> = {
+    credit_note_correlated: "Το πιστωτικό 5.1 (συσχετιζόμενο)",
+    stay_tax_receipt: "Η απόδειξη φόρου διαμονής (8.2)",
+    complementary_invoice: "Το συμπληρωματικό τιμολόγιο (1.6)",
+    complementary_service_invoice: "Το συμπληρωματικό παροχής (2.4)",
+    retail_refund_receipt: "Η απόδειξη επιστροφής (8.4)",
+    retail_credit_note: "Το πιστωτικό λιανικής (11.4)",
+  };
   let correlatedInvoices: string[] | undefined;
-  if (
-    doc.type === "credit_note_correlated" ||
-    doc.type === "stay_tax_receipt"
-  ) {
+  if (correlatedTypeLabels[doc.type]) {
     const parentMark =
       doc.correlatedDocument?.myDataMark ?? doc.correlatedMarkOverride;
     if (!parentMark) {
       await prisma.document
         .update({ where: { id: doc.id }, data: { status: "draft" } })
         .catch(() => undefined);
-      const label =
-        doc.type === "stay_tax_receipt"
-          ? "Η απόδειξη φόρου διαμονής (8.2)"
-          : "Το πιστωτικό 5.1 (συσχετιζόμενο)";
       return {
         ok: false as const,
-        error: `${label} απαιτεί το MARK του γονικού παραστατικού. Επίλεξε το γονικό στο πεδίο «Συσχετιζόμενο παραστατικό» ή δώσε το MARK χειροκίνητα.`,
+        error: `${correlatedTypeLabels[doc.type]} απαιτεί το MARK του γονικού παραστατικού. Επίλεξε το γονικό στο πεδίο «Συσχετιζόμενο παραστατικό» ή δώσε το MARK χειροκίνητα.`,
       };
     }
     correlatedInvoices = [parentMark];

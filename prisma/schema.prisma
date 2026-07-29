@@ -294,6 +294,21 @@ enum DocumentType {
   credit_note_correlated
   delivery_note
   stay_tax_receipt
+  third_party_sale_invoice
+  third_party_sale_clearing
+  complementary_invoice
+  complementary_service_invoice
+  purchase_title
+  purchase_title_refused
+  self_delivery
+  self_use
+  contract_income
+  rental_income
+  retail_refund_receipt
+  pos_income_receipt
+  pos_payment_receipt
+  retail_credit_note
+  third_party_retail_receipt
   proforma
   quote
   order

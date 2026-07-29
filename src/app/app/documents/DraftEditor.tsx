@@ -83,19 +83,49 @@ const DOC_TYPE_OPTIONS: { value: DraftInput["type"]; label: string }[] = [
     value: "third_country_sale_invoice",
     label: "Τιμολόγιο πώλησης — τρίτες χώρες (1.3)",
   },
+  {
+    value: "third_party_sale_invoice",
+    label: "Πώληση για λ/σμό τρίτων (1.4)",
+  },
+  {
+    value: "third_party_sale_clearing",
+    label: "Εκκαθάριση πωλήσεων τρίτων (1.5)",
+  },
+  {
+    value: "complementary_invoice",
+    label: "Συμπληρωματικό τιμολόγιο (1.6)",
+  },
   { value: "service_invoice", label: "Τιμολόγιο παροχής (2.1)" },
   { value: "eu_service_invoice", label: "Τιμολόγιο παροχής — ενδοκοινοτικό (2.2)" },
   {
     value: "third_country_service_invoice",
     label: "Τιμολόγιο παροχής — τρίτες χώρες (2.3)",
   },
+  {
+    value: "complementary_service_invoice",
+    label: "Συμπληρωματικό παροχής (2.4)",
+  },
+  { value: "purchase_title", label: "Τίτλος κτήσης (3.1)" },
+  { value: "purchase_title_refused", label: "Τίτλος κτήσης — άρνηση (3.2)" },
+  { value: "credit_note", label: "Πιστωτικό μη συσχετιζόμενο (5.2)" },
+  { value: "credit_note_correlated", label: "Πιστωτικό συσχετιζόμενο (5.1)" },
+  { value: "self_delivery", label: "Στοιχεία αυτοπαράδοσης (6.1)" },
+  { value: "self_use", label: "Στοιχεία ιδιοχρησιμοποίησης (6.2)" },
+  { value: "contract_income", label: "Συμβόλαιο — έσοδο (7.1)" },
+  { value: "rental_income", label: "Ενοίκιο — έσοδο (8.1)" },
+  { value: "stay_tax_receipt", label: "Απόδειξη φόρου διαμονής (8.2)" },
+  { value: "retail_refund_receipt", label: "Απόδειξη επιστροφής (8.4)" },
+  { value: "pos_income_receipt", label: "Απόδειξη είσπραξης POS (8.5)" },
+  { value: "pos_payment_receipt", label: "Απόδειξη πληρωμής POS (8.6)" },
+  { value: "delivery_note", label: "Δελτίο αποστολής (9.3)" },
   { value: "retail_receipt", label: "Απόδειξη λιανικής (11.1)" },
   { value: "service_receipt", label: "Απόδειξη παροχής υπηρεσιών (11.2)" },
   { value: "simplified_invoice", label: "Απλοποιημένο τιμολόγιο (11.3)" },
-  { value: "credit_note", label: "Πιστωτικό μη συσχετιζόμενο (5.2)" },
-  { value: "credit_note_correlated", label: "Πιστωτικό συσχετιζόμενο (5.1)" },
-  { value: "delivery_note", label: "Δελτίο αποστολής (9.3)" },
-  { value: "stay_tax_receipt", label: "Απόδειξη φόρου διαμονής (8.2)" },
+  { value: "retail_credit_note", label: "Πιστωτικό λιανικής (11.4)" },
+  {
+    value: "third_party_retail_receipt",
+    label: "Λιανική για λ/σμό τρίτων (11.5)",
+  },
   { value: "proforma", label: "Προτιμολόγιο" },
   { value: "quote", label: "Προσφορά" },
   { value: "order", label: "Παραγγελία" },
@@ -110,6 +140,13 @@ const FOREIGN_TYPES = new Set<DraftInput["type"]>([
 const CORRELATED_TYPES = new Set<DraftInput["type"]>([
   "credit_note_correlated",
   "stay_tax_receipt",
+  // Complementary invoices (1.6 / 2.4) require the parent's MARK.
+  "complementary_invoice",
+  "complementary_service_invoice",
+  // Retail refunds and retail credit notes (8.4 / 11.4) reference the
+  // original retail receipt.
+  "retail_refund_receipt",
+  "retail_credit_note",
 ]);
 
 const PAYMENT_METHODS = [

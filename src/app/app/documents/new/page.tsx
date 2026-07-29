@@ -25,6 +25,21 @@ const VALID_TYPES: readonly DocumentType[] = [
   "order",
   "delivery_note",
   "stay_tax_receipt",
+  "third_party_sale_invoice",
+  "third_party_sale_clearing",
+  "complementary_invoice",
+  "complementary_service_invoice",
+  "purchase_title",
+  "purchase_title_refused",
+  "self_delivery",
+  "self_use",
+  "contract_income",
+  "rental_income",
+  "retail_refund_receipt",
+  "pos_income_receipt",
+  "pos_payment_receipt",
+  "retail_credit_note",
+  "third_party_retail_receipt",
 ];
 
 export default async function NewDocumentPage({
@@ -137,8 +152,16 @@ export default async function NewDocumentPage({
         myDataMark: { not: null },
         type: {
           notIn: [
+            // Credit notes cannot themselves be parents.
             "credit_note",
             "credit_note_correlated",
+            "retail_credit_note",
+            // Refund receipts and complementary invoices are children, not
+            // parents.
+            "retail_refund_receipt",
+            "complementary_invoice",
+            "complementary_service_invoice",
+            // Non-myDATA internal drafts.
             "delivery_note",
             "proforma",
             "quote",
