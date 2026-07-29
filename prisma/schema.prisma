@@ -1118,6 +1118,12 @@ model Expense {
   businessId      String
   supplierId      String?
   category        String?              @db.VarChar(80)
+  // myDATA expense-side type code chosen by the accountant (13.1, 13.2,
+  // 13.30, 13.31, 14.1-14.5, 15.1, 16.1, 17.1-17.6). Stored as the
+  // string enum-value from EXPENSE_MYDATA_TYPES in lib/expense-mydata-
+  // types.ts. Nullable — legacy rows and pre-classification drafts stay
+  // empty.
+  myDataType      String?              @db.VarChar(40)
   reference       String?              @db.VarChar(80)
   description     String?              @db.Text
   netAmount       Decimal              @default(0) @db.Decimal(12, 2)
@@ -1139,6 +1145,7 @@ model Expense {
 
   @@index([businessId, issueDate])
   @@index([businessId, paymentStatus])
+  @@index([businessId, myDataType])
   @@index([supplierId])
   @@map("expenses")
 }

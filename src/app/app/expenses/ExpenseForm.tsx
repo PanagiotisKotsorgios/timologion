@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Field, Input, Select, Textarea } from "@/components/ui/Input";
 import { Alert } from "@/components/ui/Alert";
 import { money } from "@/lib/format";
+import { EXPENSE_MYDATA_TYPES } from "@/lib/expense-mydata-types";
 import {
   createExpenseAction,
   updateExpenseAction,
@@ -37,6 +38,7 @@ type ExpenseLike = {
   id?: string;
   supplierId?: string | null;
   category?: string | null;
+  myDataType?: string | null;
   reference?: string | null;
   description?: string | null;
   netAmount?: number | string;
@@ -77,6 +79,7 @@ export function ExpenseForm({
   const [values, setValues] = useState({
     supplierId: initial?.supplierId ?? "",
     category: initial?.category ?? "",
+    myDataType: initial?.myDataType ?? "",
     reference: initial?.reference ?? "",
     description: initial?.description ?? "",
     netAmount: String(initial?.netAmount ?? "0"),
@@ -133,7 +136,11 @@ export function ExpenseForm({
       </section>
 
       <section className="grid gap-4 md:grid-cols-2">
-        <Field label="Κατηγορία" htmlFor="category">
+        <Field
+          label="Κατηγορία"
+          htmlFor="category"
+          help="Δική σου εσωτερική ταξινόμηση (π.χ. «Ενοίκιο», «ΔΕΗ»). Ελεύθερο κείμενο — χρήσιμο για δικά σου φίλτρα και αναφορές."
+        >
           <Input
             id="category"
             name="category"
@@ -160,6 +167,34 @@ export function ExpenseForm({
           />
         </Field>
       </section>
+
+      <Field
+        label="Τύπος myDATA"
+        htmlFor="myDataType"
+        help="Ο κωδικός myDATA που ταξινομεί το έξοδο για την ΑΑΔΕ. Επίλεξέ τον αν πρόκειται να υποβληθεί ηλεκτρονικά. Αν δεν είσαι σίγουρος, ρώτα τον λογιστή σου ή άφησέ το κενό — μπορείς να το συμπληρώσεις αργότερα."
+      >
+        <Select
+          id="myDataType"
+          name="myDataType"
+          value={values.myDataType}
+          onChange={(e) => set("myDataType", e.target.value)}
+        >
+          <option value="">— Χωρίς ταξινόμηση —</option>
+          {EXPENSE_MYDATA_TYPES.map((t) => (
+            <option key={t.value} value={t.value}>
+              {t.label}
+            </option>
+          ))}
+        </Select>
+        {values.myDataType && (
+          <p className="mt-2 text-xs text-ink-700">
+            {
+              EXPENSE_MYDATA_TYPES.find((t) => t.value === values.myDataType)
+                ?.hint
+            }
+          </p>
+        )}
+      </Field>
 
       <Field label="Περιγραφή" htmlFor="description">
         <Textarea

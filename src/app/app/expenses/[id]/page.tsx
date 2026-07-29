@@ -103,6 +103,7 @@ export default async function ExpenseDetailPage({
                   id: expense.id,
                   supplierId: expense.supplierId,
                   category: expense.category,
+                  myDataType: expense.myDataType,
                   reference: expense.reference,
                   description: expense.description,
                   netAmount: Number(expense.netAmount),

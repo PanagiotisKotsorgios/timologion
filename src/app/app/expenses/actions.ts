@@ -155,6 +155,7 @@ export async function deleteSupplierAction(formData: FormData) {
 const expenseSchema = z.object({
   supplierId: z.string().optional().or(z.literal("")),
   category: z.string().max(80).optional().or(z.literal("")),
+  myDataType: z.string().max(40).optional().or(z.literal("")),
   reference: z.string().max(80).optional().or(z.literal("")),
   description: z.string().max(5000).optional().or(z.literal("")),
   netAmount: z.coerce.number().min(0),
@@ -225,6 +226,7 @@ export async function createExpenseAction(
       businessId: ctx.businessId,
       supplierId,
       category: o(parsed.data.category),
+      myDataType: o(parsed.data.myDataType),
       reference: o(parsed.data.reference),
       description: o(parsed.data.description),
       netAmount: parsed.data.netAmount,
@@ -279,6 +281,7 @@ export async function updateExpenseAction(
       data: {
         supplierId: parsed.data.supplierId || null,
         category: o(parsed.data.category),
+        myDataType: o(parsed.data.myDataType),
         reference: o(parsed.data.reference),
         description: o(parsed.data.description),
         netAmount: parsed.data.netAmount,

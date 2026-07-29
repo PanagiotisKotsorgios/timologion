@@ -14,11 +14,16 @@ import type { ExpensePaymentStatus, Prisma } from "@prisma/client";
 import { ClickableRow } from "../ClickableRow";
 import { Pagination, resolvePageSize } from "@/components/ui/Pagination";
 import { ExportMenu } from "@/components/ui/ExportMenu";
+import {
+  expenseMyDataCode,
+  EXPENSE_MYDATA_TYPES,
+} from "@/lib/expense-mydata-types";
 
 type SearchParams = {
   q?: string;
   supplier?: string;
   status?: ExpensePaymentStatus;
+  mydata?: string;
   from?: string;
   to?: string;
   page?: string;
@@ -39,6 +44,7 @@ export default async function ExpensesPage({
   const search = params.q?.trim() ?? "";
   const supplierFilter = params.supplier?.trim() ?? "";
   const status = params.status;
+  const myDataFilter = params.mydata?.trim() ?? "";
   const from = params.from ?? "";
   const to = params.to ?? "";
   const currentPage = Math.max(1, Number(params.page ?? "1") || 1);
@@ -56,6 +62,7 @@ export default async function ExpensesPage({
     businessId: ctx.businessId,
     ...(supplierFilter ? { supplierId: supplierFilter } : {}),
     ...(status ? { paymentStatus: status } : {}),
+    ...(myDataFilter ? { myDataType: myDataFilter } : {}),
     ...(issueDate ? { issueDate } : {}),
     ...(search
       ? {
@@ -189,6 +196,7 @@ export default async function ExpensesPage({
         search={search}
         supplier={supplierFilter}
         status={status}
+        myDataFilter={myDataFilter}
         from={from}
         to={to}
         suppliers={suppliers}
@@ -219,6 +227,7 @@ export default async function ExpensesPage({
                   <th>Ημ/νία</th>
                   <th>Προμηθευτής</th>
                   <th>Κατηγορία</th>
+                  <th>myDATA</th>
                   <th>Παραστατικό</th>
                   <th className="text-right">Καθαρό</th>
                   <th className="text-right">ΦΠΑ</th>
@@ -241,6 +250,11 @@ export default async function ExpensesPage({
                     <td>{e.supplier?.legalName ?? "—"}</td>
                     <td className="text-sm text-ink-700">
                       {e.category ?? "—"}
+                    </td>
+                    <td className="mono text-sm">
+                      {expenseMyDataCode(e.myDataType) ?? (
+                        <span className="text-ink-500">—</span>
+                      )}
                     </td>
                     <td className="mono text-sm text-ink-700">
                       {e.reference ?? "—"}
@@ -299,6 +313,7 @@ function FilterBar({
   search,
   supplier,
   status,
+  myDataFilter,
   from,
   to,
   suppliers,
@@ -306,6 +321,7 @@ function FilterBar({
   search: string;
   supplier: string;
   status?: ExpensePaymentStatus;
+  myDataFilter: string;
   from: string;
   to: string;
   suppliers: { id: string; legalName: string }[];
@@ -339,6 +355,16 @@ function FilterBar({
           <option value="unpaid">Ανεξόφλητα</option>
           <option value="partial">Μερικώς</option>
           <option value="paid">Εξοφλημένα</option>
+        </Select>
+      </Field>
+      <Field label="Τύπος myDATA" htmlFor="mydata" className="md:col-span-3">
+        <Select id="mydata" name="mydata" defaultValue={myDataFilter}>
+          <option value="">Όλοι</option>
+          {EXPENSE_MYDATA_TYPES.map((t) => (
+            <option key={t.value} value={t.value}>
+              {t.code} — {t.label.split(" — ")[1] ?? t.label}
+            </option>
+          ))}
         </Select>
       </Field>
       <Field label="Από" htmlFor="from" className="md:col-span-2">

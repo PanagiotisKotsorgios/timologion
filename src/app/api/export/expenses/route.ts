@@ -5,6 +5,7 @@ import { logAudit } from "@/lib/audit";
 import { toCsv, csvResponse } from "@/lib/csv";
 import { toXlsxBuffer, xlsxResponse, type XlsxColumn } from "@/lib/xlsx";
 import { toPdfBuffer, pdfResponse, type PdfColumn } from "@/lib/pdf/table-pdf";
+import { expenseMyDataCode } from "@/lib/expense-mydata-types";
 
 const STATUS_LABEL: Record<string, string> = {
   unpaid: "Ανεξόφλητο",
@@ -47,6 +48,7 @@ export async function GET(req: Request) {
       { header: "ΑΦΜ", value: (e) => e.supplier?.vatNumber ?? "" },
       { header: "Παραστατικό", value: (e) => e.reference ?? "" },
       { header: "Κατηγορία", value: (e) => e.category ?? "" },
+      { header: "myDATA", value: (e) => expenseMyDataCode(e.myDataType) ?? "" },
       { header: "Περιγραφή", value: (e) => e.description ?? "" },
       { header: "Καθαρή αξία", value: (e) => e.netAmount.toString() },
       { header: "ΦΠΑ %", value: (e) => e.vatRate.toString() },
@@ -65,10 +67,11 @@ export async function GET(req: Request) {
   if (format === "pdf") {
     const cols: PdfColumn<Row>[] = [
       { header: "Ημ/νία", value: (e) => e.issueDate, format: "date", weight: 1 },
-      { header: "Προμηθευτής", value: (e) => e.supplier?.legalName ?? "", weight: 2.2 },
+      { header: "Προμηθευτής", value: (e) => e.supplier?.legalName ?? "", weight: 2 },
       { header: "ΑΦΜ", value: (e) => e.supplier?.vatNumber ?? "", weight: 1 },
       { header: "Παραστατικό", value: (e) => e.reference ?? "", weight: 1.2 },
       { header: "Κατηγορία", value: (e) => e.category ?? "", weight: 1.2 },
+      { header: "myDATA", value: (e) => expenseMyDataCode(e.myDataType) ?? "", weight: 0.8 },
       { header: "Καθαρή", value: (e) => e.netAmount, format: "money", align: "right", weight: 1 },
       { header: "ΦΠΑ", value: (e) => e.vatAmount, format: "money", align: "right", weight: 0.9 },
       { header: "Σύνολο", value: (e) => e.totalAmount, format: "money", align: "right", weight: 1 },
@@ -100,6 +103,7 @@ export async function GET(req: Request) {
     { header: "ΑΦΜ", value: (e) => e.supplier?.vatNumber ?? "", width: 12 },
     { header: "Παραστατικό", value: (e) => e.reference ?? "", width: 18 },
     { header: "Κατηγορία", value: (e) => e.category ?? "", width: 18 },
+    { header: "myDATA", value: (e) => expenseMyDataCode(e.myDataType) ?? "", width: 10 },
     { header: "Περιγραφή", value: (e) => e.description ?? "", width: 32 },
     { header: "Καθαρή αξία", value: (e) => e.netAmount, format: "€#,##0.00", width: 14 },
     { header: "ΦΠΑ %", value: (e) => Number(e.vatRate), format: "0.00", width: 10 },
