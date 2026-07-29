@@ -120,6 +120,10 @@ const draftSchema = z.object({
   destinationAddress: z.string().max(400).optional().or(z.literal("")),
   vehicleNumber: z.string().max(40).optional().or(z.literal("")),
   driverName: z.string().max(160).optional().or(z.literal("")),
+  // Correlated credit-note (5.1) fields — server nulls them out on
+  // any other type, so they only matter when type == credit_note_correlated.
+  correlatedDocumentId: z.string().optional().or(z.literal("")),
+  correlatedMarkOverride: z.string().max(80).optional().or(z.literal("")),
 });
 
 export type DraftFormState = { error?: string } | undefined;
@@ -180,6 +184,14 @@ export async function createDraftAction(
         destinationAddress: parsed.data.destinationAddress || null,
         vehicleNumber: parsed.data.vehicleNumber || null,
         driverName: parsed.data.driverName || null,
+        correlatedDocumentId:
+          parsed.data.type === "credit_note_correlated"
+            ? parsed.data.correlatedDocumentId || null
+            : null,
+        correlatedMarkOverride:
+          parsed.data.type === "credit_note_correlated"
+            ? parsed.data.correlatedMarkOverride || null
+            : null,
         netTotalAmount: totals.netTotal,
         vatTotalAmount: totals.vatTotal,
         totalAmount: totals.total,
@@ -291,6 +303,14 @@ export async function updateDraftAction(
         destinationAddress: parsed.data.destinationAddress || null,
         vehicleNumber: parsed.data.vehicleNumber || null,
         driverName: parsed.data.driverName || null,
+        correlatedDocumentId:
+          parsed.data.type === "credit_note_correlated"
+            ? parsed.data.correlatedDocumentId || null
+            : null,
+        correlatedMarkOverride:
+          parsed.data.type === "credit_note_correlated"
+            ? parsed.data.correlatedMarkOverride || null
+            : null,
         netTotalAmount: totals.netTotal,
         vatTotalAmount: totals.vatTotal,
         totalAmount: totals.total,
@@ -529,7 +549,11 @@ export async function attemptIssueAction(documentId: string) {
 
   const doc = await prisma.document.findFirst({
     where: { id: documentId, businessId: ctx.businessId },
-    include: { client: true, lines: true },
+    include: {
+      client: true,
+      lines: true,
+      correlatedDocument: { select: { myDataMark: true } },
+    },
   });
   if (!doc) return { ok: false as const, error: "Το παραστατικό δεν βρέθηκε." };
   if (doc.status !== "draft")
@@ -757,6 +781,27 @@ export async function attemptIssueAction(documentId: string) {
         })
       : undefined;
 
+  // Correlated credit note (5.1) — Wrapp requires the parent's myDATA
+  // MARK in `correlated_invoices`. We prefer the linked local doc's
+  // stored MARK; the manual override is the escape hatch for pre-
+  // migration parents that live outside timologion.
+  let correlatedInvoices: string[] | undefined;
+  if (doc.type === "credit_note_correlated") {
+    const parentMark =
+      doc.correlatedDocument?.myDataMark ?? doc.correlatedMarkOverride;
+    if (!parentMark) {
+      await prisma.document
+        .update({ where: { id: doc.id }, data: { status: "draft" } })
+        .catch(() => undefined);
+      return {
+        ok: false as const,
+        error:
+          "Το πιστωτικό 5.1 (συσχετιζόμενο) απαιτεί το MARK του γονικού παραστατικού. Επίλεξε το γονικό στο πεδίο «Συσχετιζόμενο παραστατικό» ή δώσε το MARK χειροκίνητα.",
+      };
+    }
+    correlatedInvoices = [parentMark];
+  }
+
   const wrappPayload = {
     invoice_type_code: invoiceTypeCode,
     billing_book_id: book.wrappBookId,
@@ -771,6 +816,7 @@ export async function attemptIssueAction(documentId: string) {
     counterpart,
     is_delivery_note: doc.type === "delivery_note" ? true : undefined,
     delivery_detail: deliveryDetail,
+    correlated_invoices: correlatedInvoices,
     invoice_lines: doc.lines.map((l, i) => {
       const net = wire(Number(l.netAmount));
       const vat = wire(Number(l.vatAmount));
