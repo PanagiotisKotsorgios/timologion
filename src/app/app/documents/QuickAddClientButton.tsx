@@ -1,16 +1,20 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { Plus, X, UserPlus } from "lucide-react";
+import { Plus, X, UserPlus, Search, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Textarea } from "@/components/ui/Input";
 import { Alert } from "@/components/ui/Alert";
-import { quickCreateClientAction } from "@/app/app/clients/actions";
+import {
+  quickCreateClientAction,
+  vatSearchAction,
+} from "@/app/app/clients/actions";
 
 export type CreatedClientPayload = {
   id: string;
   label: string;
   vatNumber: string | null;
+  tradeName: string | null;
   taxOffice: string | null;
   addressLine: string | null;
   city: string | null;
@@ -42,6 +46,7 @@ export function QuickAddClientButton({
     vatNumber: "",
     tradeName: "",
     taxOffice: "",
+    activity: "",
     addressLine: "",
     city: "",
     postalCode: "",
@@ -49,6 +54,8 @@ export function QuickAddClientButton({
     phone: "",
     notes: "",
   });
+  const [vatBusy, startVatSearch] = useTransition();
+  const [vatMessage, setVatMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -71,6 +78,52 @@ export function QuickAddClientButton({
     setValues((s) => ({ ...s, [key]: v }));
   }
 
+  function handleVatLookup() {
+    const vat = values.vatNumber.trim();
+    if (!vat) {
+      setVatMessage("Πληκτρολόγησε ΑΦΜ πρώτα.");
+      return;
+    }
+    setVatMessage(null);
+    setError(null);
+    const fd = new FormData();
+    fd.set("vat", vat);
+    startVatSearch(async () => {
+      const res = await vatSearchAction(fd);
+      if (!res.ok) {
+        setVatMessage(res.error);
+        return;
+      }
+      // Auto-fill from ΑΑΔΕ / provider result. Preserve any values the
+      // user already typed manually — the fetched data only overwrites
+      // empty fields (except vatNumber + legalName which are canonical).
+      setValues((s) => ({
+        ...s,
+        vatNumber: res.result.vat,
+        legalName: res.result.legal_name,
+        tradeName: s.tradeName || res.result.trade_name || "",
+        taxOffice: s.taxOffice || res.result.tax_office || "",
+        activity: s.activity || res.result.activity || "",
+        addressLine: s.addressLine || res.result.address || "",
+        city: s.city || res.result.city || "",
+        postalCode: s.postalCode || res.result.postal_code || "",
+        phone: s.phone || res.result.phone || "",
+        email: s.email || res.result.email || "",
+      }));
+      const filled = [
+        res.result.trade_name,
+        res.result.tax_office,
+        res.result.activity,
+        res.result.address,
+        res.result.city,
+        res.result.postal_code,
+        res.result.phone,
+        res.result.email,
+      ].filter(Boolean).length;
+      setVatMessage(`Συμπληρώθηκαν ${filled} πεδία από την αναζήτηση ΑΦΜ.`);
+    });
+  }
+
   function submit() {
     if (!values.legalName.trim()) {
       setError("Η νόμιμη επωνυμία είναι υποχρεωτική.");
@@ -89,21 +142,24 @@ export function QuickAddClientButton({
         id: res.id,
         label: res.label,
         vatNumber: res.vatNumber,
+        tradeName: values.tradeName || null,
         taxOffice: values.taxOffice || null,
         addressLine: values.addressLine || null,
         city: values.city || null,
         postalCode: values.postalCode || null,
         country: "GR",
-        activity: null,
+        activity: values.activity || null,
         email: values.email || null,
         phone: values.phone || null,
       });
       setOpen(false);
+      setVatMessage(null);
       setValues({
         legalName: "",
         vatNumber: "",
         tradeName: "",
         taxOffice: "",
+        activity: "",
         addressLine: "",
         city: "",
         postalCode: "",
@@ -173,12 +229,25 @@ export function QuickAddClientButton({
 
               <div className="grid gap-4 md:grid-cols-3">
                 <Field label="ΑΦΜ" htmlFor="qa-vat">
-                  <Input
-                    id="qa-vat"
-                    value={values.vatNumber}
-                    onChange={(e) => set("vatNumber", e.target.value)}
-                    maxLength={20}
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      id="qa-vat"
+                      value={values.vatNumber}
+                      onChange={(e) => set("vatNumber", e.target.value)}
+                      maxLength={20}
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="md"
+                      onClick={handleVatLookup}
+                      disabled={vatBusy}
+                      icon={vatBusy ? Loader2 : Search}
+                      className={vatBusy ? "[&_svg]:animate-spin" : ""}
+                    >
+                      {vatBusy ? "..." : "Αναζήτηση"}
+                    </Button>
+                  </div>
                 </Field>
                 <Field
                   label="Νόμιμη επωνυμία"
@@ -195,7 +264,15 @@ export function QuickAddClientButton({
                     maxLength={160}
                   />
                 </Field>
+              </div>
 
+              {vatMessage && (
+                <Alert tone={vatMessage.startsWith("Συμπ") ? "success" : "warning"}>
+                  {vatMessage}
+                </Alert>
+              )}
+
+              <div className="grid gap-4 md:grid-cols-3">
                 <Field label="Διακριτικός τίτλος" htmlFor="qa-tradeName">
                   <Input
                     id="qa-tradeName"
@@ -210,6 +287,14 @@ export function QuickAddClientButton({
                     value={values.taxOffice}
                     onChange={(e) => set("taxOffice", e.target.value)}
                     maxLength={120}
+                  />
+                </Field>
+                <Field label="Δραστηριότητα" htmlFor="qa-activity">
+                  <Input
+                    id="qa-activity"
+                    value={values.activity}
+                    onChange={(e) => set("activity", e.target.value)}
+                    maxLength={200}
                   />
                 </Field>
                 <Field label="Τηλέφωνο" htmlFor="qa-phone">
