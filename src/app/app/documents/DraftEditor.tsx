@@ -28,6 +28,10 @@ import {
 } from "./actions";
 import { QuickAddClientButton } from "./QuickAddClientButton";
 import { QuickAddItemButton } from "./QuickAddItemButton";
+import {
+  CorrelatedInvoicePicker,
+  type IssuedDocOption,
+} from "./CorrelatedInvoicePicker";
 
 type ClientOption = {
   id: string;
@@ -75,11 +79,11 @@ const DOC_TYPE_OPTIONS: { value: DraftInput["type"]; label: string }[] = [
   { value: "invoice", label: "Τιμολόγιο πώλησης (1.1)" },
   { value: "service_invoice", label: "Τιμολόγιο παροχής (2.1)" },
   { value: "retail_receipt", label: "Απόδειξη λιανικής (11.1)" },
-  { value: "service_receipt", label: "Απόδειξη παροχής υπηρεσιών (11.4)" },
+  { value: "service_receipt", label: "Απόδειξη παροχής υπηρεσιών (11.2)" },
   { value: "simplified_invoice", label: "Απλοποιημένο τιμολόγιο (11.3)" },
-  { value: "credit_note", label: "Πιστωτικό (5.2)" },
-  { value: "credit_note_correlated", label: "Πιστωτικό συσχετισμένο (5.1)" },
-  { value: "delivery_note", label: "Δελτίο αποστολής" },
+  { value: "credit_note", label: "Πιστωτικό μη συσχετιζόμενο (5.2)" },
+  { value: "credit_note_correlated", label: "Πιστωτικό συσχετιζόμενο (5.1)" },
+  { value: "delivery_note", label: "Δελτίο αποστολής (9.3)" },
   { value: "proforma", label: "Προτιμολόγιο" },
   { value: "quote", label: "Προσφορά" },
   { value: "order", label: "Παραγγελία" },
@@ -133,6 +137,8 @@ export type DraftEditorInitial = {
   destinationAddress?: string;
   vehicleNumber?: string;
   driverName?: string;
+  correlatedDocumentId?: string;
+  correlatedMarkOverride?: string;
 };
 
 export function DraftEditor({
@@ -144,6 +150,7 @@ export function DraftEditor({
   books,
   editing,
   defaultNotes = "",
+  issuedDocsForCorrelation = [],
 }: {
   initialType?: DraftInput["type"];
   businessName: string;
@@ -155,6 +162,7 @@ export function DraftEditor({
   editing?: DraftEditorInitial;
   /** Business-wide default notes (bank info, terms) prepended to new drafts. */
   defaultNotes?: string;
+  issuedDocsForCorrelation?: IssuedDocOption[];
 }) {
   const router = useRouter();
   const toast = useToast();
@@ -238,6 +246,13 @@ export function DraftEditor({
     editing?.vehicleNumber ?? "",
   );
   const [driverName, setDriverName] = useState(editing?.driverName ?? "");
+  // Correlated credit-note (5.1) reference — parent invoice picker.
+  const [correlatedDocumentId, setCorrelatedDocumentId] = useState(
+    editing?.correlatedDocumentId ?? "",
+  );
+  const [correlatedMarkOverride, setCorrelatedMarkOverride] = useState(
+    editing?.correlatedMarkOverride ?? "",
+  );
   const [showMore, setShowMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -322,6 +337,14 @@ export function DraftEditor({
         type === "delivery_note" ? vehicleNumber || undefined : undefined,
       driverName:
         type === "delivery_note" ? driverName || undefined : undefined,
+      correlatedDocumentId:
+        type === "credit_note_correlated"
+          ? correlatedDocumentId || undefined
+          : undefined,
+      correlatedMarkOverride:
+        type === "credit_note_correlated"
+          ? correlatedMarkOverride || undefined
+          : undefined,
     };
 
     startTransition(async () => {
@@ -568,6 +591,15 @@ export function DraftEditor({
           </CardBody>
         </Card>
 
+        {type === "credit_note_correlated" && (
+          <CorrelatedInvoicePicker
+            options={issuedDocsForCorrelation}
+            correlatedDocumentId={correlatedDocumentId}
+            onCorrelatedDocumentIdChange={setCorrelatedDocumentId}
+            correlatedMarkOverride={correlatedMarkOverride}
+            onCorrelatedMarkOverrideChange={setCorrelatedMarkOverride}
+          />
+        )}
         {type === "delivery_note" ? (
           <DispatchInfoCard
             dispatchAt={dispatchAt}
