@@ -5,6 +5,9 @@ import { Save, Plus } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Textarea } from "@/components/ui/Input";
 import { Alert } from "@/components/ui/Alert";
+import { PhoneField } from "@/components/ui/PhoneField";
+import { IbanField } from "@/components/ui/IbanField";
+import { EmailField } from "@/components/ui/EmailField";
 import {
   createSupplierAction,
   updateSupplierAction,
@@ -155,37 +158,30 @@ export function SupplierForm({
             maxLength={20}
           />
         </Field>
-        <Field label="Email" htmlFor="email">
-          <Input
-            id="email"
-            name="email"
-            type="email"
-            value={values.email}
-            onChange={(e) => set("email", e.target.value)}
-            maxLength={160}
-          />
-        </Field>
-        <Field label="Τηλέφωνο" htmlFor="phone">
-          <Input
-            id="phone"
-            name="phone"
-            value={values.phone}
-            onChange={(e) => set("phone", e.target.value)}
-            maxLength={30}
-          />
-        </Field>
+        <EmailField
+          htmlFor="email"
+          name="email"
+          value={values.email}
+          onChange={(v) => set("email", v)}
+        />
+        <PhoneField
+          label="Τηλέφωνο"
+          htmlFor="phone"
+          name="phone"
+          value={values.phone}
+          onChange={(v) => set("phone", v)}
+          help="Επίλεξε τον κωδικό χώρας από τη λίστα (προεπιλογή Ελλάδα +30) και συμπλήρωσε τον αριθμό. Για ξένους προμηθευτές, επίλεξε την αντίστοιχη χώρα."
+        />
       </section>
 
-      <Field label="IBAN" htmlFor="iban">
-        <Input
-          id="iban"
-          name="iban"
-          value={values.iban}
-          onChange={(e) => set("iban", e.target.value)}
-          maxLength={40}
-          placeholder="GR16 0110 1250 0000 0001 2300 695"
-        />
-      </Field>
+      <IbanField
+        label="IBAN"
+        htmlFor="iban"
+        name="iban"
+        value={values.iban}
+        onChange={(v) => set("iban", v)}
+        help="Επίλεξε τη χώρα του τραπεζικού λογαριασμού και συμπλήρωσε τον IBAN. Το μήκος προσαρμόζεται αυτόματα ανά χώρα (Ελλάδα 27, Γερμανία 22 κ.λπ.)."
+      />
 
       <Field label="Σημειώσεις" htmlFor="notes">
         <Textarea

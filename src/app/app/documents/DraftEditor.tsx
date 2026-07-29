@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Select, Textarea } from "@/components/ui/Input";
 import { HelpTip } from "@/components/ui/HelpTip";
+import { AutoTextarea } from "@/components/ui/AutoTextarea";
 import { Alert } from "@/components/ui/Alert";
 import { useToast } from "@/components/ui/Toast";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
@@ -845,10 +846,10 @@ export function DraftEditor({
           />
           <CardBody className="p-0">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1120px] text-base">
+              <table className="w-full min-w-[1200px] text-base">
                 <thead className="bg-brand-100 text-[12px] uppercase tracking-widest text-brand-900">
                   <tr>
-                    <th className="px-4 py-4 text-left" style={{ width: "220px" }}>
+                    <th className="px-4 py-4 text-left" style={{ width: "280px" }}>
                       <span className="inline-flex items-center gap-1.5">
                         Είδος/Υπηρεσία
                         <HelpTip text="Επίλεξε ένα αποθηκευμένο είδος ή υπηρεσία. Αν δεν υπάρχει, πάτησε «Νέο» για να το προσθέσεις χωρίς να φύγεις από την οθόνη." />
@@ -925,13 +926,14 @@ export function DraftEditor({
                           </div>
                         </td>
                         <td className="px-3 py-2.5">
-                          <input
+                          <AutoTextarea
                             value={l.description}
                             onChange={(e) =>
                               updateLine(l.key, { description: e.target.value })
                             }
                             required
-                            className="row-input"
+                            minRows={1}
+                            maxRows={6}
                           />
                         </td>
                         <td className="px-3 py-2.5">

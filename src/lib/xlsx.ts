@@ -100,19 +100,33 @@ export async function toXlsxBuffer<T>(
     ws.addRow(values);
   }
 
-  // Zebra striping for readability.
+  // Apply per-column alignment + light border on every body cell so the
+  // sheet actually looks like a spreadsheet, not raw data. Money and
+  // number columns right-align, dates center, text left-aligns.
   const totalRows = ws.rowCount;
   for (let r = headerRowIndex + 1; r <= totalRows; r++) {
-    if ((r - headerRowIndex) % 2 === 0) {
-      const row = ws.getRow(r);
-      row.eachCell((cell) => {
+    const row = ws.getRow(r);
+    row.height = 18;
+    row.eachCell((cell, colNumber) => {
+      const col = columns[colNumber - 1];
+      const isMoney = /€|money|#,##0/.test(col?.format ?? "");
+      const isDate = /y|d/.test((col?.format ?? "").toLowerCase());
+      cell.alignment = {
+        vertical: "middle",
+        horizontal: isMoney ? "right" : isDate ? "center" : "left",
+        wrapText: false,
+      };
+      cell.border = {
+        bottom: { style: "thin", color: { argb: "FFE2E8F0" } },
+      };
+      if ((r - headerRowIndex) % 2 === 0) {
         cell.fill = {
           type: "pattern",
           pattern: "solid",
           fgColor: { argb: "FFF5F7FB" },
         };
-      });
-    }
+      }
+    });
   }
 
   ws.views = [{ state: "frozen", ySplit: headerRowIndex }];

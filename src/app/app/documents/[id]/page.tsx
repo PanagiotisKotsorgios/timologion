@@ -73,18 +73,18 @@ export default async function DocumentDetailPage({
                   href={`/app/documents/${doc.id}/pdf`}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex h-12 items-center gap-2 rounded-lg border-2 border-ink-300 bg-white px-5 text-base font-semibold text-ink-900 hover:border-ink-500 hover:bg-ink-100"
+                  className="inline-flex h-10 items-center gap-2 rounded-lg border-2 border-ink-300 bg-white px-4 text-sm font-semibold text-ink-900 hover:border-ink-500 hover:bg-ink-100 sm:h-11 sm:text-base"
                 >
-                  <Printer size={18} aria-hidden />
+                  <Printer size={16} aria-hidden />
                   Εκτύπωση
                 </a>
                 <a
                   href={`/app/documents/${doc.id}/pdf`}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex h-12 items-center gap-2 rounded-lg border-2 border-ink-300 bg-white px-5 text-base font-semibold text-ink-900 hover:border-ink-500 hover:bg-ink-100"
+                  className="inline-flex h-10 items-center gap-2 rounded-lg border-2 border-ink-300 bg-white px-4 text-sm font-semibold text-ink-900 hover:border-ink-500 hover:bg-ink-100 sm:h-11 sm:text-base"
                 >
-                  <FileDown size={18} aria-hidden />
+                  <FileDown size={16} aria-hidden />
                   Λήψη PDF
                 </a>
               </>

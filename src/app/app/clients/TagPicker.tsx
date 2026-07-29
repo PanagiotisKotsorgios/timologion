@@ -214,9 +214,9 @@ function NewTagModal({
             <Input
               id="new-tag-label"
               value={label}
-              onChange={(e) => setLabel(e.target.value)}
+              onChange={(e) => setLabel(e.target.value.slice(0, 24))}
               placeholder="π.χ. VIP, Χονδρική"
-              maxLength={60}
+              maxLength={24}
               autoFocus
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
@@ -225,6 +225,9 @@ function NewTagModal({
                 }
               }}
             />
+            <p className="mt-1 text-right text-[11px] font-semibold text-ink-500">
+              {label.length}/24
+            </p>
           </div>
           <div>
             <label

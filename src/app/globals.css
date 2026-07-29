@@ -47,9 +47,31 @@ body {
 }
 
 @media print {
-  body { background: #fff; }
-  aside, header { display: none !important; }
-  main { padding: 0 !important; }
+  /* Reset the app chrome so only the actual document surface prints. The
+     sidebar, top nav, floating action buttons, and PageHeader action
+     row are all irrelevant on paper — hide them explicitly instead of
+     relying on Tailwind's `print:hidden` on every element. */
+  html, body { background: #fff !important; }
+  aside, nav, header, .no-print, [data-print="hide"] {
+    display: none !important;
+  }
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+  }
+  /* Kill background colors / shadows so the printed PDF isn't blocky. */
+  * {
+    box-shadow: none !important;
+  }
+  a { text-decoration: none !important; color: inherit !important; }
+  /* Force page breaks between logical sections instead of splitting rows
+     awkwardly. */
+  table { page-break-inside: auto; }
+  tr    { page-break-inside: avoid; page-break-after: auto; }
+  thead { display: table-header-group; }
+  tfoot { display: table-footer-group; }
+  @page { size: A4; margin: 14mm; }
 }
 
 /* ─── Minimal utilities for marketing + auth surfaces ─────────────────── */
@@ -159,7 +181,8 @@ input[type="number"]:hover::-webkit-outer-spin-button {
    h-11/base so the invoice editor doesn't feel cramped next to the rest
    of the app's larger controls. */
 .row-input {
-  @apply h-11 w-full rounded-lg border-2 border-ink-300 bg-white px-3 text-base font-semibold text-ink-900 placeholder:text-ink-500 transition-colors;
+  @apply h-11 w-full rounded-lg border-2 border-ink-300 bg-white px-3 text-base font-bold text-ink-900 placeholder:font-normal placeholder:text-ink-500 transition-colors;
+  font-variant-numeric: tabular-nums;
 }
 .row-input:hover { border-color: rgba(15, 31, 57, 0.4); }
 .row-input:focus {
@@ -173,7 +196,9 @@ input[type="number"]:hover::-webkit-outer-spin-button {
    values are typed or pasted, never incremented by 1. */
 .row-input[type="number"] {
   padding-right: 0.75rem !important;
+  padding-left: 0.75rem !important;
   text-align: right;
+  font-size: 1.05rem;
   -moz-appearance: textfield;
   appearance: textfield;
 }
@@ -185,14 +210,35 @@ input[type="number"]:hover::-webkit-outer-spin-button {
   display: none;
 }
 
+/* Row-level SELECT for the "Είδος/Υπηρεσία" column. Match the row-input
+   look and force the option text to actually be visible instead of
+   getting cut off behind the chevron. */
 .row-select {
-  @apply h-11 w-full rounded-lg border-2 border-ink-300 bg-white px-3 pr-8 text-base text-ink-900 appearance-none transition-colors;
+  @apply h-11 w-full rounded-lg border-2 border-ink-300 bg-white pl-3 pr-8 text-base font-semibold text-ink-900 appearance-none transition-colors;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'><path d='M2 4l3 3 3-3' fill='none' stroke='%230f172a' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/></svg>");
   background-repeat: no-repeat;
   background-position: right 10px center;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
 }
 .row-select:hover { border-color: rgba(15, 31, 57, 0.4); }
 .row-select:focus {
+  outline: none;
+  border-color: #0f1f39;
+  box-shadow: 0 0 0 3px rgba(15, 31, 57, 0.15);
+}
+
+/* Auto-growing textarea used inline in table rows (line description) —
+   grows to fit content up to a max height, then scrolls. Used by
+   AutoTextarea component. */
+.row-textarea {
+  @apply w-full min-h-[44px] rounded-lg border-2 border-ink-300 bg-white px-3 py-2 text-base font-semibold text-ink-900 placeholder:font-normal placeholder:text-ink-500 transition-colors resize-none;
+  overflow: hidden;
+  line-height: 1.4;
+}
+.row-textarea:hover { border-color: rgba(15, 31, 57, 0.4); }
+.row-textarea:focus {
   outline: none;
   border-color: #0f1f39;
   box-shadow: 0 0 0 3px rgba(15, 31, 57, 0.15);

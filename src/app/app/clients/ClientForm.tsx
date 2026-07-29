@@ -6,6 +6,8 @@ import { Save, Plus, Search, Loader2, KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Textarea } from "@/components/ui/Input";
 import { Alert } from "@/components/ui/Alert";
+import { PhoneField } from "@/components/ui/PhoneField";
+import { EmailField } from "@/components/ui/EmailField";
 import { t } from "@/lib/i18n";
 import {
   createClientAction,
@@ -261,25 +263,20 @@ export function ClientForm({
             maxLength={20}
           />
         </Field>
-        <Field label="Email" htmlFor="email">
-          <Input
-            id="email"
-            name="email"
-            type="email"
-            value={values.email ?? ""}
-            onChange={(e) => set("email", e.target.value)}
-            maxLength={160}
-          />
-        </Field>
-        <Field label="Τηλέφωνο" htmlFor="phone">
-          <Input
-            id="phone"
-            name="phone"
-            value={values.phone ?? ""}
-            onChange={(e) => set("phone", e.target.value)}
-            maxLength={30}
-          />
-        </Field>
+        <EmailField
+          htmlFor="email"
+          name="email"
+          value={values.email ?? ""}
+          onChange={(v) => set("email", v)}
+        />
+        <PhoneField
+          label="Τηλέφωνο"
+          htmlFor="phone"
+          name="phone"
+          value={values.phone ?? ""}
+          onChange={(v) => set("phone", v)}
+          help="Επίλεξε τον κωδικό χώρας από τη λίστα (προεπιλογή Ελλάδα +30) και συμπλήρωσε τον αριθμό."
+        />
       </section>
 
       <Field label="Σημειώσεις" htmlFor="notes">
