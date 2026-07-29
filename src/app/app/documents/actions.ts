@@ -823,36 +823,58 @@ export async function attemptIssueAction(documentId: string) {
   };
   const clientStreet = parseStreet(doc.client?.addressLine);
 
-  const counterpart = doc.client
-    ? {
-        name: doc.client.legalName?.trim() || "Πελάτης",
-        country_code: doc.client.country ?? "GR",
-        vat: doc.client.vatNumber?.replace(/\D/g, "") || "000000000",
-        city: doc.client.city?.trim() || "-",
-        street: clientStreet.street,
-        number: clientStreet.number,
-        postal_code: normalizePostal(doc.client.postalCode),
-        email: doc.client.email ?? undefined,
-      }
-    : {
-        // No client picked (retail receipts). Wrapp still wants a valid
-        // counterpart shape — send an anonymous consumer placeholder.
-        name: "Ιδιώτης καταναλωτής",
-        country_code: "GR",
-        vat: "000000000",
-        city: "-",
-        street: "-",
-        number: "0",
-        postal_code: "00000",
-      };
+  // Retail codes (11.x) + POS receipts (8.5/8.6) + retail refund (8.4) are
+  // anonymous by design. myDATA rejects them if a counterpart with a fake
+  // VAT is sent — for these types we skip the counterpart entirely unless
+  // the user explicitly attached a client (some POS flows do).
+  const anonymousRetail =
+    (doc.type === "retail_receipt" ||
+      doc.type === "service_receipt" ||
+      doc.type === "simplified_invoice" ||
+      doc.type === "retail_credit_note" ||
+      doc.type === "retail_refund_receipt" ||
+      doc.type === "pos_income_receipt" ||
+      doc.type === "pos_payment_receipt" ||
+      doc.type === "third_party_retail_receipt") &&
+    !doc.client;
 
-  // Credit notes: we store the totals + line amounts as NEGATIVE numbers so
-  // the local ledger balances correctly, but Wrapp/myDATA require POSITIVE
-  // numbers on the wire (the invoice_type_code 5.1/5.2 tells them it's a
-  // reversal). Force abs() for credit_note payloads.
-  const wire = doc.type === "credit_note"
-    ? (n: number) => Math.abs(n)
-    : (n: number) => n;
+  const counterpart = anonymousRetail
+    ? undefined
+    : doc.client
+      ? {
+          name: doc.client.legalName?.trim() || "Πελάτης",
+          country_code: doc.client.country ?? "GR",
+          vat: doc.client.vatNumber?.replace(/\D/g, "") || "000000000",
+          city: doc.client.city?.trim() || "-",
+          street: clientStreet.street,
+          number: clientStreet.number,
+          postal_code: normalizePostal(doc.client.postalCode),
+          email: doc.client.email ?? undefined,
+        }
+      : {
+          // Non-retail type without a client picked — myDATA needs a
+          // counterpart on B2B codes. Send an anonymous consumer placeholder
+          // as a last resort so the invoice can still be issued.
+          name: "Ιδιώτης καταναλωτής",
+          country_code: "GR",
+          vat: "000000000",
+          city: "-",
+          street: "-",
+          number: "0",
+          postal_code: "00000",
+        };
+
+  // Credit / refund types: we store the totals + line amounts as NEGATIVE
+  // numbers so the local ledger balances correctly, but Wrapp/myDATA
+  // require POSITIVE numbers on the wire (the invoice_type_code 5.1/5.2/
+  // 8.4/11.4 tells them it's a reversal). Force abs() on all refund
+  // codes so the payload validates.
+  const isRefundLike =
+    doc.type === "credit_note" ||
+    doc.type === "credit_note_correlated" ||
+    doc.type === "retail_credit_note" ||
+    doc.type === "retail_refund_receipt";
+  const wire = isRefundLike ? (n: number) => Math.abs(n) : (n: number) => n;
 
   // Build the delivery-note (9.3) shipping block from the dispatch fields
   // we captured in the draft. Wrapp requires most fields to be present so we
@@ -932,6 +954,16 @@ export async function attemptIssueAction(documentId: string) {
     }
   }
 
+  // Deliver the customer their PDF/e-mail automatically when we have an
+  // email on file. Wrapp will only fire emails when the payload has a
+  // valid `customer_emails` array. Falls back to explicit empty so we
+  // don't accidentally trigger a Wrapp email to an empty string.
+  const customerEmail = doc.client?.email?.trim() || null;
+  const customerEmails =
+    customerEmail && /@/.test(customerEmail) ? [customerEmail] : undefined;
+  const emailLocale: "el" | "en" | undefined =
+    doc.printLanguage === "en" ? "en" : doc.printLanguage === "el" ? "el" : undefined;
+
   const wrappPayload = {
     invoice_type_code: invoiceTypeCode,
     billing_book_id: book.wrappBookId,
@@ -952,6 +984,9 @@ export async function attemptIssueAction(documentId: string) {
       isForeign && doc.exchangeRate
         ? Number(doc.exchangeRate)
         : undefined,
+    customer_emails: customerEmails,
+    email_locale: emailLocale,
+    generate_pdf: true,
     invoice_lines: doc.lines.map((l, i) => {
       const net = wire(Number(l.netAmount));
       const vat = wire(Number(l.vatAmount));

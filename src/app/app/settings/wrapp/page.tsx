@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { t } from "@/lib/i18n";
 import { date } from "@/lib/format";
 import { refreshWrappStatusAction } from "./actions";
+import { HealthCheckPanel } from "./HealthCheckPanel";
 
 export default async function WrappSettingsPage() {
   const ctx = await requireTenant();
@@ -57,17 +58,25 @@ export default async function WrappSettingsPage() {
             {wrapp?.lastError && (
               <Alert tone="danger">{wrapp.lastError}</Alert>
             )}
-            <form action={refreshWrappStatusAction} className="pt-2">
-              <Button type="submit" variant="secondary">
-                Ανανέωση κατάστασης
-              </Button>
-            </form>
-            <p className="text-sm text-ink-500">
-              Σε αυτή τη φάση η σύνδεση είναι σε προσομοίωση. Θα ενεργοποιηθεί
-              πλήρως μετά τη σύνδεση με τη Wrapp API στο επόμενο milestone.
-            </p>
+            <div className="flex flex-wrap gap-3 pt-2">
+              <form action={refreshWrappStatusAction}>
+                <Button type="submit" variant="secondary">
+                  Ανανέωση κατάστασης
+                </Button>
+              </form>
+              <a
+                href="/api/wrapp/debug"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex h-11 items-center gap-2 rounded-lg border-2 border-ink-300 bg-white px-4 text-sm font-bold text-ink-900 transition-colors hover:border-ink-900"
+              >
+                Διαγνωστικά webhook →
+              </a>
+            </div>
           </CardBody>
         </Card>
+
+        <HealthCheckPanel />
       </div>
     </>
   );
