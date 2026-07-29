@@ -21,6 +21,60 @@ body {
   overflow-x: hidden;
 }
 
+/* ─── Global responsiveness safety rules ─────────────────────────────────
+   These rules prevent the "text overflows its container / everything
+   crushed together" class of small-screen bugs without every page
+   having to opt in explicitly. Rooted in the app shell (`main`) so
+   marketing pages keep their own bespoke layouts. */
+
+/* Every direct child of the app main should NOT force horizontal scroll
+   on the whole viewport — if a table or grid genuinely needs to be
+   wider than the screen, it should wrap itself in an overflow-x-auto
+   scroller. */
+main { min-width: 0; overflow-wrap: normal; word-break: normal; }
+
+/* Long strings (emails, VAT numbers, URLs, MARK codes) inside cells and
+   detail rows need to wrap — otherwise they blow out the card. */
+td, .break-anywhere {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+/* Headings should NOT split words (a Greek word breaking into vertical
+   characters looks worse than horizontal scroll). */
+h1, h2, h3, h4, h5, h6 {
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: manual;
+}
+/* Tables that live inside a `data-table` context should always be
+   horizontally scrollable if they overflow — a defensive fallback in
+   case some page forgot the overflow-x-auto wrapper. */
+.data-table {
+  min-width: max-content;
+}
+.data-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* On phones, cards trim their inner padding so more content fits without
+   truncation. Uses attribute to leave the Card component's TS API
+   untouched. */
+@media (max-width: 640px) {
+  .card-body, [data-card-body] {
+    padding: 1rem !important;
+  }
+  .card-header, [data-card-header] {
+    padding: 0.875rem 1rem !important;
+  }
+}
+
+/* Any modal / dialog should never exceed the viewport width — a common
+   mobile issue with fixed 640/720px modals. */
+[role="dialog"] > * {
+  max-width: 100vw;
+}
+
 /* iOS Safari auto-zooms into any focused <input> / <select> / <textarea>
    whose computed font-size is < 16px. Force the minimum on mobile so the
    page never zooms on focus. */
