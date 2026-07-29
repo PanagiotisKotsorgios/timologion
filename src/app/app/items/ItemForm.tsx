@@ -50,13 +50,21 @@ export function ItemForm({
       {state?.error && <Alert tone="danger">{state.error}</Alert>}
 
       <section className="grid gap-4 md:grid-cols-3">
-        <Field label="Τύπος" htmlFor="kind">
+        <Field
+          label="Τύπος"
+          htmlFor="kind"
+          help="Προϊόν = φυσικό αντικείμενο με απόθεμα (π.χ. τσάντα). Υπηρεσία = χρονοχρέωση ή εργασία χωρίς απόθεμα (π.χ. συμβουλευτική)."
+        >
           <Select id="kind" name="kind" defaultValue={initial?.kind ?? "service"}>
             <option value="service">Υπηρεσία</option>
             <option value="product">Προϊόν</option>
           </Select>
         </Field>
-        <Field label="Κωδικός" htmlFor="code">
+        <Field
+          label="Κωδικός"
+          htmlFor="code"
+          help="Δικός σου εσωτερικός κωδικός (SKU) — π.χ. «TSH-BLK-M». Χρησιμοποιείται για αναζήτηση και σε barcode· δεν φαίνεται στον πελάτη."
+        >
           <Input
             id="code"
             name="code"
@@ -64,7 +72,11 @@ export function ItemForm({
             maxLength={60}
           />
         </Field>
-        <Field label="Μονάδα" htmlFor="unit">
+        <Field
+          label="Μονάδα"
+          htmlFor="unit"
+          help="Μονάδα μέτρησης πώλησης — π.χ. τμχ, κιλά, μέτρα, ώρες, εκτ."
+        >
           <Input
             id="unit"
             name="unit"
@@ -72,7 +84,12 @@ export function ItemForm({
             maxLength={20}
           />
         </Field>
-        <Field label="Ονομασία" htmlFor="name" className="md:col-span-3">
+        <Field
+          label="Ονομασία"
+          htmlFor="name"
+          className="md:col-span-3"
+          help="Το όνομα του είδους όπως θέλεις να εμφανίζεται στα παραστατικά (π.χ. «Μπλουζάκι μαύρο medium»)."
+        >
           <Input
             id="name"
             name="name"
@@ -81,7 +98,11 @@ export function ItemForm({
             maxLength={160}
           />
         </Field>
-        <Field label="Τιμή" htmlFor="defaultPrice">
+        <Field
+          label="Τιμή"
+          htmlFor="defaultPrice"
+          help="Προτεινόμενη τιμή μονάδας ΧΩΡΙΣ ΦΠΑ σε ευρώ. Μπορείς να την τροποποιήσεις σε κάθε παραστατικό."
+        >
           <Input
             id="defaultPrice"
             name="defaultPrice"
@@ -91,7 +112,11 @@ export function ItemForm({
             defaultValue={String(initial?.defaultPrice ?? "0.00")}
           />
         </Field>
-        <Field label="ΦΠΑ (%)" htmlFor="vatRate">
+        <Field
+          label="ΦΠΑ (%)"
+          htmlFor="vatRate"
+          help="Συντελεστής ΦΠΑ που εφαρμόζεται στο είδος. Στην Ελλάδα: 24% (κανονικός), 13% (μειωμένος — τρόφιμα, φάρμακα), 6% (υπερμειωμένος — βιβλία, εφημερίδες), 0% (απαλλαγή)."
+        >
           <Select
             id="vatRate"
             name="vatRate"
@@ -104,7 +129,11 @@ export function ItemForm({
             ))}
           </Select>
         </Field>
-        <Field label="Κατηγορία ΦΠΑ (προαιρετικό)" htmlFor="vatCategory">
+        <Field
+          label="Κατηγορία ΦΠΑ (προαιρετικό)"
+          htmlFor="vatCategory"
+          help="Κωδικός myDATA κατηγορίας ΦΠΑ (π.χ. «1» = ΦΠΑ 24%, «2» = 13%, «7» = απαλλαγή). Άφησέ το κενό — υπολογίζεται αυτόματα από τον συντελεστή."
+        >
           <Input
             id="vatCategory"
             name="vatCategory"
@@ -127,6 +156,7 @@ export function ItemForm({
         <Field
           label="Απόθεμα (κενό = δεν παρακολουθείται)"
           htmlFor="stockOnHand"
+          help="Τρέχουσα ποσότητα διαθέσιμη στην αποθήκη. Αφήνοντάς το κενό, το σύστημα δεν παρακολουθεί απόθεμα για αυτό το είδος."
         >
           <Input
             id="stockOnHand"
@@ -139,7 +169,11 @@ export function ItemForm({
             placeholder="—"
           />
         </Field>
-        <Field label="Ειδοποίηση χαμηλού αποθέματος" htmlFor="stockAlertAt">
+        <Field
+          label="Ειδοποίηση χαμηλού αποθέματος"
+          htmlFor="stockAlertAt"
+          help="Όταν το απόθεμα πέσει κάτω από αυτό το όριο, εμφανίζεται προειδοποίηση στο dashboard."
+        >
           <Input
             id="stockAlertAt"
             name="stockAlertAt"

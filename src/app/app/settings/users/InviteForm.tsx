@@ -18,10 +18,19 @@ export function InviteForm() {
       {state?.error && <Alert tone="danger">{state.error}</Alert>}
       {state?.success && <Alert tone="success">{state.success}</Alert>}
       <div className="grid gap-4 md:grid-cols-3">
-        <Field label={t.auth.email} htmlFor="invite-email" className="md:col-span-2">
+        <Field
+          label={t.auth.email}
+          htmlFor="invite-email"
+          className="md:col-span-2"
+          help="Το email του συνεργάτη που θες να προσκαλέσεις. Αν δεν έχει ήδη λογαριασμό στο timologion, θα δημιουργηθεί όταν συνδεθεί για πρώτη φορά."
+        >
           <Input id="invite-email" name="email" type="email" required />
         </Field>
-        <Field label="Ρόλος" htmlFor="invite-role">
+        <Field
+          label="Ρόλος"
+          htmlFor="invite-role"
+          help="owner: πλήρη δικαιώματα + οικονομικά. admin: όλα εκτός διαγραφής επιχείρησης. accountant: παραστατικά + αναφορές. sales: πωλήσεις + πελάτες. staff: βασική έκδοση. readonly: μόνο ανάγνωση."
+        >
           <Select id="invite-role" name="role" defaultValue="staff">
             <option value="owner">owner</option>
             <option value="admin">admin</option>

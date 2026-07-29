@@ -49,7 +49,11 @@ export function PaymentForm({
       {clientId && <input type="hidden" name="clientId" value={clientId} />}
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Field label="Ποσό (€)" htmlFor="amount">
+        <Field
+          label="Ποσό (€)"
+          htmlFor="amount"
+          help="Το ποσό που εισπράχθηκε πραγματικά. Αν αφορά συγκεκριμένο παραστατικό, προτείνεται αυτόματα το υπολειπόμενο υπόλοιπο."
+        >
           <Input
             id="amount"
             name="amount"
@@ -60,7 +64,11 @@ export function PaymentForm({
             defaultValue={defaultAmount?.toFixed(2) ?? ""}
           />
         </Field>
-        <Field label="Μέθοδος" htmlFor="method">
+        <Field
+          label="Μέθοδος"
+          htmlFor="method"
+          help="Πώς εισπράχθηκε το ποσό. Θυμήσου: στην Ελλάδα ποσά > 500€ δεν επιτρέπονται με μετρητά."
+        >
           <Select id="method" name="method" defaultValue="cash">
             {METHODS.map((m) => (
               <option key={m.value} value={m.value}>
@@ -69,7 +77,11 @@ export function PaymentForm({
             ))}
           </Select>
         </Field>
-        <Field label="Ημερομηνία είσπραξης" htmlFor="receivedAt">
+        <Field
+          label="Ημερομηνία είσπραξης"
+          htmlFor="receivedAt"
+          help="Η ημερομηνία που ήρθαν πραγματικά τα χρήματα στο ταμείο ή στον λογαριασμό σου (μπορεί να διαφέρει από την ημ. έκδοσης του παραστατικού)."
+        >
           <Input
             id="receivedAt"
             name="receivedAt"
@@ -81,6 +93,7 @@ export function PaymentForm({
           label="Αναφορά (προαιρετικά)"
           htmlFor="reference"
           hint="π.χ. αριθμός εντολής"
+          help="Ελεύθερο κείμενο για tracking — π.χ. αριθμός εντολής πληρωμής, IBAN αποστολέα, ή αριθμός επιταγής."
         >
           <Input id="reference" name="reference" maxLength={160} />
         </Field>

@@ -130,7 +130,11 @@ export function ClientForm({
       {state?.error && <Alert tone="danger">{state.error}</Alert>}
 
       <section className="grid gap-4 md:grid-cols-3">
-        <Field label="ΑΦΜ" htmlFor="vatNumber">
+        <Field
+          label="ΑΦΜ"
+          htmlFor="vatNumber"
+          help="Ο 9-ψήφιος Αριθμός Φορολογικού Μητρώου του πελάτη. Πάτα «Αναζήτηση» για αυτόματη συμπλήρωση επωνυμίας, ΔΟΥ, διεύθυνσης και δραστηριότητας από την ΑΑΔΕ."
+        >
           <div className="flex gap-2">
             <Input
               id="vatNumber"
@@ -156,6 +160,7 @@ export function ClientForm({
           label="Νόμιμη επωνυμία"
           htmlFor="legalName"
           className="md:col-span-2"
+          help="Η επίσημη επωνυμία της επιχείρησης όπως εμφανίζεται στο μητρώο ΑΑΔΕ. Για ιδιώτες, βάλε ονοματεπώνυμο."
         >
           <Input
             id="legalName"
@@ -186,7 +191,11 @@ export function ClientForm({
       )}
 
       <section className="grid gap-4 md:grid-cols-2">
-        <Field label="Διακριτικός τίτλος" htmlFor="tradeName">
+        <Field
+          label="Διακριτικός τίτλος"
+          htmlFor="tradeName"
+          help="Το εμπορικό όνομα με το οποίο ο πελάτης είναι γνωστός στην αγορά, αν διαφέρει από τη νόμιμη επωνυμία."
+        >
           <Input
             id="tradeName"
             name="tradeName"
@@ -195,7 +204,11 @@ export function ClientForm({
             maxLength={160}
           />
         </Field>
-        <Field label="ΔΟΥ" htmlFor="taxOffice">
+        <Field
+          label="ΔΟΥ"
+          htmlFor="taxOffice"
+          help="Δημόσια Οικονομική Υπηρεσία στην οποία υπάγεται φορολογικά ο πελάτης (π.χ. «Α΄ Αθηνών», «ΙΓ΄ Αθηνών»)."
+        >
           <Input
             id="taxOffice"
             name="taxOffice"
@@ -204,7 +217,12 @@ export function ClientForm({
             maxLength={120}
           />
         </Field>
-        <Field label="Δραστηριότητα" htmlFor="activity" className="md:col-span-2">
+        <Field
+          label="Δραστηριότητα"
+          htmlFor="activity"
+          className="md:col-span-2"
+          help="Κύρια οικονομική δραστηριότητα (π.χ. «Λιανικό εμπόριο ενδυμάτων», «Παροχή λογιστικών υπηρεσιών»)."
+        >
           <Input
             id="activity"
             name="activity"

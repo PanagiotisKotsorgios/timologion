@@ -178,7 +178,11 @@ export function RecurringForm({
           subtitle="Πελάτης, τύπος παραστατικού και συχνότητα."
         />
         <CardBody className="grid gap-4 md:grid-cols-2">
-          <Field label="Ετικέτα προτύπου" htmlFor="label">
+          <Field
+            label="Ετικέτα προτύπου"
+            htmlFor="label"
+            help="Φιλική περιγραφή για δική σου χρήση (π.χ. «Μηνιαία συνδρομή hosting»). Δεν εμφανίζεται στο τελικό παραστατικό."
+          >
             <Input
               id="label"
               name="label"
@@ -202,7 +206,11 @@ export function RecurringForm({
               ))}
             </Select>
           </Field>
-          <Field label="Τύπος παραστατικού" htmlFor="type">
+          <Field
+            label="Τύπος παραστατικού"
+            htmlFor="type"
+            help="Ο τύπος myDATA που θα εκδίδεται αυτόματα κάθε φορά. Πιο συνηθισμένος για επαναλαμβανόμενα: Τιμολόγιο παροχής υπηρεσιών."
+          >
             <Select
               id="type"
               name="type"
@@ -243,7 +251,11 @@ export function RecurringForm({
               ))}
             </Select>
           </Field>
-          <Field label="Συχνότητα" htmlFor="cadence">
+          <Field
+            label="Συχνότητα"
+            htmlFor="cadence"
+            help="Κάθε πότε δημιουργείται νέο πρόχειρο παραστατικό — μηνιαίως, τριμηνιαίως, ετησίως κ.λπ."
+          >
             <Select
               id="cadence"
               name="cadence"
@@ -256,7 +268,11 @@ export function RecurringForm({
               ))}
             </Select>
           </Field>
-          <Field label="Επόμενη έκδοση" htmlFor="nextRunAt">
+          <Field
+            label="Επόμενη έκδοση"
+            htmlFor="nextRunAt"
+            help="Πότε θα εκδοθεί το πρώτο (ή επόμενο) παραστατικό. Οι επόμενες εκδόσεις υπολογίζονται αυτόματα βάσει συχνότητας."
+          >
             <Input
               id="nextRunAt"
               name="nextRunAt"

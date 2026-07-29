@@ -39,7 +39,11 @@ export function BusinessSettingsForm({ initial }: { initial: BusinessLike }) {
       {state?.success && <Alert tone="success">{state.success}</Alert>}
 
       <section className="grid gap-4 md:grid-cols-2">
-        <Field label={t.onboarding.vat} htmlFor="vatNumber">
+        <Field
+          label={t.onboarding.vat}
+          htmlFor="vatNumber"
+          help="Ο 9-ψήφιος ΑΦΜ της επιχείρησής σου. Πρέπει να ταιριάζει με αυτόν που έχεις δηλώσει στην ΑΑΔΕ — αλλιώς η Wrapp θα απορρίψει τα παραστατικά."
+        >
           <Input
             id="vatNumber"
             name="vatNumber"
@@ -48,7 +52,11 @@ export function BusinessSettingsForm({ initial }: { initial: BusinessLike }) {
             maxLength={20}
           />
         </Field>
-        <Field label={t.onboarding.taxOffice} htmlFor="taxOffice">
+        <Field
+          label={t.onboarding.taxOffice}
+          htmlFor="taxOffice"
+          help="Δημόσια Οικονομική Υπηρεσία στην οποία υπάγεσαι (π.χ. «Α΄ Θεσσαλονίκης»). Εμφανίζεται στα παραστατικά."
+        >
           <Input
             id="taxOffice"
             name="taxOffice"
@@ -60,6 +68,7 @@ export function BusinessSettingsForm({ initial }: { initial: BusinessLike }) {
           label={t.onboarding.legalName}
           htmlFor="legalName"
           className="md:col-span-2"
+          help="Η επίσημη επωνυμία της επιχείρησης όπως αποδίδεται στην έναρξη ΑΑΔΕ. Ατομικές: ονοματεπώνυμο. Εταιρίες: πλήρης νομική επωνυμία."
         >
           <Input
             id="legalName"
@@ -69,7 +78,11 @@ export function BusinessSettingsForm({ initial }: { initial: BusinessLike }) {
             maxLength={160}
           />
         </Field>
-        <Field label={t.onboarding.tradeName} htmlFor="tradeName">
+        <Field
+          label={t.onboarding.tradeName}
+          htmlFor="tradeName"
+          help="Το εμπορικό όνομα (brand) με το οποίο σε ξέρουν οι πελάτες σου, αν διαφέρει από τη νόμιμη επωνυμία."
+        >
           <Input
             id="tradeName"
             name="tradeName"
@@ -77,7 +90,11 @@ export function BusinessSettingsForm({ initial }: { initial: BusinessLike }) {
             maxLength={160}
           />
         </Field>
-        <Field label={t.onboarding.activity} htmlFor="activity">
+        <Field
+          label={t.onboarding.activity}
+          htmlFor="activity"
+          help="Η κύρια δραστηριότητά σου (π.χ. «Παροχή συμβουλευτικών υπηρεσιών IT»)."
+        >
           <Input
             id="activity"
             name="activity"

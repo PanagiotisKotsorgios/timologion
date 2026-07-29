@@ -27,6 +27,7 @@ export function AadeForm({
         label="Όνομα χρήστη ΓΓΠΣ / TAXISnet"
         htmlFor="aadeUsername"
         hint="Το username που έχεις στο myAADE / TAXISnet."
+        help="Χρησιμοποιείται για αναζήτηση στοιχείων πελατών από ΑΦΜ μέσω των web services της ΑΑΔΕ. Είναι το ίδιο username που χρησιμοποιείς για είσοδο στο myAADE."
       >
         <Input
           id="aadeUsername"
@@ -48,6 +49,7 @@ export function AadeForm({
             ? "Ο κωδικός είναι ήδη αποθηκευμένος. Άφησέ τον κενό αν δεν θέλεις να τον αλλάξεις."
             : "Ο κωδικός αποθηκεύεται κρυπτογραφημένος (AES-256-GCM)."
         }
+        help="Ο κωδικός του λογαριασμού σου στο TAXISnet. Αποθηκεύεται κρυπτογραφημένα και χρησιμοποιείται μόνο για κλήσεις προς τα web services της ΑΑΔΕ."
       >
         <Input
           id="aadePassword"

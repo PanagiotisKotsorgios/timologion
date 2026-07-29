@@ -42,7 +42,11 @@ export function BranchForm({
       {initial?.id && <input type="hidden" name="id" value={initial.id} />}
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Field label="Όνομα υποκαταστήματος" htmlFor="label">
+        <Field
+          label="Όνομα υποκαταστήματος"
+          htmlFor="label"
+          help="Φιλικό όνομα για δική σου χρήση — π.χ. «Έδρα», «Κατάστημα Θεσσαλονίκης», «Αποθήκη Πειραιά»."
+        >
           <Input
             id="label"
             name="label"

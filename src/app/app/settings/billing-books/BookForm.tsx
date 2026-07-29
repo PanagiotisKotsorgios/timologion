@@ -60,7 +60,11 @@ export function BookForm({
       {initial?.id && <input type="hidden" name="id" value={initial.id} />}
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Field label="Τύπος παραστατικού" htmlFor="documentType">
+        <Field
+          label="Τύπος παραστατικού"
+          htmlFor="documentType"
+          help="Ο τύπος myDATA που θα χρησιμοποιεί αυτή η σειρά. Κάθε σειρά εξυπηρετεί έναν τύπο — για διαφορετικούς τύπους χρειάζεσαι διαφορετικές σειρές."
+        >
           <Select
             id="documentType"
             name="documentType"
@@ -73,7 +77,11 @@ export function BookForm({
             ))}
           </Select>
         </Field>
-        <Field label="Σειρά (π.χ. A)" htmlFor="series">
+        <Field
+          label="Σειρά (π.χ. A)"
+          htmlFor="series"
+          help="Το πρόθεμα αρίθμησης — 1-3 λατινικοί χαρακτήρες (π.χ. Α, Β, ΑΕ). ΠΡΟΣΟΧΗ: η Wrapp απορρίπτει ελληνικά· χρησιμοποίησε λατινικά (A αντί για Α)."
+        >
           <Input
             id="series"
             name="series"
@@ -82,7 +90,11 @@ export function BookForm({
             maxLength={20}
           />
         </Field>
-        <Field label="Περιγραφή (προαιρετικό)" htmlFor="label">
+        <Field
+          label="Περιγραφή (προαιρετικό)"
+          htmlFor="label"
+          help="Φιλική ονομασία για δική σου χρήση (π.χ. «Τιμολόγια Αθήνας»). Δεν εμφανίζεται στον πελάτη."
+        >
           <Input
             id="label"
             name="label"
@@ -90,7 +102,11 @@ export function BookForm({
             maxLength={120}
           />
         </Field>
-        <Field label="Υποκατάστημα" htmlFor="branchId">
+        <Field
+          label="Υποκατάστημα"
+          htmlFor="branchId"
+          help="Περιόρισε αυτή τη σειρά σε συγκεκριμένο υποκατάστημα, ή άφησέ το «Όλα» για να χρησιμοποιείται παντού."
+        >
           <Select
             id="branchId"
             name="branchId"
@@ -104,7 +120,11 @@ export function BookForm({
             ))}
           </Select>
         </Field>
-        <Field label="Επόμενος αριθμός" htmlFor="nextNumber">
+        <Field
+          label="Επόμενος αριθμός"
+          htmlFor="nextNumber"
+          help="Ο αριθμός που θα πάρει το επόμενο παραστατικό αυτής της σειράς. Άφησέ το 1 σε νέα σειρά· χρήσιμο μόνο αν συνεχίζεις από παλιότερη αρίθμηση."
+        >
           <Input
             id="nextNumber"
             name="nextNumber"
