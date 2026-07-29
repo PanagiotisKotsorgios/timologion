@@ -606,6 +606,30 @@ model WrappConnection {
   @@map("wrapp_connections")
 }
 
+// ─── Wrapp webhook diagnostics ──────────────────────────────────────────
+// Every hit on /api/wrapp/webhook lands here regardless of outcome, so the
+// user can see whether Wrapp actually called us and, if yes, why activation
+// didn't stick (e.g. unknown partner_user_id, roundtrip verify failed,
+// signature mismatch). Old entries are pruned by the route to keep the
+// table small (~200 rows max in practice).
+
+model WrappWebhookLog {
+  id                String   @id @default(cuid())
+  eventType         String?  @db.VarChar(60)
+  hasSignature      Boolean  @default(false)
+  verificationScope String?  @db.VarChar(20)
+  partnerUserId     String?  @db.VarChar(120)
+  businessMatched   Boolean  @default(false)
+  outcome           String   @db.VarChar(60)
+  detail            String?  @db.Text
+  payloadKeys       String?  @db.VarChar(500)
+  createdAt         DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([partnerUserId, createdAt])
+  @@map("wrapp_webhook_logs")
+}
+
 // ─── Audit log ──────────────────────────────────────────────────────────
 
 model AuditLog {

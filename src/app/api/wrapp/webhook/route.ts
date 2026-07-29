@@ -33,6 +33,54 @@ export const dynamic = "force-dynamic";
  * the linear scan.
  */
 
+/**
+ * Persist a diagnostic row for this webhook attempt. Never throws — a
+ * logging failure must not break real webhook processing. Also prunes
+ * anything older than 200 rows so the table stays small.
+ */
+async function recordWebhookHit(entry: {
+  eventType: string | null;
+  hasSignature: boolean;
+  verificationScope: string | null;
+  partnerUserId: string | null;
+  businessMatched: boolean;
+  outcome: string;
+  detail?: string | null;
+  payloadKeys?: string | null;
+}): Promise<void> {
+  try {
+    await prisma.wrappWebhookLog.create({
+      data: {
+        eventType: entry.eventType,
+        hasSignature: entry.hasSignature,
+        verificationScope: entry.verificationScope,
+        partnerUserId: entry.partnerUserId,
+        businessMatched: entry.businessMatched,
+        outcome: entry.outcome.slice(0, 60),
+        detail: entry.detail?.slice(0, 4000) ?? null,
+        payloadKeys: entry.payloadKeys?.slice(0, 500) ?? null,
+      },
+    });
+    // Cheap pruning — delete anything past the 200 most recent rows. Runs
+    // rarely enough that the extra query is negligible.
+    const cutoff = await prisma.wrappWebhookLog.findMany({
+      select: { createdAt: true },
+      orderBy: { createdAt: "desc" },
+      skip: 200,
+      take: 1,
+    });
+    if (cutoff[0]) {
+      await prisma.wrappWebhookLog.deleteMany({
+        where: { createdAt: { lt: cutoff[0].createdAt } },
+      });
+    }
+  } catch (err) {
+    logger.warn("wrapp.webhook.log_write_failed", {
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
+
 function safeEqualHex(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
   try {
@@ -129,8 +177,21 @@ export async function POST(req: Request) {
   try {
     payload = JSON.parse(raw) as Record<string, unknown>;
   } catch {
+    await recordWebhookHit({
+      eventType: eventType || null,
+      hasSignature: !!signature,
+      verificationScope: verified?.scope ?? null,
+      partnerUserId: null,
+      businessMatched: false,
+      outcome: "invalid_json",
+      detail: raw.slice(0, 200),
+    });
     return NextResponse.json({ error: "invalid json" }, { status: 400 });
   }
+
+  const payloadKeys = Object.keys(payload).sort().join(",");
+  const partnerUserIdFromPayload =
+    typeof payload.partner_user_id === "string" ? payload.partner_user_id : null;
 
   const looksLikeOnboarding =
     typeof payload.api_key === "string" &&
@@ -189,6 +250,18 @@ export async function POST(req: Request) {
       action: eventType || "unknown",
       hasSignature: signature ? "yes" : "no",
       looksLikeOnboarding: looksLikeOnboarding ? "yes" : "no",
+    });
+    await recordWebhookHit({
+      eventType: eventType || null,
+      hasSignature: !!signature,
+      verificationScope: null,
+      partnerUserId: partnerUserIdFromPayload,
+      businessMatched: false,
+      outcome: "unauthorized",
+      detail: looksLikeOnboarding
+        ? "onboarding shape but signature missing and roundtrip verify failed — check Business.id matches Wrapp partner_user_id"
+        : "no signature and does not look like onboarding",
+      payloadKeys,
     });
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
@@ -295,10 +368,33 @@ export async function POST(req: Request) {
         meta: { wrappUserId, email },
       });
       logger.info("wrapp.onboarding.completed", { businessId });
+      await recordWebhookHit({
+        eventType: eventType || "onboarding",
+        hasSignature: !!signature,
+        verificationScope:
+          verified?.scope ?? (onboardingVerifiedByRoundtrip ? "roundtrip" : "dev-unsigned"),
+        partnerUserId: businessId,
+        businessMatched: true,
+        outcome: "onboarding_activated",
+        detail: `Business activated; wrappEmail=${email ?? "(none)"}`,
+        payloadKeys,
+      });
       return NextResponse.json({ ok: true, activated: true });
     }
     logger.warn("wrapp.onboarding.unknown_business", {
       action: "wrapp.onboarding",
+      partnerUserId: businessId,
+    });
+    await recordWebhookHit({
+      eventType: eventType || "onboarding",
+      hasSignature: !!signature,
+      verificationScope:
+        verified?.scope ?? (onboardingVerifiedByRoundtrip ? "roundtrip" : "dev-unsigned"),
+      partnerUserId: businessId,
+      businessMatched: false,
+      outcome: "onboarding_unknown_business",
+      detail: `partner_user_id "${businessId}" does not match any Business.id — Wrapp is sending a value we never registered. Check the value you set when starting activation.`,
+      payloadKeys,
     });
     return NextResponse.json({ ok: true, ignored: true });
   }
@@ -312,6 +408,16 @@ export async function POST(req: Request) {
       const doc = await prisma.document.findFirst({
         where: { wrappInvoiceId: data.id },
         select: { id: true, businessId: true },
+      });
+      await recordWebhookHit({
+        eventType,
+        hasSignature: !!signature,
+        verificationScope: verified?.scope ?? null,
+        partnerUserId: partnerUserIdFromPayload,
+        businessMatched: !!doc,
+        outcome: doc ? "issued_invoice_matched" : "issued_invoice_no_local_doc",
+        detail: `wrappInvoiceId=${data.id}${data.my_data_mark ? ` mark=${data.my_data_mark}` : ""}`,
+        payloadKeys,
       });
       if (doc) {
         await prisma.document.update({
@@ -365,15 +471,45 @@ export async function POST(req: Request) {
         action: eventType,
         entityId: data.invoice_id,
       });
+      await recordWebhookHit({
+        eventType,
+        hasSignature: !!signature,
+        verificationScope: verified?.scope ?? null,
+        partnerUserId: partnerUserIdFromPayload,
+        businessMatched: false,
+        outcome: "pdf_ready",
+        detail: `invoice_id=${data.invoice_id}`,
+        payloadKeys,
+      });
       // We don't persist the URL — it's short-lived. The UI re-requests
       // generate_pdf / generate_thermal_pdf when the user clicks download.
       return NextResponse.json({ ok: true });
     }
 
     logger.warn("wrapp.webhook.unknown_event", { action: eventType });
+    await recordWebhookHit({
+      eventType: eventType || null,
+      hasSignature: !!signature,
+      verificationScope: verified?.scope ?? null,
+      partnerUserId: partnerUserIdFromPayload,
+      businessMatched: false,
+      outcome: "unknown_event",
+      detail: `no handler for Event-Type header "${eventType}"`,
+      payloadKeys,
+    });
     return NextResponse.json({ ok: true, ignored: true });
   } catch (err) {
     logger.error("wrapp.webhook.handler_failed", err, { action: eventType });
+    await recordWebhookHit({
+      eventType: eventType || null,
+      hasSignature: !!signature,
+      verificationScope: verified?.scope ?? null,
+      partnerUserId: partnerUserIdFromPayload,
+      businessMatched: false,
+      outcome: "handler_error",
+      detail: err instanceof Error ? err.message : String(err),
+      payloadKeys,
+    });
     return NextResponse.json({ error: "handler_failed" }, { status: 500 });
   }
 }
