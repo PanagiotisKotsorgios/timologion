@@ -57,7 +57,18 @@ export default async function NewDocumentPage({
     }
   }
 
-  const [business, clients, items, branches, books] = await Promise.all([
+  // 12-month cutoff for the parent-invoice picker (5.1 credit notes).
+  const twelveMonthsAgo = new Date();
+  twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+
+  const [
+    business,
+    clients,
+    items,
+    branches,
+    books,
+    issuedDocsRaw,
+  ] = await Promise.all([
     loadBusiness(),
     prisma.client.findMany({
       where: { businessId: ctx.businessId },
@@ -112,7 +123,49 @@ export default async function NewDocumentPage({
         nextNumber: true,
       },
     }),
+    prisma.document.findMany({
+      where: {
+        businessId: ctx.businessId,
+        status: "issued",
+        myDataMark: { not: null },
+        type: {
+          notIn: [
+            "credit_note",
+            "credit_note_correlated",
+            "delivery_note",
+            "proforma",
+            "quote",
+            "order",
+          ],
+        },
+        issueDate: { gte: twelveMonthsAgo },
+      },
+      orderBy: { issueDate: "desc" },
+      take: 200,
+      select: {
+        id: true,
+        series: true,
+        number: true,
+        issueDate: true,
+        totalAmount: true,
+        myDataMark: true,
+        client: { select: { legalName: true, tradeName: true } },
+      },
+    }),
   ]);
+
+  const issuedDocsForCorrelation = issuedDocsRaw
+    .filter((d): d is typeof d & { myDataMark: string } => Boolean(d.myDataMark))
+    .map((d) => ({
+      id: d.id,
+      label:
+        (d.series ?? "") + (d.number != null ? ` #${d.number}` : "") ||
+        d.id.slice(0, 8),
+      issueDate: d.issueDate.toISOString(),
+      clientName: d.client?.tradeName ?? d.client?.legalName ?? "—",
+      totalAmount: Number(d.totalAmount),
+      myDataMark: d.myDataMark,
+    }));
 
   return (
     <>
@@ -155,6 +208,7 @@ export default async function NewDocumentPage({
         }))}
         branches={branches}
         books={books}
+        issuedDocsForCorrelation={issuedDocsForCorrelation}
       />
     </>
   );
