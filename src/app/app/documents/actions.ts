@@ -31,13 +31,32 @@ const DOCUMENT_TYPES = [
   "retail_receipt",
   "service_receipt",
   "simplified_invoice",
+  "eu_sale_invoice",
+  "third_country_sale_invoice",
+  "eu_service_invoice",
+  "third_country_service_invoice",
   "credit_note",
   "credit_note_correlated",
   "delivery_note",
+  "stay_tax_receipt",
   "proforma",
   "quote",
   "order",
 ] as const;
+
+// Types that need currency + exchange rate in the Wrapp payload.
+const FOREIGN_TYPES: readonly (typeof DOCUMENT_TYPES)[number][] = [
+  "eu_sale_invoice",
+  "third_country_sale_invoice",
+  "eu_service_invoice",
+  "third_country_service_invoice",
+];
+
+// Types that use the correlated-doc reference (parent MARK).
+const CORRELATED_TYPES: readonly (typeof DOCUMENT_TYPES)[number][] = [
+  "credit_note_correlated",
+  "stay_tax_receipt",
+];
 
 /**
  * Lazy billing-book creation for the type the editor is switching to.
@@ -120,10 +139,17 @@ const draftSchema = z.object({
   destinationAddress: z.string().max(400).optional().or(z.literal("")),
   vehicleNumber: z.string().max(40).optional().or(z.literal("")),
   driverName: z.string().max(160).optional().or(z.literal("")),
-  // Correlated credit-note (5.1) fields — server nulls them out on
-  // any other type, so they only matter when type == credit_note_correlated.
+  // Correlated credit-note (5.1) + stay-tax (8.2) fields — server nulls
+  // them out on any other type. Reuse of the same two columns keeps the
+  // Document schema slim; the picker in the UI handles both cases.
   correlatedDocumentId: z.string().optional().or(z.literal("")),
   correlatedMarkOverride: z.string().max(80).optional().or(z.literal("")),
+  // Foreign-transaction fields — populated on EU/third-country invoices.
+  currency: z.string().max(3).optional().or(z.literal("")),
+  exchangeRate: z.coerce.number().min(0).optional(),
+  // Stay-tax (8.2) fields.
+  stayTaxCategory: z.string().max(60).optional().or(z.literal("")),
+  stayTaxAmount: z.coerce.number().min(0).optional(),
 });
 
 export type DraftFormState = { error?: string } | undefined;
@@ -185,12 +211,36 @@ export async function createDraftAction(
         vehicleNumber: parsed.data.vehicleNumber || null,
         driverName: parsed.data.driverName || null,
         correlatedDocumentId:
-          parsed.data.type === "credit_note_correlated"
+          parsed.data.type === "credit_note_correlated" ||
+          parsed.data.type === "stay_tax_receipt"
             ? parsed.data.correlatedDocumentId || null
             : null,
         correlatedMarkOverride:
-          parsed.data.type === "credit_note_correlated"
+          parsed.data.type === "credit_note_correlated" ||
+          parsed.data.type === "stay_tax_receipt"
             ? parsed.data.correlatedMarkOverride || null
+            : null,
+        currency:
+          parsed.data.type === "eu_sale_invoice" ||
+          parsed.data.type === "third_country_sale_invoice" ||
+          parsed.data.type === "eu_service_invoice" ||
+          parsed.data.type === "third_country_service_invoice"
+            ? parsed.data.currency || null
+            : null,
+        exchangeRate:
+          parsed.data.type === "eu_sale_invoice" ||
+          parsed.data.type === "third_country_sale_invoice" ||
+          parsed.data.type === "eu_service_invoice" ||
+          parsed.data.type === "third_country_service_invoice"
+            ? parsed.data.exchangeRate ?? null
+            : null,
+        stayTaxCategory:
+          parsed.data.type === "stay_tax_receipt"
+            ? parsed.data.stayTaxCategory || null
+            : null,
+        stayTaxAmount:
+          parsed.data.type === "stay_tax_receipt"
+            ? parsed.data.stayTaxAmount ?? null
             : null,
         netTotalAmount: totals.netTotal,
         vatTotalAmount: totals.vatTotal,
@@ -304,12 +354,36 @@ export async function updateDraftAction(
         vehicleNumber: parsed.data.vehicleNumber || null,
         driverName: parsed.data.driverName || null,
         correlatedDocumentId:
-          parsed.data.type === "credit_note_correlated"
+          parsed.data.type === "credit_note_correlated" ||
+          parsed.data.type === "stay_tax_receipt"
             ? parsed.data.correlatedDocumentId || null
             : null,
         correlatedMarkOverride:
-          parsed.data.type === "credit_note_correlated"
+          parsed.data.type === "credit_note_correlated" ||
+          parsed.data.type === "stay_tax_receipt"
             ? parsed.data.correlatedMarkOverride || null
+            : null,
+        currency:
+          parsed.data.type === "eu_sale_invoice" ||
+          parsed.data.type === "third_country_sale_invoice" ||
+          parsed.data.type === "eu_service_invoice" ||
+          parsed.data.type === "third_country_service_invoice"
+            ? parsed.data.currency || null
+            : null,
+        exchangeRate:
+          parsed.data.type === "eu_sale_invoice" ||
+          parsed.data.type === "third_country_sale_invoice" ||
+          parsed.data.type === "eu_service_invoice" ||
+          parsed.data.type === "third_country_service_invoice"
+            ? parsed.data.exchangeRate ?? null
+            : null,
+        stayTaxCategory:
+          parsed.data.type === "stay_tax_receipt"
+            ? parsed.data.stayTaxCategory || null
+            : null,
+        stayTaxAmount:
+          parsed.data.type === "stay_tax_receipt"
+            ? parsed.data.stayTaxAmount ?? null
             : null,
         netTotalAmount: totals.netTotal,
         vatTotalAmount: totals.vatTotal,
@@ -786,20 +860,56 @@ export async function attemptIssueAction(documentId: string) {
   // stored MARK; the manual override is the escape hatch for pre-
   // migration parents that live outside timologion.
   let correlatedInvoices: string[] | undefined;
-  if (doc.type === "credit_note_correlated") {
+  if (
+    doc.type === "credit_note_correlated" ||
+    doc.type === "stay_tax_receipt"
+  ) {
     const parentMark =
       doc.correlatedDocument?.myDataMark ?? doc.correlatedMarkOverride;
     if (!parentMark) {
       await prisma.document
         .update({ where: { id: doc.id }, data: { status: "draft" } })
         .catch(() => undefined);
+      const label =
+        doc.type === "stay_tax_receipt"
+          ? "Η απόδειξη φόρου διαμονής (8.2)"
+          : "Το πιστωτικό 5.1 (συσχετιζόμενο)";
       return {
         ok: false as const,
-        error:
-          "Το πιστωτικό 5.1 (συσχετιζόμενο) απαιτεί το MARK του γονικού παραστατικού. Επίλεξε το γονικό στο πεδίο «Συσχετιζόμενο παραστατικό» ή δώσε το MARK χειροκίνητα.",
+        error: `${label} απαιτεί το MARK του γονικού παραστατικού. Επίλεξε το γονικό στο πεδίο «Συσχετιζόμενο παραστατικό» ή δώσε το MARK χειροκίνητα.`,
       };
     }
     correlatedInvoices = [parentMark];
+  }
+
+  // Foreign transactions (1.2 / 1.3 / 2.2 / 2.3) need currency + rate on
+  // the Wrapp payload. myDATA rejects non-EUR invoices without the pair.
+  const isForeign =
+    doc.type === "eu_sale_invoice" ||
+    doc.type === "third_country_sale_invoice" ||
+    doc.type === "eu_service_invoice" ||
+    doc.type === "third_country_service_invoice";
+  if (isForeign) {
+    if (!doc.currency || doc.currency.length !== 3) {
+      await prisma.document
+        .update({ where: { id: doc.id }, data: { status: "draft" } })
+        .catch(() => undefined);
+      return {
+        ok: false as const,
+        error:
+          "Για ενδοκοινοτικές πωλήσεις/παροχές ή τρίτες χώρες απαιτείται 3-ψήφιος κωδικός νομίσματος (ISO 4217).",
+      };
+    }
+    if (!doc.exchangeRate || Number(doc.exchangeRate) <= 0) {
+      await prisma.document
+        .update({ where: { id: doc.id }, data: { status: "draft" } })
+        .catch(() => undefined);
+      return {
+        ok: false as const,
+        error:
+          "Για ενδοκοινοτικές πωλήσεις/παροχές ή τρίτες χώρες απαιτείται ισοτιμία μεγαλύτερη του μηδενός.",
+      };
+    }
   }
 
   const wrappPayload = {
@@ -817,6 +927,11 @@ export async function attemptIssueAction(documentId: string) {
     is_delivery_note: doc.type === "delivery_note" ? true : undefined,
     delivery_detail: deliveryDetail,
     correlated_invoices: correlatedInvoices,
+    currency: isForeign && doc.currency ? doc.currency : undefined,
+    exchange_rate:
+      isForeign && doc.exchangeRate
+        ? Number(doc.exchangeRate)
+        : undefined,
     invoice_lines: doc.lines.map((l, i) => {
       const net = wire(Number(l.netAmount));
       const vat = wire(Number(l.vatAmount));

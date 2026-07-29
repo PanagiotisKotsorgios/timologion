@@ -208,6 +208,10 @@ export default async function EditDocumentPage({
           driverName: doc.driverName ?? "",
           correlatedDocumentId: doc.correlatedDocumentId ?? "",
           correlatedMarkOverride: doc.correlatedMarkOverride ?? "",
+          currency: doc.currency ?? "EUR",
+          exchangeRate: doc.exchangeRate ? doc.exchangeRate.toString() : "1.0000",
+          stayTaxCategory: doc.stayTaxCategory ?? "",
+          stayTaxAmount: doc.stayTaxAmount ? doc.stayTaxAmount.toString() : "0.00",
         }}
       />
     </>

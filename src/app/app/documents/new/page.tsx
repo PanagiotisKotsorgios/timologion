@@ -14,12 +14,17 @@ const VALID_TYPES: readonly DocumentType[] = [
   "retail_receipt",
   "service_receipt",
   "simplified_invoice",
+  "eu_sale_invoice",
+  "third_country_sale_invoice",
+  "eu_service_invoice",
+  "third_country_service_invoice",
   "credit_note",
   "credit_note_correlated",
   "proforma",
   "quote",
   "order",
   "delivery_note",
+  "stay_tax_receipt",
 ];
 
 export default async function NewDocumentPage({

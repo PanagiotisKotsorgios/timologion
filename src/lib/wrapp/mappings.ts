@@ -21,6 +21,14 @@ export function mapDocumentTypeToWrapp(type: DocumentType): string | null {
       return "11.2"; // Απόδειξη Παροχής Υπηρεσιών
     case "simplified_invoice":
       return "11.3"; // Απλοποιημένο Τιμολόγιο
+    case "eu_sale_invoice":
+      return "1.2"; // Τιμολόγιο Πώλησης / Ενδοκοινοτικές Παραδόσεις
+    case "third_country_sale_invoice":
+      return "1.3"; // Τιμολόγιο Πώλησης / Παραδόσεις Τρίτων Χωρών
+    case "eu_service_invoice":
+      return "2.2"; // Τιμολόγιο Παροχής / Ενδοκοινοτική Παροχή Υπηρεσιών
+    case "third_country_service_invoice":
+      return "2.3"; // Τιμολόγιο Παροχής / Παροχή Υπηρεσιών Τρίτων Χωρών
     case "credit_note":
       // Non-correlated credit note. Standalone — no parent MARK.
       return "5.2";
@@ -31,6 +39,10 @@ export function mapDocumentTypeToWrapp(type: DocumentType): string | null {
       return "5.1";
     case "delivery_note":
       return "9.3"; // Δελτίο Αποστολής
+    case "stay_tax_receipt":
+      // Ειδικό Στοιχείο – Απόδειξης Είσπραξης Φόρου Διαμονής. Requires
+      // stay-tax category + amount fields and a correlated parent MARK.
+      return "8.2";
     case "proforma":
     case "quote":
     case "order":
@@ -92,6 +104,21 @@ export function classificationFor(type: DocumentType): {
 } {
   if (type === "delivery_note")
     return { category: "category3", type: "_" };
+  // EU intra-community sales/services — myDATA classifies these under
+  // category1_3 with type E3_561_002 (Πωλήσεις χονδρικές - επιτηδευματιών,
+  // ενδοκοινοτικές).
+  if (type === "eu_sale_invoice" || type === "eu_service_invoice")
+    return { category: "category1_3", type: "E3_561_002" };
+  // Third-country sales/services — E3_561_005 (Πωλήσεις χονδρικές -
+  // επιτηδευματιών, τρίτες χώρες).
+  if (
+    type === "third_country_sale_invoice" ||
+    type === "third_country_service_invoice"
+  )
+    return { category: "category1_3", type: "E3_561_005" };
+  // Stay-tax receipts fall under special taxes.
+  if (type === "stay_tax_receipt")
+    return { category: "category1_5", type: "E3_596" };
   if (
     type === "invoice" ||
     type === "service_invoice" ||

@@ -77,17 +77,39 @@ type Line = {
 
 const DOC_TYPE_OPTIONS: { value: DraftInput["type"]; label: string }[] = [
   { value: "invoice", label: "Τιμολόγιο πώλησης (1.1)" },
+  { value: "eu_sale_invoice", label: "Τιμολόγιο πώλησης — ενδοκοινοτικό (1.2)" },
+  {
+    value: "third_country_sale_invoice",
+    label: "Τιμολόγιο πώλησης — τρίτες χώρες (1.3)",
+  },
   { value: "service_invoice", label: "Τιμολόγιο παροχής (2.1)" },
+  { value: "eu_service_invoice", label: "Τιμολόγιο παροχής — ενδοκοινοτικό (2.2)" },
+  {
+    value: "third_country_service_invoice",
+    label: "Τιμολόγιο παροχής — τρίτες χώρες (2.3)",
+  },
   { value: "retail_receipt", label: "Απόδειξη λιανικής (11.1)" },
   { value: "service_receipt", label: "Απόδειξη παροχής υπηρεσιών (11.2)" },
   { value: "simplified_invoice", label: "Απλοποιημένο τιμολόγιο (11.3)" },
   { value: "credit_note", label: "Πιστωτικό μη συσχετιζόμενο (5.2)" },
   { value: "credit_note_correlated", label: "Πιστωτικό συσχετιζόμενο (5.1)" },
   { value: "delivery_note", label: "Δελτίο αποστολής (9.3)" },
+  { value: "stay_tax_receipt", label: "Απόδειξη φόρου διαμονής (8.2)" },
   { value: "proforma", label: "Προτιμολόγιο" },
   { value: "quote", label: "Προσφορά" },
   { value: "order", label: "Παραγγελία" },
 ];
+
+const FOREIGN_TYPES = new Set<DraftInput["type"]>([
+  "eu_sale_invoice",
+  "third_country_sale_invoice",
+  "eu_service_invoice",
+  "third_country_service_invoice",
+]);
+const CORRELATED_TYPES = new Set<DraftInput["type"]>([
+  "credit_note_correlated",
+  "stay_tax_receipt",
+]);
 
 const PAYMENT_METHODS = [
   "Μετρητά",
@@ -139,6 +161,10 @@ export type DraftEditorInitial = {
   driverName?: string;
   correlatedDocumentId?: string;
   correlatedMarkOverride?: string;
+  currency?: string;
+  exchangeRate?: string;
+  stayTaxCategory?: string;
+  stayTaxAmount?: string;
 };
 
 export function DraftEditor({
@@ -253,6 +279,16 @@ export function DraftEditor({
   const [correlatedMarkOverride, setCorrelatedMarkOverride] = useState(
     editing?.correlatedMarkOverride ?? "",
   );
+  // Foreign transactions (1.2 / 1.3 / 2.2 / 2.3): currency + exchange rate.
+  const [currency, setCurrency] = useState(editing?.currency ?? "EUR");
+  const [exchangeRate, setExchangeRate] = useState(editing?.exchangeRate ?? "1.0000");
+  // Stay-tax (8.2): hotel category + amount.
+  const [stayTaxCategory, setStayTaxCategory] = useState(
+    editing?.stayTaxCategory ?? "",
+  );
+  const [stayTaxAmount, setStayTaxAmount] = useState(
+    editing?.stayTaxAmount ?? "0.00",
+  );
   const [showMore, setShowMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -337,13 +373,23 @@ export function DraftEditor({
         type === "delivery_note" ? vehicleNumber || undefined : undefined,
       driverName:
         type === "delivery_note" ? driverName || undefined : undefined,
-      correlatedDocumentId:
-        type === "credit_note_correlated"
-          ? correlatedDocumentId || undefined
+      correlatedDocumentId: CORRELATED_TYPES.has(type)
+        ? correlatedDocumentId || undefined
+        : undefined,
+      correlatedMarkOverride: CORRELATED_TYPES.has(type)
+        ? correlatedMarkOverride || undefined
+        : undefined,
+      currency: FOREIGN_TYPES.has(type) ? currency || undefined : undefined,
+      exchangeRate: FOREIGN_TYPES.has(type)
+        ? Number(exchangeRate) || undefined
+        : undefined,
+      stayTaxCategory:
+        type === "stay_tax_receipt"
+          ? stayTaxCategory || undefined
           : undefined,
-      correlatedMarkOverride:
-        type === "credit_note_correlated"
-          ? correlatedMarkOverride || undefined
+      stayTaxAmount:
+        type === "stay_tax_receipt"
+          ? Number(stayTaxAmount) || undefined
           : undefined,
     };
 
@@ -591,13 +637,29 @@ export function DraftEditor({
           </CardBody>
         </Card>
 
-        {type === "credit_note_correlated" && (
+        {CORRELATED_TYPES.has(type) && (
           <CorrelatedInvoicePicker
             options={issuedDocsForCorrelation}
             correlatedDocumentId={correlatedDocumentId}
             onCorrelatedDocumentIdChange={setCorrelatedDocumentId}
             correlatedMarkOverride={correlatedMarkOverride}
             onCorrelatedMarkOverrideChange={setCorrelatedMarkOverride}
+          />
+        )}
+        {FOREIGN_TYPES.has(type) && (
+          <CurrencyExchangeCard
+            currency={currency}
+            onCurrencyChange={setCurrency}
+            exchangeRate={exchangeRate}
+            onExchangeRateChange={setExchangeRate}
+          />
+        )}
+        {type === "stay_tax_receipt" && (
+          <StayTaxCard
+            category={stayTaxCategory}
+            onCategoryChange={setStayTaxCategory}
+            amount={stayTaxAmount}
+            onAmountChange={setStayTaxAmount}
           />
         )}
         {type === "delivery_note" ? (
@@ -936,6 +998,116 @@ export function DraftEditor({
           }}
         />
       )}
+    </div>
+  );
+}
+
+function CurrencyExchangeCard({
+  currency,
+  onCurrencyChange,
+  exchangeRate,
+  onExchangeRateChange,
+}: {
+  currency: string;
+  onCurrencyChange: (v: string) => void;
+  exchangeRate: string;
+  onExchangeRateChange: (v: string) => void;
+}) {
+  return (
+    <div className="rounded-2xl border-2 border-blue-300 bg-blue-50/60 p-5">
+      <p className="text-[11px] font-black uppercase tracking-widest text-blue-900/80">
+        Νόμισμα & ισοτιμία (απαιτείται για EU / τρίτες χώρες)
+      </p>
+      <p className="mt-1 text-sm text-blue-900/80">
+        Για ενδοκοινοτικές πωλήσεις/παροχές και για τρίτες χώρες, το
+        myDATA απαιτεί κωδικό νομίσματος (ISO 4217) και ισοτιμία προς
+        EUR στην ημερομηνία έκδοσης.
+      </p>
+      <div className="mt-4 grid gap-4 md:grid-cols-2">
+        <Field label="Νόμισμα (ISO)" htmlFor="currency">
+          <Input
+            id="currency"
+            value={currency}
+            onChange={(e) => onCurrencyChange(e.target.value.toUpperCase())}
+            maxLength={3}
+            placeholder="EUR"
+            className="mono uppercase"
+          />
+        </Field>
+        <Field
+          label="Ισοτιμία προς EUR"
+          htmlFor="exchangeRate"
+          hint="π.χ. 1.0862 για 1 USD → EUR"
+        >
+          <Input
+            id="exchangeRate"
+            type="number"
+            step="0.0001"
+            min="0"
+            value={exchangeRate}
+            onChange={(e) => onExchangeRateChange(e.target.value)}
+          />
+        </Field>
+      </div>
+    </div>
+  );
+}
+
+function StayTaxCard({
+  category,
+  onCategoryChange,
+  amount,
+  onAmountChange,
+}: {
+  category: string;
+  onCategoryChange: (v: string) => void;
+  amount: string;
+  onAmountChange: (v: string) => void;
+}) {
+  // Greek stay-tax categories (Ν. 4389/2016 άρθρο 53) — updated 2024 tiers.
+  const CATEGORIES = [
+    { value: "hotel_5", label: "Ξενοδοχείο 5 αστέρων (10€)" },
+    { value: "hotel_4", label: "Ξενοδοχείο 4 αστέρων (7€)" },
+    { value: "hotel_3", label: "Ξενοδοχείο 3 αστέρων (3€)" },
+    { value: "hotel_1_2", label: "Ξενοδοχείο 1-2 αστέρων (1.5€)" },
+    { value: "furnished_rooms", label: "Επιπλωμένα δωμάτια/διαμερίσματα (0.5€)" },
+    { value: "other", label: "Άλλο (Airbnb, κάμπινγκ, κ.λπ.)" },
+  ];
+  return (
+    <div className="rounded-2xl border-2 border-purple-300 bg-purple-50/60 p-5">
+      <p className="text-[11px] font-black uppercase tracking-widest text-purple-900/80">
+        Πληροφορίες φόρου διαμονής (απαιτείται για 8.2)
+      </p>
+      <p className="mt-1 text-sm text-purple-900/80">
+        Επίλεξε την κατηγορία καταλύματος και συμπλήρωσε το συνολικό ποσό
+        του φόρου διαμονής που εισπράχθηκε.
+      </p>
+      <div className="mt-4 grid gap-4 md:grid-cols-2">
+        <Field label="Κατηγορία καταλύματος" htmlFor="stayTaxCategory">
+          <Select
+            id="stayTaxCategory"
+            value={category}
+            onChange={(e) => onCategoryChange(e.target.value)}
+          >
+            <option value="">— Επιλέξτε —</option>
+            {CATEGORIES.map((c) => (
+              <option key={c.value} value={c.value}>
+                {c.label}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="Συνολικό ποσό φόρου (€)" htmlFor="stayTaxAmount">
+          <Input
+            id="stayTaxAmount"
+            type="number"
+            step="0.01"
+            min="0"
+            value={amount}
+            onChange={(e) => onAmountChange(e.target.value)}
+          />
+        </Field>
+      </div>
     </div>
   );
 }
