@@ -4,7 +4,7 @@ import { requireTenant } from "@/lib/tenant";
 import { assertCan } from "@/lib/rbac";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card, CardBody } from "@/components/ui/Card";
-import { Receipt, Plus, Search, Download, Users, Wallet } from "lucide-react";
+import { Receipt, Plus, Search, Users, Wallet } from "lucide-react";
 import { LinkButton, Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
@@ -13,6 +13,7 @@ import { date, money } from "@/lib/format";
 import type { ExpensePaymentStatus, Prisma } from "@prisma/client";
 import { ClickableRow } from "../ClickableRow";
 import { Pagination, resolvePageSize } from "@/components/ui/Pagination";
+import { ExportMenu } from "@/components/ui/ExportMenu";
 
 type SearchParams = {
   q?: string;
@@ -134,13 +135,7 @@ export default async function ExpensesPage({
             >
               Προμηθευτές
             </LinkButton>
-            <LinkButton
-              href="/api/export/expenses"
-              variant="secondary"
-              icon={Download}
-            >
-              Εξαγωγή CSV
-            </LinkButton>
+            <ExportMenu baseUrl="/api/export/expenses" />
             <LinkButton href="/app/expenses/new" icon={Plus}>
               Νέο έξοδο
             </LinkButton>

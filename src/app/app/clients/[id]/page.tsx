@@ -6,6 +6,7 @@ import { Pencil, Tag as TagIcon } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { LinkButton } from "@/components/ui/Button";
+import { ExportMenu } from "@/components/ui/ExportMenu";
 import { ClientForm } from "../ClientForm";
 import { TagPicker } from "../TagPicker";
 
@@ -47,10 +48,22 @@ export default async function ClientDetailPage({
           client.vatNumber ? `ΑΦΜ ${client.vatNumber}` : "Πελάτης χωρίς ΑΦΜ"
         }
         actions={
-          !isEditing && can(ctx.role, "client:write") ? (
-            <LinkButton href={`/app/clients/${client.id}?edit=1`} icon={Pencil}>
-              Επεξεργασία
-            </LinkButton>
+          !isEditing ? (
+            <>
+              <ExportMenu
+                baseUrl={`/api/export/client/${client.id}`}
+                formats={["xlsx", "pdf"]}
+                label="Εξαγωγή καρτέλας"
+              />
+              {can(ctx.role, "client:write") && (
+                <LinkButton
+                  href={`/app/clients/${client.id}?edit=1`}
+                  icon={Pencil}
+                >
+                  Επεξεργασία
+                </LinkButton>
+              )}
+            </>
           ) : null
         }
       />

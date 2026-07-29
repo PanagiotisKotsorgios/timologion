@@ -4,7 +4,7 @@ import { requireTenant } from "@/lib/tenant";
 import { assertCan } from "@/lib/rbac";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
-import { FilePlus2, BarChart3, Search, Download, Repeat } from "lucide-react";
+import { FilePlus2, BarChart3, Search, Repeat } from "lucide-react";
 import { LinkButton, Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
@@ -15,6 +15,7 @@ import type { DocumentStatus, DocumentType, Prisma } from "@prisma/client";
 import { RowActions } from "./RowActions";
 import { ClickableRow } from "../ClickableRow";
 import { Pagination, resolvePageSize } from "@/components/ui/Pagination";
+import { ExportMenu } from "@/components/ui/ExportMenu";
 
 type Sort = "recent" | "oldest" | "amount_desc" | "amount_asc";
 
@@ -122,13 +123,7 @@ export default async function DocumentsPage({
         subtitle={`${total.toLocaleString("el-GR")} ${total === 1 ? "αποτέλεσμα" : "αποτελέσματα"}`}
         actions={
           <>
-            <LinkButton
-              href="/api/export/documents"
-              variant="secondary"
-              icon={Download}
-            >
-              Εξαγωγή CSV
-            </LinkButton>
+            <ExportMenu baseUrl="/api/export/documents" />
             <LinkButton
               href="/app/documents/statistics"
               variant="secondary"

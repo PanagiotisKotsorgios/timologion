@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { ClickableRow } from "../ClickableRow";
 import { requireTenant } from "@/lib/tenant";
 import { assertCan } from "@/lib/rbac";
-import { UserPlus, Search, Download } from "lucide-react";
+import { UserPlus, Search } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { LinkButton } from "@/components/ui/Button";
@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Input, Select, Field } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Pagination, resolvePageSize } from "@/components/ui/Pagination";
+import { ExportMenu } from "@/components/ui/ExportMenu";
 
 type Sort = "name" | "recent" | "vat";
 
@@ -105,13 +106,7 @@ export default async function ClientsPage({
         subtitle={`${total} ${total === 1 ? "πελάτης" : "πελάτες"} συνολικά`}
         actions={
           <>
-            <LinkButton
-              href="/api/export/clients"
-              variant="secondary"
-              icon={Download}
-            >
-              Εξαγωγή CSV
-            </LinkButton>
+            <ExportMenu baseUrl="/api/export/clients" />
             <LinkButton href="/app/clients/new" icon={UserPlus}>
               Νέος Πελάτης
             </LinkButton>

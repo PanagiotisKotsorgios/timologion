@@ -5,7 +5,7 @@ import { requireTenant } from "@/lib/tenant";
 import { assertCan } from "@/lib/rbac";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
-import { PackagePlus, Search, Download } from "lucide-react";
+import { PackagePlus, Search } from "lucide-react";
 import { LinkButton, Button } from "@/components/ui/Button";
 import { ImportButton } from "./ImportDialog";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Input, Select, Field } from "@/components/ui/Input";
 import { money } from "@/lib/format";
 import { Pagination, resolvePageSize } from "@/components/ui/Pagination";
+import { ExportMenu } from "@/components/ui/ExportMenu";
 
 type Sort = "name" | "recent" | "price_desc" | "price_asc";
 
@@ -90,13 +91,7 @@ export default async function ItemsPage({
         actions={
           <>
             <ImportButton />
-            <LinkButton
-              href="/api/export/items"
-              variant="secondary"
-              icon={Download}
-            >
-              Εξαγωγή CSV
-            </LinkButton>
+            <ExportMenu baseUrl="/api/export/items" />
             <LinkButton href="/app/items/new" icon={PackagePlus}>
               Νέο είδος
             </LinkButton>

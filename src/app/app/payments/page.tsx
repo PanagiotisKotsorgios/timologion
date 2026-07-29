@@ -1,7 +1,6 @@
 import Link from "next/link";
 import {
   Trash2,
-  Download,
   AlertTriangle,
   Clock3,
   CalendarClock,
@@ -19,6 +18,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Field, Input, Select } from "@/components/ui/Input";
 import { money, date } from "@/lib/format";
 import { t } from "@/lib/i18n";
+import { ExportMenu } from "@/components/ui/ExportMenu";
 import { NewPaymentButton } from "./NewPaymentButton";
 import { deletePaymentAction, markDocumentPaidAction } from "./actions";
 import { RecordPaymentForDocButton } from "./RecordPaymentForDocButton";
@@ -240,13 +240,7 @@ export default async function PaymentsPage({
         actions={
           <>
             <NewPaymentButton />
-            <LinkButton
-              href={`/api/export/payments?format=csv`}
-              variant="secondary"
-              icon={Download}
-            >
-              Εξαγωγή CSV
-            </LinkButton>
+            <ExportMenu baseUrl="/api/export/payments" />
           </>
         }
       />

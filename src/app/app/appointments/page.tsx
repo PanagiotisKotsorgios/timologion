@@ -5,7 +5,6 @@ import { assertCan } from "@/lib/rbac";
 import {
   CalendarDays,
   Search,
-  Download,
   Users2,
   Clock3,
   Bell,
@@ -17,6 +16,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
 import { Input, Select, Field } from "@/components/ui/Input";
 import { Pagination, resolvePageSize } from "@/components/ui/Pagination";
+import { ExportMenu } from "@/components/ui/ExportMenu";
 import { money } from "@/lib/format";
 import type { AppointmentStatus, Prisma } from "@prisma/client";
 import { NewAppointmentButton } from "./NewAppointmentButton";
@@ -219,13 +219,7 @@ export default async function AppointmentsPage({
             >
               Ημερολόγιο
             </LinkButton>
-            <LinkButton
-              href="/api/export/appointments"
-              variant="secondary"
-              icon={Download}
-            >
-              Εξαγωγή CSV
-            </LinkButton>
+            <ExportMenu baseUrl="/api/export/appointments" />
             <NewAppointmentButton
               staff={staffOpts}
               clients={clientOpts}
