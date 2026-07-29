@@ -154,6 +154,9 @@ export async function revokeOtherSessionsAction() {
 const deleteAccountSchema = z.object({
   confirm: z.literal("ΔΙΑΓΡΑΦΗ"),
   password: z.string().optional(),
+  reason: z.string().max(2000).optional(),
+  acknowledgeNoRefund: z.string().optional(),
+  acknowledgeDataLoss: z.string().optional(),
 });
 
 export async function deleteAccountAction(formData: FormData) {
@@ -163,24 +166,64 @@ export async function deleteAccountAction(formData: FormData) {
   const parsed = deleteAccountSchema.safeParse({
     confirm: String(formData.get("confirm") ?? ""),
     password: String(formData.get("password") ?? ""),
+    reason: String(formData.get("reason") ?? "").trim() || undefined,
+    acknowledgeNoRefund: String(formData.get("acknowledgeNoRefund") ?? ""),
+    acknowledgeDataLoss: String(formData.get("acknowledgeDataLoss") ?? ""),
   });
   if (!parsed.success) {
     return { error: 'Πληκτρολόγησε "ΔΙΑΓΡΑΦΗ" για επιβεβαίωση.' };
+  }
+  if (parsed.data.acknowledgeNoRefund !== "on") {
+    return {
+      error:
+        "Πρέπει να επιβεβαιώσεις ότι κατανοείς πως δεν επιστρέφεται η συνδρομή.",
+    };
+  }
+  if (parsed.data.acknowledgeDataLoss !== "on") {
+    return {
+      error:
+        "Πρέπει να επιβεβαιώσεις ότι κατανοείς πως τα δεδομένα σου θα διαγραφούν οριστικά.",
+    };
   }
 
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
     select: {
       id: true,
+      email: true,
+      fullName: true,
       passwordHash: true,
+      createdAt: true,
       memberships: {
-        select: { businessId: true, role: true },
+        select: {
+          businessId: true,
+          role: true,
+          business: {
+            select: {
+              id: true,
+              legalName: true,
+              tradeName: true,
+              vatNumber: true,
+              createdAt: true,
+              _count: {
+                select: {
+                  documents: true,
+                  clients: true,
+                  members: true,
+                },
+              },
+            },
+          },
+        },
       },
     },
   });
   if (!user) redirect("/login");
 
-  // If the user has a password, require it.
+  // Password check (if the user has one). Sole-owner check is now a
+  // WARNING shown up-front on the form, not a hard block — the sole
+  // owner CAN delete their account and the business gets cascade-
+  // deleted with a snapshot taken first.
   if (user.passwordHash && parsed.data.password) {
     const ok = await verifyPassword(user.passwordHash, parsed.data.password);
     if (!ok) return { error: "Λάθος κωδικός." };
@@ -188,8 +231,11 @@ export async function deleteAccountAction(formData: FormData) {
     return { error: "Επιβεβαίωσε τον κωδικό σου." };
   }
 
-  // If the user is the sole owner of any business, block deletion. They must
-  // first transfer ownership or delete the business explicitly.
+  // Identify businesses this user is the sole owner of — those will be
+  // cascade-deleted along with the account.
+  const soleOwnedBusinessIds: string[] = [];
+  const soleOwnedBusinessSnapshot: unknown[] = [];
+  let documentsRetained = 0;
   for (const m of user.memberships) {
     if (m.role !== "owner") continue;
     const otherOwners = await prisma.businessMember.count({
@@ -200,18 +246,73 @@ export async function deleteAccountAction(formData: FormData) {
       },
     });
     if (otherOwners === 0) {
-      return {
-        error:
-          "Είσαι ο μοναδικός ιδιοκτήτης μιας επιχείρησης. Μετέφερε πρώτα την ιδιοκτησία ή διάγραψέ την πριν διαγράψεις τον λογαριασμό σου.",
-      };
+      soleOwnedBusinessIds.push(m.businessId);
+      soleOwnedBusinessSnapshot.push({
+        id: m.business.id,
+        legalName: m.business.legalName,
+        tradeName: m.business.tradeName,
+        vatNumber: m.business.vatNumber,
+        createdAt: m.business.createdAt,
+        documentCount: m.business._count.documents,
+        clientCount: m.business._count.clients,
+        memberCount: m.business._count.members,
+      });
+      documentsRetained += m.business._count.documents;
     }
   }
 
+  const snapshot = {
+    schemaVersion: 1,
+    userId: user.id,
+    email: user.email,
+    fullName: user.fullName,
+    createdAt: user.createdAt,
+    memberships: user.memberships.map((m) => ({
+      businessId: m.businessId,
+      role: m.role,
+      businessName: m.business.tradeName ?? m.business.legalName,
+      vatNumber: m.business.vatNumber,
+    })),
+    soleOwnedBusinesses: soleOwnedBusinessSnapshot,
+    reason: parsed.data.reason ?? null,
+    deletedAt: new Date().toISOString(),
+  };
+
+  await prisma.accountDeletionLog.create({
+    data: {
+      userId: user.id,
+      userEmail: user.email,
+      userFullName: user.fullName ?? null,
+      reason: parsed.data.reason ?? null,
+      businessesDeleted: soleOwnedBusinessIds.length,
+      documentsRetained,
+      snapshot: JSON.stringify(snapshot),
+    },
+  });
+
+  // Cascade-delete sole-owned businesses first so foreign keys don't
+  // block the user delete. Business.onDelete: Cascade handles the rest.
+  if (soleOwnedBusinessIds.length > 0) {
+    await prisma.business.deleteMany({
+      where: { id: { in: soleOwnedBusinessIds } },
+    });
+  }
+
   await prisma.user.delete({ where: { id: user.id } });
+
   // Manual cookie kill because destroySession() needs the DB row we just wiped.
   const jar = await cookies();
   jar.delete(SESSION_COOKIE);
-  await logAudit({ action: "user.delete", entityType: "User", entityId: user.id });
+  await logAudit({
+    action: "user.delete",
+    entityType: "User",
+    entityId: user.id,
+    meta: {
+      businesses: soleOwnedBusinessIds.length,
+      documentsRetained,
+      reason: parsed.data.reason?.slice(0, 200) ?? null,
+    },
+  });
   redirect("/");
 }
 

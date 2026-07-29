@@ -21,6 +21,7 @@ import {
   Package,
   Mail,
   Zap,
+  Trash2,
   type LucideIcon,
 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
@@ -37,6 +38,7 @@ const PRIMARY: NavItem[] = [
   { href: "/admin/users", label: "Χρήστες", icon: Users },
   { href: "/admin/documents", label: "Παραστατικά", icon: FileText },
   { href: "/admin/audit", label: "Audit log", icon: ScrollText },
+  { href: "/admin/deletions", label: "Διαγραφές λογαριασμών", icon: Trash2 },
 ];
 
 const SECONDARY: NavItem[] = [

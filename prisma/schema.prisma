@@ -645,6 +645,32 @@ model WrappWebhookLog {
   @@map("wrapp_webhook_logs")
 }
 
+// ─── Account deletion snapshots ─────────────────────────────────────────
+// When a user deletes their account we take a snapshot of who they were
+// + what businesses they owned so the platform admin has a record even
+// after the User row is gone. Snapshot payload is a JSON string with
+// contact, VAT, business counts and outstanding balances at delete
+// time. Kept indefinitely for legal + support reasons (a user
+// occasionally asks us to restore).
+
+model AccountDeletionLog {
+  id                String   @id @default(cuid())
+  userId            String   @db.VarChar(60)
+  userEmail         String   @db.VarChar(160)
+  userFullName      String?  @db.VarChar(160)
+  reason            String?  @db.Text
+  businessesDeleted Int      @default(0)
+  documentsRetained Int      @default(0)
+  snapshot          String   @db.LongText
+  ipAddress         String?  @db.VarChar(64)
+  userAgent         String?  @db.VarChar(500)
+  createdAt         DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([userEmail])
+  @@map("account_deletion_logs")
+}
+
 // ─── Audit log ──────────────────────────────────────────────────────────
 
 model AuditLog {
