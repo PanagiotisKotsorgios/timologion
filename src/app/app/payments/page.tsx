@@ -20,8 +20,9 @@ import { money, date } from "@/lib/format";
 import { t } from "@/lib/i18n";
 import { ExportMenu } from "@/components/ui/ExportMenu";
 import { NewPaymentButton } from "./NewPaymentButton";
-import { deletePaymentAction, markDocumentPaidAction } from "./actions";
+import { deletePaymentAction } from "./actions";
 import { RecordPaymentForDocButton } from "./RecordPaymentForDocButton";
+import { MarkAsPaidButton } from "./MarkAsPaidButton";
 import { Pagination, resolvePageSize } from "@/components/ui/Pagination";
 import type { DocumentType, Prisma } from "@prisma/client";
 
@@ -274,48 +275,6 @@ export default async function PaymentsPage({
         />
       </div>
 
-      {/* Aging quick-filters strip */}
-      <Card className="mb-6">
-        <CardBody className="flex flex-wrap items-center gap-2 p-4">
-          <span className="mr-2 text-xs font-black uppercase tracking-widest text-ink-500">
-            Ημέρες καθυστέρησης:
-          </span>
-          <AgingChip
-            active={!aging}
-            href="/app/payments"
-            label="Όλα"
-            amount={totalOutstanding}
-          />
-          <AgingChip
-            active={aging === "0-30"}
-            href="/app/payments?aging=0-30"
-            label="0–30"
-            amount={aggregatedByBucket.b30}
-          />
-          <AgingChip
-            active={aging === "31-60"}
-            href="/app/payments?aging=31-60"
-            label="31–60"
-            amount={aggregatedByBucket.b60}
-            tone="warning"
-          />
-          <AgingChip
-            active={aging === "61-90"}
-            href="/app/payments?aging=61-90"
-            label="61–90"
-            amount={aggregatedByBucket.b90}
-            tone="warning"
-          />
-          <AgingChip
-            active={aging === "90+"}
-            href="/app/payments?aging=90+"
-            label="90+"
-            amount={aggregatedByBucket.bPlus}
-            tone="danger"
-          />
-        </CardBody>
-      </Card>
-
       {/* Open documents (Ανεξόφλητα παραστατικά) */}
       <Card className="mb-6 overflow-hidden">
         <CardHeader
@@ -330,8 +289,7 @@ export default async function PaymentsPage({
             <input type="hidden" name="method" value={methodFilter} />
             <input type="hidden" name="from" value={from} />
             <input type="hidden" name="to" value={to} />
-            {aging && <input type="hidden" name="aging" value={aging} />}
-            <Field label="Αναζήτηση" htmlFor="q" className="md:col-span-4">
+            <Field label="Αναζήτηση" htmlFor="q" className="md:col-span-3">
               <Input
                 id="q"
                 name="q"
@@ -339,7 +297,7 @@ export default async function PaymentsPage({
                 placeholder="Πελάτης, ΑΦΜ, σειρά..."
               />
             </Field>
-            <Field label="Πελάτης" htmlFor="client" className="md:col-span-4">
+            <Field label="Πελάτης" htmlFor="client" className="md:col-span-3">
               <Select id="client" name="client" defaultValue={clientFilter}>
                 <option value="">Όλοι</option>
                 {clients.map((c) => (
@@ -355,6 +313,29 @@ export default async function PaymentsPage({
                 <option value="invoice">Τιμολόγιο</option>
                 <option value="service_invoice">Παροχή</option>
                 <option value="credit_note">Πιστωτικό</option>
+              </Select>
+            </Field>
+            <Field
+              label="Ημέρες καθυστέρησης"
+              htmlFor="aging"
+              className="md:col-span-2"
+            >
+              <Select id="aging" name="aging" defaultValue={aging ?? ""}>
+                <option value="">
+                  Όλα ({money(totalOutstanding)})
+                </option>
+                <option value="0-30">
+                  0–30 ημ. ({money(aggregatedByBucket.b30)})
+                </option>
+                <option value="31-60">
+                  31–60 ημ. ({money(aggregatedByBucket.b60)})
+                </option>
+                <option value="61-90">
+                  61–90 ημ. ({money(aggregatedByBucket.b90)})
+                </option>
+                <option value="90+">
+                  90+ ημ. ({money(aggregatedByBucket.bPlus)})
+                </option>
               </Select>
             </Field>
             <div className="md:col-span-2 md:self-end">
@@ -439,29 +420,21 @@ export default async function PaymentsPage({
                           <AgingBadge days={daysOpen} />
                         </td>
                         <td className="text-right">
-                          <div className="inline-flex items-center gap-2">
+                          <div className="inline-flex flex-wrap items-center justify-end gap-2">
                             <RecordPaymentForDocButton
                               documentId={d.id}
                               clientId={d.clientId}
                               outstanding={outstanding}
                               clientLabel={clientLabel}
                               docLabel={docLabel}
-                              compact
                             />
-                            <form action={markDocumentPaidAction}>
-                              <input
-                                type="hidden"
-                                name="documentId"
-                                value={d.id}
-                              />
-                              <button
-                                type="submit"
-                                className="rounded-md px-2 py-1 text-xs font-bold text-emerald-700 hover:bg-emerald-50"
-                                title="Σήμανση ως εξοφλημένο"
-                              >
-                                Εξοφλήθηκε
-                              </button>
-                            </form>
+                            <MarkAsPaidButton
+                              documentId={d.id}
+                              docLabel={docLabel}
+                              clientLabel={clientLabel}
+                              outstanding={outstanding}
+                              money={money}
+                            />
                           </div>
                         </td>
                       </tr>
@@ -684,40 +657,6 @@ function StatCard({
         </div>
       </CardBody>
     </Card>
-  );
-}
-
-function AgingChip({
-  href,
-  label,
-  amount,
-  active,
-  tone,
-}: {
-  href: string;
-  label: string;
-  amount: number;
-  active: boolean;
-  tone?: "warning" | "danger";
-}) {
-  const activeClass = active
-    ? "bg-brand-900 text-white border-brand-900"
-    : tone === "danger"
-      ? "border-red-300 bg-red-50 text-red-800 hover:border-red-500"
-      : tone === "warning"
-        ? "border-amber-300 bg-amber-50 text-amber-800 hover:border-amber-500"
-        : "border-ink-300 bg-white text-ink-900 hover:border-brand-900";
-  return (
-    <Link
-      href={href}
-      className={
-        "inline-flex items-center gap-2 rounded-full border-2 px-4 py-1.5 text-sm font-bold transition-colors " +
-        activeClass
-      }
-    >
-      <span>{label} ημ.</span>
-      <span className="mono text-xs opacity-80">{money(amount)}</span>
-    </Link>
   );
 }
 
