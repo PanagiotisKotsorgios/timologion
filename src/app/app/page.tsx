@@ -201,8 +201,8 @@ export default async function DashboardPage() {
         used={quotaUsed}
       />
 
-      <div className="mt-6 grid gap-6 md:grid-cols-4">
-        <div className="md:col-span-3">
+      <div className="mt-6 grid gap-4 md:gap-6 lg:grid-cols-4">
+        <div className="min-w-0 lg:col-span-3">
           <Card>
             <CardHeader
               title="Πρόσφατα παραστατικά"
@@ -230,46 +230,57 @@ export default async function DashboardPage() {
                   />
                 </div>
               ) : (
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Ημ/νία</th>
-                      <th>Πελάτης</th>
-                      <th>Τύπος</th>
-                      <th className="text-right">Σύνολο</th>
-                      <th>Κατάσταση</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recentDocs.map((d) => (
-                      <ClickableRow key={d.id}>
-                        <td className="mono">
-                          <Link
-                            href={`/app/documents/${d.id}`}
-                            data-row-anchor
-                            className="font-semibold text-brand-800 hover:text-brand-900"
-                          >
-                            {date(d.issueDate)}
-                          </Link>
-                        </td>
-                        <td>{d.client?.legalName ?? "—"}</td>
-                        <td>{t.documents.types[d.type]}</td>
-                        <td className="text-right font-semibold">
-                          {money(d.totalAmount)}
-                        </td>
-                        <td>
-                          <DocStatusBadge status={d.status} />
-                        </td>
-                      </ClickableRow>
-                    ))}
-                  </tbody>
-                </table>
+                <div className="overflow-x-auto">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Ημ/νία</th>
+                        <th>Πελάτης</th>
+                        <th>Τύπος</th>
+                        <th className="text-right">Σύνολο</th>
+                        <th>Κατάσταση</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recentDocs.map((d, idx) => (
+                        // On phones we only show the top 3 rows — the rest
+                        // are hidden via the `hide-past-3-on-mobile` helper
+                        // (see globals.css). Uses CSS-only so the SSR
+                        // markup is stable and doesn't need a client hook.
+                        <ClickableRow
+                          key={d.id}
+                          className={
+                            idx >= 3 ? "hide-past-3-on-mobile" : undefined
+                          }
+                        >
+                          <td className="mono">
+                            <Link
+                              href={`/app/documents/${d.id}`}
+                              data-row-anchor
+                              className="font-semibold text-brand-800 hover:text-brand-900"
+                            >
+                              {date(d.issueDate)}
+                            </Link>
+                          </td>
+                          <td>{d.client?.legalName ?? "—"}</td>
+                          <td>{t.documents.types[d.type]}</td>
+                          <td className="text-right font-semibold">
+                            {money(d.totalAmount)}
+                          </td>
+                          <td>
+                            <DocStatusBadge status={d.status} />
+                          </td>
+                        </ClickableRow>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </CardBody>
           </Card>
         </div>
 
-        <Card className="overflow-hidden">
+        <Card className="min-w-0 overflow-hidden">
           <CardBody className="p-6 md:p-7">
             <p className="text-[11px] font-black uppercase tracking-widest text-ink-500">
               Πρόχειρα

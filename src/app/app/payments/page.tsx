@@ -246,7 +246,7 @@ export default async function PaymentsPage({
         }
       />
 
-      <div className="mb-6 grid gap-4 md:grid-cols-4">
+      <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           icon={<CheckCircle2 size={22} />}
           label="Εισπράξεις μήνα"
@@ -433,7 +433,6 @@ export default async function PaymentsPage({
                               docLabel={docLabel}
                               clientLabel={clientLabel}
                               outstanding={outstanding}
-                              money={money}
                             />
                           </div>
                         </td>

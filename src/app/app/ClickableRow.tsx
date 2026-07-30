@@ -11,10 +11,16 @@ import type { ReactNode } from "react";
  * inputs, select, textarea, menus) so per-row actions like the RowActions
  * kebab menu still work without double-navigation.
  */
-export function ClickableRow({ children }: { children: ReactNode }) {
+export function ClickableRow({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
   return (
     <tr
-      className="cursor-pointer"
+      className={`cursor-pointer ${className ?? ""}`}
       onClick={(e) => {
         const target = e.target as HTMLElement | null;
         if (

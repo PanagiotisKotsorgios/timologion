@@ -75,6 +75,12 @@ h1, h2, h3, h4, h5, h6 {
   .data-table tbody tr:nth-child(even) td:first-child {
     background: #eff3fa; /* matches zebra */
   }
+  /* "Recent invoices" on the dashboard trims to 3 rows on phones so the
+     rest of the layout (Πρόχειρα card, checklists) is visible without a
+     tap-through. Rows past index 2 opt in via .hide-past-3-on-mobile. */
+  .hide-past-3-on-mobile {
+    display: none !important;
+  }
 }
 
 /* On phones, cards trim their inner padding so more content fits without

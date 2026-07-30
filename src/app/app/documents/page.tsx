@@ -93,7 +93,7 @@ export default async function DocumentsPage({
           ? { totalAmount: "asc" }
           : { issueDate: "desc" };
 
-  const [rows, total] = await Promise.all([
+  const [rows, total, sumsForFilter] = await Promise.all([
     prisma.document.findMany({
       where,
       orderBy,
@@ -104,7 +104,21 @@ export default async function DocumentsPage({
       // (wrappInvoiceUrl is on the base Document select — no join needed.)
     }),
     prisma.document.count({ where }),
+    // Totals aggregate the ENTIRE filtered set, not just the current page —
+    // otherwise sums shown at the bottom would only be for the visible 20-50
+    // rows, which is misleading. Costs one extra query per page load.
+    prisma.document.aggregate({
+      where,
+      _sum: {
+        netTotalAmount: true,
+        vatTotalAmount: true,
+        totalAmount: true,
+      },
+    }),
   ]);
+  const filterNetSum = Number(sumsForFilter._sum.netTotalAmount ?? 0);
+  const filterVatSum = Number(sumsForFilter._sum.vatTotalAmount ?? 0);
+  const filterTotalSum = Number(sumsForFilter._sum.totalAmount ?? 0);
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   const baseQuery = {
@@ -175,6 +189,8 @@ export default async function DocumentsPage({
                   <th>Ημ/νία</th>
                   <th>Τύπος</th>
                   <th>Πελάτης</th>
+                  <th className="text-right">Καθαρή</th>
+                  <th className="text-right">ΦΠΑ</th>
                   <th className="text-right">Σύνολο</th>
                   <th>Κατάσταση</th>
                   <th className="text-right"></th>
@@ -204,7 +220,13 @@ export default async function DocumentsPage({
                       )}
                     </td>
                     <td>{d.client?.legalName ?? "—"}</td>
-                    <td className="text-right font-semibold">
+                    <td className="text-right text-sm tabular-nums text-ink-700">
+                      {money(d.netTotalAmount)}
+                    </td>
+                    <td className="text-right text-sm tabular-nums text-ink-700">
+                      {money(d.vatTotalAmount)}
+                    </td>
+                    <td className="text-right font-semibold tabular-nums">
                       {money(d.totalAmount)}
                     </td>
                     <td>
@@ -220,6 +242,24 @@ export default async function DocumentsPage({
                   </ClickableRow>
                 ))}
               </tbody>
+              <tfoot className="bg-brand-50 font-bold text-brand-900">
+                <tr>
+                  <td colSpan={3} className="px-4 py-3 text-right text-sm uppercase tracking-widest">
+                    Σύνολα ({total.toLocaleString("el-GR")} εγγραφές
+                    {total > rows.length ? " — με τα τρέχοντα φίλτρα" : ""})
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums">
+                    {money(filterNetSum)}
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums">
+                    {money(filterVatSum)}
+                  </td>
+                  <td className="px-4 py-3 text-right text-base tabular-nums">
+                    {money(filterTotalSum)}
+                  </td>
+                  <td colSpan={2}></td>
+                </tr>
+              </tfoot>
             </table>
           </div>
         )}

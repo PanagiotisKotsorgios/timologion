@@ -4,6 +4,15 @@ import { useEffect, useState, useTransition } from "react";
 import { CheckCircle2, X } from "lucide-react";
 import { markDocumentPaidAction } from "./actions";
 
+const nfMoney = new Intl.NumberFormat("el-GR", {
+  style: "currency",
+  currency: "EUR",
+  minimumFractionDigits: 2,
+});
+function money(n: number): string {
+  return nfMoney.format(n);
+}
+
 /**
  * "Σήμανση ως εξοφλημένο" quick action for the outstanding-invoices
  * table. Renders a bright green button and opens a small confirmation
@@ -15,13 +24,11 @@ export function MarkAsPaidButton({
   docLabel,
   clientLabel,
   outstanding,
-  money,
 }: {
   documentId: string;
   docLabel: string;
   clientLabel: string;
   outstanding: number;
-  money: (n: number) => string;
 }) {
   const [open, setOpen] = useState(false);
   const [pending, startTx] = useTransition();
