@@ -10,7 +10,7 @@ export function Card({ children, className }: CardProps) {
   return (
     <div
       className={clsx(
-        "min-w-0 overflow-hidden rounded-2xl border border-ink-300/70 bg-white shadow-card",
+        "min-w-0 rounded-2xl border border-ink-300/70 bg-white shadow-card [&>*:first-child]:rounded-t-2xl [&>*:last-child]:rounded-b-2xl",
         className,
       )}
     >
@@ -60,7 +60,13 @@ export function CardBody({
   className?: string;
 }) {
   return (
-    <div data-card-body className={clsx("min-w-0 p-4 sm:p-6 md:p-7", className)}>
+    <div
+      data-card-body
+      className={clsx(
+        "min-w-0 overflow-x-auto p-4 sm:p-6 md:p-7",
+        className,
+      )}
+    >
       {children}
     </div>
   );

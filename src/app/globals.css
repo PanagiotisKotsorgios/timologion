@@ -46,15 +46,35 @@ h1, h2, h3, h4, h5, h6 {
   word-break: normal;
   hyphens: manual;
 }
-/* Tables that live inside a `data-table` context should always be
-   horizontally scrollable if they overflow — a defensive fallback in
-   case some page forgot the overflow-x-auto wrapper. */
+/* Tables that live inside a `data-table` context need enough width for
+   their columns without forcing them to crush into unreadable cells on
+   narrow screens. The CardBody wrapper provides horizontal scroll —
+   this rule just ensures the table asks for the space it needs. */
 .data-table {
-  min-width: max-content;
+  min-width: 720px;
+  width: 100%;
 }
 .data-table-wrap {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+}
+/* Sticky first column on data tables so the "date" or "name" anchor
+   stays visible while horizontal-scrolling to see amounts / status. */
+@media (max-width: 640px) {
+  .data-table thead th:first-child,
+  .data-table tbody td:first-child {
+    position: sticky;
+    left: 0;
+    background: white;
+    box-shadow: 2px 0 6px -3px rgba(15, 31, 57, 0.15);
+    z-index: 2;
+  }
+  .data-table thead th:first-child {
+    background: #e0e7ff; /* brand-100 */
+  }
+  .data-table tbody tr:nth-child(even) td:first-child {
+    background: #eff3fa; /* matches zebra */
+  }
 }
 
 /* On phones, cards trim their inner padding so more content fits without
