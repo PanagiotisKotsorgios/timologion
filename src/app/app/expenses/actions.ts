@@ -9,6 +9,8 @@ import { requireTenant } from "@/lib/tenant";
 import { assertCan } from "@/lib/rbac";
 import { logAudit } from "@/lib/audit";
 import { formatZodError } from "@/lib/zod-el";
+import { parseCsv } from "@/lib/csv";
+import { EXPENSE_MYDATA_TYPES } from "@/lib/expense-mydata-types";
 
 const METHODS = [
   "cash",
@@ -431,4 +433,238 @@ export async function deleteExpensePaymentAction(formData: FormData) {
 
   revalidatePath("/app/expenses");
   if (payment.expenseId) revalidatePath(`/app/expenses/${payment.expenseId}`);
+}
+
+// ─── CSV import ─────────────────────────────────────────────────────────
+
+const EXPENSE_HEADER_ALIASES: Record<string, string> = {
+  issuedate: "issueDate",
+  "issue date": "issueDate",
+  ημερομηνια: "issueDate",
+  ημερομηνία: "issueDate",
+  date: "issueDate",
+  supplier: "supplierVat",
+  suppliervat: "supplierVat",
+  "supplier vat": "supplierVat",
+  αφμ: "supplierVat",
+  "αφμ προμηθευτη": "supplierVat",
+  "αφμ προμηθευτή": "supplierVat",
+  suppliername: "supplierName",
+  "supplier name": "supplierName",
+  προμηθευτης: "supplierName",
+  προμηθευτής: "supplierName",
+  reference: "reference",
+  παραστατικο: "reference",
+  παραστατικό: "reference",
+  "αρ παραστατικου": "reference",
+  category: "category",
+  κατηγορια: "category",
+  κατηγορία: "category",
+  mydatatype: "myDataType",
+  "mydata type": "myDataType",
+  mydata: "myDataType",
+  description: "description",
+  περιγραφη: "description",
+  περιγραφή: "description",
+  netamount: "netAmount",
+  "net amount": "netAmount",
+  net: "netAmount",
+  "καθαρη αξια": "netAmount",
+  "καθαρή αξία": "netAmount",
+  vatrate: "vatRate",
+  vat: "vatRate",
+  "φπα %": "vatRate",
+  φπα: "vatRate",
+  notes: "notes",
+  σημειωσεις: "notes",
+  σημειώσεις: "notes",
+};
+
+export type ImportExpensesResult = {
+  ok: boolean;
+  created: number;
+  updated: number;
+  skipped: number;
+  errors: { row: number; message: string }[];
+};
+
+function parseDecimalLoose(v: string): number {
+  const cleaned = (v ?? "").replace(/\./g, "").replace(",", ".").trim();
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function parseDateLoose(v: string): Date | null {
+  const s = (v ?? "").trim();
+  if (!s) return null;
+  // Accept YYYY-MM-DD, DD/MM/YYYY, DD-MM-YYYY.
+  const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+  if (iso) return new Date(s);
+  const dmy = /^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})/.exec(s);
+  if (dmy) {
+    const [, d, m, y] = dmy;
+    return new Date(Number(y), Number(m) - 1, Number(d));
+  }
+  const dt = new Date(s);
+  return Number.isNaN(dt.getTime()) ? null : dt;
+}
+
+/**
+ * Bulk-import expenses from a CSV. Supplier is matched by VAT number
+ * (created on the fly if missing but a supplierName is provided).
+ * Amounts + VAT are recomputed at insert time so the CSV only needs
+ * netAmount + vatRate.
+ */
+export async function importExpensesCsvAction(
+  formData: FormData,
+): Promise<ImportExpensesResult> {
+  const ctx = await requireTenant();
+  assertCan(ctx.role, "document:write");
+
+  const file = formData.get("file");
+  if (!(file instanceof File)) {
+    return {
+      ok: false,
+      created: 0,
+      updated: 0,
+      skipped: 0,
+      errors: [{ row: 0, message: "Δεν επιλέχθηκε αρχείο." }],
+    };
+  }
+  if (file.size > 4 * 1024 * 1024) {
+    return {
+      ok: false,
+      created: 0,
+      updated: 0,
+      skipped: 0,
+      errors: [{ row: 0, message: "Το αρχείο υπερβαίνει τα 4MB." }],
+    };
+  }
+
+  const text = await file.text();
+  const rows = parseCsv(text);
+  if (rows.length < 2) {
+    return {
+      ok: false,
+      created: 0,
+      updated: 0,
+      skipped: 0,
+      errors: [{ row: 0, message: "Το CSV είναι κενό ή δεν έχει επικεφαλίδα." }],
+    };
+  }
+
+  const header = (rows[0] ?? []).map(
+    (h) => EXPENSE_HEADER_ALIASES[h.trim().toLowerCase()] ?? h.trim(),
+  );
+  const issueDateIdx = header.indexOf("issueDate");
+  const netAmountIdx = header.indexOf("netAmount");
+  if (issueDateIdx < 0 || netAmountIdx < 0) {
+    return {
+      ok: false,
+      created: 0,
+      updated: 0,
+      skipped: 0,
+      errors: [
+        {
+          row: 1,
+          message: "Λείπουν οι στήλες 'issueDate' και/ή 'netAmount' (Ημερομηνία / Καθαρή αξία).",
+        },
+      ],
+    };
+  }
+
+  const validMyDataValues = new Set(EXPENSE_MYDATA_TYPES.map((t) => t.value));
+  const errors: { row: number; message: string }[] = [];
+  let created = 0;
+  let skipped = 0;
+
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i] ?? [];
+    const get = (key: string): string => {
+      const idx = header.indexOf(key);
+      return idx >= 0 ? (row[idx] ?? "").trim() : "";
+    };
+
+    const issueDate = parseDateLoose(get("issueDate"));
+    if (!issueDate) {
+      skipped++;
+      continue;
+    }
+
+    const netAmount = parseDecimalLoose(get("netAmount"));
+    if (netAmount <= 0) {
+      skipped++;
+      continue;
+    }
+
+    const vatRate = parseDecimalLoose(get("vatRate") || "24");
+    const vatAmount = Math.round((netAmount * vatRate) / 100 * 100) / 100;
+    const totalAmount = Math.round((netAmount + vatAmount) * 100) / 100;
+
+    // Resolve supplier by VAT (create on-the-fly if only a name given).
+    const supplierVat = get("supplierVat").replace(/\D/g, "") || null;
+    const supplierName = get("supplierName").slice(0, 160) || null;
+    let supplierId: string | null = null;
+    if (supplierVat) {
+      const existing = await prisma.supplier.findFirst({
+        where: { businessId: ctx.businessId, vatNumber: supplierVat },
+        select: { id: true },
+      });
+      if (existing) supplierId = existing.id;
+      else if (supplierName) {
+        const created = await prisma.supplier.create({
+          data: {
+            businessId: ctx.businessId,
+            legalName: supplierName,
+            vatNumber: supplierVat,
+          },
+          select: { id: true },
+        });
+        supplierId = created.id;
+      }
+    }
+
+    const rawMyData = get("myDataType");
+    const myDataType: string | null = (
+      validMyDataValues as Set<string>
+    ).has(rawMyData)
+      ? rawMyData
+      : null;
+
+    try {
+      await prisma.expense.create({
+        data: {
+          businessId: ctx.businessId,
+          supplierId,
+          category: get("category").slice(0, 80) || null,
+          myDataType,
+          reference: get("reference").slice(0, 80) || null,
+          description: get("description").slice(0, 5000) || null,
+          netAmount,
+          vatRate,
+          vatAmount,
+          totalAmount,
+          issueDate,
+          notes: get("notes").slice(0, 5000) || null,
+        },
+      });
+      created++;
+    } catch (err) {
+      errors.push({
+        row: i + 1,
+        message: err instanceof Error ? err.message : "Άγνωστο σφάλμα.",
+      });
+    }
+  }
+
+  await logAudit({
+    userId: ctx.userId,
+    businessId: ctx.businessId,
+    action: "expense.import",
+    entityType: "Expense",
+    meta: { created, skipped, errors: errors.length },
+  });
+
+  revalidatePath("/app/expenses");
+  return { ok: errors.length === 0, created, updated: 0, skipped, errors };
 }

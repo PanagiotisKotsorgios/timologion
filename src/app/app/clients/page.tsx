@@ -12,6 +12,7 @@ import { Input, Select, Field } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Pagination, resolvePageSize } from "@/components/ui/Pagination";
 import { ExportMenu } from "@/components/ui/ExportMenu";
+import { ImportClientsButton } from "./ImportClientsButton";
 
 type Sort = "name" | "recent" | "vat";
 
@@ -106,6 +107,7 @@ export default async function ClientsPage({
         subtitle={`${total} ${total === 1 ? "πελάτης" : "πελάτες"} συνολικά`}
         actions={
           <>
+            <ImportClientsButton />
             <ExportMenu baseUrl="/api/export/clients" />
             <LinkButton href="/app/clients/new" icon={UserPlus}>
               Νέος Πελάτης

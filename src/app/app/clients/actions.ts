@@ -10,6 +10,7 @@ import { logAudit } from "@/lib/audit";
 import { getWrappClient } from "@/lib/wrapp/client";
 import { lookupVatViaBusiness } from "@/lib/aade/client";
 import { formatZodError } from "@/lib/zod-el";
+import { parseCsv } from "@/lib/csv";
 
 const clientSchema = z.object({
   vatNumber: z.string().max(20).optional().or(z.literal("")),
@@ -245,4 +246,198 @@ export async function vatSearchAction(formData: FormData) {
         "Αδυναμία επικοινωνίας με τον πάροχο για αναζήτηση ΑΦΜ. Δοκίμασε ξανά σε λίγο.",
     };
   }
+}
+
+// ─── CSV import ─────────────────────────────────────────────────────────
+
+const CLIENT_HEADER_ALIASES: Record<string, string> = {
+  legalname: "legalName",
+  "legal name": "legalName",
+  επωνυμια: "legalName",
+  επωνυμία: "legalName",
+  "νομικη επωνυμια": "legalName",
+  "νόμιμη επωνυμία": "legalName",
+  ονομα: "legalName",
+  όνομα: "legalName",
+  tradename: "tradeName",
+  "trade name": "tradeName",
+  "διακριτικος τιτλος": "tradeName",
+  "διακριτικός τίτλος": "tradeName",
+  vat: "vatNumber",
+  vatnumber: "vatNumber",
+  αφμ: "vatNumber",
+  taxoffice: "taxOffice",
+  "tax office": "taxOffice",
+  δου: "taxOffice",
+  δού: "taxOffice",
+  δοη: "taxOffice",
+  δοή: "taxOffice",
+  address: "addressLine",
+  addressline: "addressLine",
+  "address line": "addressLine",
+  διευθυνση: "addressLine",
+  διεύθυνση: "addressLine",
+  city: "city",
+  πολη: "city",
+  πόλη: "city",
+  postal: "postalCode",
+  postalcode: "postalCode",
+  "postal code": "postalCode",
+  τκ: "postalCode",
+  "τ.κ.": "postalCode",
+  country: "country",
+  χωρα: "country",
+  χώρα: "country",
+  email: "email",
+  phone: "phone",
+  τηλεφωνο: "phone",
+  τηλέφωνο: "phone",
+  activity: "activity",
+  δραστηριοτητα: "activity",
+  δραστηριότητα: "activity",
+  notes: "notes",
+  σημειωσεις: "notes",
+  σημειώσεις: "notes",
+};
+
+export type ImportClientsResult = {
+  ok: boolean;
+  created: number;
+  updated: number;
+  skipped: number;
+  errors: { row: number; message: string }[];
+};
+
+/**
+ * Bulk-import clients from a CSV. Matches existing rows by VAT number
+ * (when present) — updates in place instead of creating duplicates.
+ * Rows without a legalName are skipped.
+ *
+ * The header row is case-insensitive; both English keys ("legalName",
+ * "vatNumber") and Greek labels ("Επωνυμία", "ΑΦΜ") are accepted.
+ */
+export async function importClientsCsvAction(
+  formData: FormData,
+): Promise<ImportClientsResult> {
+  const ctx = await requireTenant();
+  assertCan(ctx.role, "client:write");
+
+  const file = formData.get("file");
+  if (!(file instanceof File)) {
+    return {
+      ok: false,
+      created: 0,
+      updated: 0,
+      skipped: 0,
+      errors: [{ row: 0, message: "Δεν επιλέχθηκε αρχείο." }],
+    };
+  }
+  if (file.size > 4 * 1024 * 1024) {
+    return {
+      ok: false,
+      created: 0,
+      updated: 0,
+      skipped: 0,
+      errors: [{ row: 0, message: "Το αρχείο υπερβαίνει τα 4MB." }],
+    };
+  }
+
+  const text = await file.text();
+  const rows = parseCsv(text);
+  if (rows.length < 2) {
+    return {
+      ok: false,
+      created: 0,
+      updated: 0,
+      skipped: 0,
+      errors: [{ row: 0, message: "Το CSV είναι κενό ή δεν έχει επικεφαλίδα." }],
+    };
+  }
+
+  const header = (rows[0] ?? []).map(
+    (h) => CLIENT_HEADER_ALIASES[h.trim().toLowerCase()] ?? h.trim(),
+  );
+  const legalNameIdx = header.indexOf("legalName");
+  if (legalNameIdx < 0) {
+    return {
+      ok: false,
+      created: 0,
+      updated: 0,
+      skipped: 0,
+      errors: [
+        {
+          row: 1,
+          message: "Λείπει η στήλη 'legalName' (ή «Επωνυμία» / «Νόμιμη επωνυμία»).",
+        },
+      ],
+    };
+  }
+
+  const errors: { row: number; message: string }[] = [];
+  let created = 0;
+  let updated = 0;
+  let skipped = 0;
+
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i] ?? [];
+    const get = (key: string): string => {
+      const idx = header.indexOf(key);
+      return idx >= 0 ? (row[idx] ?? "").trim() : "";
+    };
+
+    const legalName = get("legalName");
+    if (!legalName) {
+      skipped++;
+      continue;
+    }
+
+    const vat = get("vatNumber").replace(/\D/g, "") || null;
+    const data = {
+      businessId: ctx.businessId,
+      legalName: legalName.slice(0, 160),
+      tradeName: get("tradeName").slice(0, 160) || null,
+      vatNumber: vat,
+      taxOffice: get("taxOffice").slice(0, 120) || null,
+      activity: get("activity").slice(0, 200) || null,
+      addressLine: get("addressLine").slice(0, 200) || null,
+      city: get("city").slice(0, 80) || null,
+      postalCode: get("postalCode").slice(0, 20) || null,
+      country: get("country").slice(0, 2) || "GR",
+      email: get("email").slice(0, 160) || null,
+      phone: get("phone").slice(0, 30) || null,
+      notes: get("notes").slice(0, 5000) || null,
+    };
+
+    try {
+      if (vat) {
+        const existing = await prisma.client.findFirst({
+          where: { businessId: ctx.businessId, vatNumber: vat },
+          select: { id: true },
+        });
+        if (existing) {
+          await prisma.client.update({ where: { id: existing.id }, data });
+          updated++;
+          continue;
+        }
+      }
+      await prisma.client.create({ data });
+      created++;
+    } catch (err) {
+      errors.push({
+        row: i + 1,
+        message: err instanceof Error ? err.message : "Άγνωστο σφάλμα.",
+      });
+    }
+  }
+
+  await logAudit({
+    userId: ctx.userId,
+    businessId: ctx.businessId,
+    action: "client.import",
+    entityType: "Client",
+    meta: { created, updated, skipped, errors: errors.length },
+  });
+
+  revalidatePath("/app/clients");
+  return { ok: errors.length === 0, created, updated, skipped, errors };
 }

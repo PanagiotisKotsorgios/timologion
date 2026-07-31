@@ -14,6 +14,7 @@ import type { ExpensePaymentStatus, Prisma } from "@prisma/client";
 import { ClickableRow } from "../ClickableRow";
 import { Pagination, resolvePageSize } from "@/components/ui/Pagination";
 import { ExportMenu } from "@/components/ui/ExportMenu";
+import { ImportExpensesButton } from "./ImportExpensesButton";
 import {
   expenseMyDataCode,
   EXPENSE_MYDATA_TYPES,
@@ -142,6 +143,7 @@ export default async function ExpensesPage({
               <Users size={16} strokeWidth={2.5} aria-hidden />
               Προμηθευτές
             </a>
+            <ImportExpensesButton />
             <ExportMenu baseUrl="/api/export/expenses" />
             <LinkButton href="/app/expenses/new" icon={Plus}>
               Νέο έξοδο
