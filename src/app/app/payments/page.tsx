@@ -240,8 +240,8 @@ export default async function PaymentsPage({
         subtitle="Καταγραφή εισπράξεων, ανεξόφλητα παραστατικά και αναφορές αδράνειας."
         actions={
           <>
-            <NewPaymentButton />
             <ExportMenu baseUrl="/api/export/payments" />
+            <NewPaymentButton />
           </>
         }
       />

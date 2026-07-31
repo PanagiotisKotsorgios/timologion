@@ -124,29 +124,34 @@ export default async function DashboardPage() {
         subtitle="Ξεκίνα με μια γρήγορη ενέργεια παρακάτω."
         actions={
           <>
-            <LinkButton
+            <a
               href="/app/documents/new?type=invoice"
-              icon={FileText}
+              className="inline-flex h-10 items-center gap-2 rounded-lg border-2 border-brand-800 bg-brand-700 px-4 text-sm font-bold text-white shadow-sm transition-colors hover:bg-brand-800 sm:h-11 sm:text-base"
             >
+              <FileText size={16} strokeWidth={2.5} aria-hidden />
               Νέο Τιμολόγιο
-            </LinkButton>
-            <LinkButton
+            </a>
+            <a
               href="/app/documents/new?type=retail_receipt"
-              variant="secondary"
-              icon={Receipt}
+              className="inline-flex h-10 items-center gap-2 rounded-lg border-2 border-emerald-700 bg-emerald-600 px-4 text-sm font-bold text-white shadow-sm transition-colors hover:bg-emerald-700 sm:h-11 sm:text-base"
             >
+              <Receipt size={16} strokeWidth={2.5} aria-hidden />
               Νέα Απόδειξη
-            </LinkButton>
-            <LinkButton href="/app/clients/new" variant="secondary" icon={UserPlus}>
-              Νέος Πελάτης
-            </LinkButton>
-            <LinkButton
-              href="/app/items/new"
-              variant="secondary"
-              icon={PackagePlus}
+            </a>
+            <a
+              href="/app/clients/new"
+              className="inline-flex h-10 items-center gap-2 rounded-lg border-2 border-sky-700 bg-sky-600 px-4 text-sm font-bold text-white shadow-sm transition-colors hover:bg-sky-700 sm:h-11 sm:text-base"
             >
+              <UserPlus size={16} strokeWidth={2.5} aria-hidden />
+              Νέος Πελάτης
+            </a>
+            <a
+              href="/app/items/new"
+              className="inline-flex h-10 items-center gap-2 rounded-lg border-2 border-violet-700 bg-violet-600 px-4 text-sm font-bold text-white shadow-sm transition-colors hover:bg-violet-700 sm:h-11 sm:text-base"
+            >
+              <PackagePlus size={16} strokeWidth={2.5} aria-hidden />
               Νέα Υπηρεσία
-            </LinkButton>
+            </a>
           </>
         }
       />

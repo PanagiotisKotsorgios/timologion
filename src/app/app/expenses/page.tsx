@@ -135,13 +135,13 @@ export default async function ExpensesPage({
         subtitle="Καταγραφή εξόδων, προμηθευτές και πληρωμές — πλήρη εικόνα κόστους."
         actions={
           <>
-            <LinkButton
+            <a
               href="/app/expenses/suppliers"
-              variant="secondary"
-              icon={Users}
+              className="inline-flex h-10 items-center gap-2 rounded-lg border-2 border-teal-700 bg-teal-600 px-4 text-sm font-bold text-white shadow-sm transition-colors hover:bg-teal-700 sm:h-11 sm:text-base"
             >
+              <Users size={16} strokeWidth={2.5} aria-hidden />
               Προμηθευτές
-            </LinkButton>
+            </a>
             <ExportMenu baseUrl="/api/export/expenses" />
             <LinkButton href="/app/expenses/new" icon={Plus}>
               Νέο έξοδο

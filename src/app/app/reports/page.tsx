@@ -170,26 +170,26 @@ export default async function ReportsPage({
         <div className="space-y-4">
           <Card>
             <CardHeader
-              title="Εξαγωγή ΦΠΑ (CSV)"
+              title="Αναφορά ΦΠΑ"
               action={<Percent size={16} className="text-ink-500" />}
             />
             <CardBody className="space-y-3">
               <p className="text-sm text-ink-700">
                 Ανάλυση ανά συντελεστή για την περιοδική δήλωση ΦΠΑ.
               </p>
-              <LinkButton
+              <a
                 href={`/api/reports/vat?${qs}`}
-                icon={Download}
-                variant="secondary"
+                className="inline-flex h-10 items-center gap-2 rounded-lg border-2 border-indigo-700 bg-indigo-600 px-4 text-sm font-bold text-white shadow-sm transition-colors hover:bg-indigo-700 sm:h-11 sm:text-base"
               >
-                Λήψη ΦΠΑ report
-              </LinkButton>
+                <Download size={16} strokeWidth={2.5} aria-hidden />
+                Λήψη αναφοράς ΦΠΑ
+              </a>
             </CardBody>
           </Card>
 
           <Card>
             <CardHeader
-              title="Εσόδων-Εξόδων (CSV)"
+              title="Έσοδα-Έξοδα"
               action={<Receipt size={16} className="text-ink-500" />}
             />
             <CardBody className="space-y-3">
@@ -197,13 +197,13 @@ export default async function ReportsPage({
                 Μία γραμμή ανά εκδοθέν παραστατικό, με πελάτη, καθαρή αξία, ΦΠΑ
                 και σύνολο. Έτοιμο για τον λογιστή σου.
               </p>
-              <LinkButton
+              <a
                 href={`/api/reports/journal?${qs}`}
-                icon={FileSpreadsheet}
-                variant="secondary"
+                className="inline-flex h-10 items-center gap-2 rounded-lg border-2 border-emerald-700 bg-emerald-600 px-4 text-sm font-bold text-white shadow-sm transition-colors hover:bg-emerald-700 sm:h-11 sm:text-base"
               >
+                <FileSpreadsheet size={16} strokeWidth={2.5} aria-hidden />
                 Λήψη εσόδων-εξόδων
-              </LinkButton>
+              </a>
             </CardBody>
           </Card>
         </div>
