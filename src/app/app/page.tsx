@@ -584,20 +584,20 @@ function PlanUsageStrip({
     return (
       <div className="mt-6">
         <Card>
-          <CardBody className="p-5 md:p-6">
-            <div className="flex flex-wrap items-center justify-between gap-4">
+          <CardBody className="!p-3 sm:!p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-[11px] font-black uppercase tracking-widest text-brand-900/60">
-                  Πακέτο συνδρομής
+                <p className="text-[10px] font-black uppercase tracking-widest text-brand-900/60">
+                  Πακέτο
                 </p>
-                <p className="mt-1 text-2xl font-extrabold text-brand-900 md:text-3xl">
-                  Δεν έχεις επιλέξει πακέτο
-                </p>
-                <p className="mt-1 text-sm font-semibold text-ink-700">
-                  Επίλεξε πακέτο για να δεις χρήση και όρια παραστατικών.
+                <p className="mt-0.5 text-sm font-extrabold text-brand-900 sm:text-base">
+                  Δεν έχεις επιλέξει πακέτο —{" "}
+                  <span className="font-semibold text-ink-700">
+                    δες τα όρια στη Συνδρομή.
+                  </span>
                 </p>
               </div>
-              <LinkButton href="/app/settings/subscription" variant="secondary">
+              <LinkButton href="/app/settings/subscription" variant="secondary" size="sm">
                 Επιλογή πακέτου
               </LinkButton>
             </div>
@@ -610,82 +610,78 @@ function PlanUsageStrip({
   return (
     <div className="mt-6">
       <Card>
-        <CardBody className="p-5 md:p-6">
-          <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
-            <div className="min-w-0">
-              <p className="text-[11px] font-black uppercase tracking-widest text-brand-900/60">
-                Πακέτο συνδρομής
+        {/* Compact single-line layout: plan name on the left, usage +
+            progress bar on the right — all on one row on ≥sm screens.
+            On mobile it stacks but stays tight. Much thinner than the
+            previous 3-block layout that had huge numbers and an inline
+            progress row underneath. */}
+        <CardBody className="!p-3 sm:!p-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+            <div className="min-w-0 shrink-0 sm:w-40">
+              <p className="text-[10px] font-black uppercase tracking-widest text-brand-900/60">
+                Πακέτο
               </p>
-              <p className="mt-1 text-2xl font-extrabold text-brand-900 md:text-3xl">
+              <p className="mt-0.5 truncate text-base font-extrabold text-brand-900 sm:text-lg">
                 {planName}
               </p>
             </div>
-            {hasCap ? (
-              <div className="text-right">
-                <p className="text-[11px] font-black uppercase tracking-widest text-brand-900/60">
-                  Παραστατικά
-                </p>
-                <p className="mt-1 text-2xl font-extrabold text-brand-900 md:text-3xl">
-                  {used.toLocaleString("el-GR")}
-                  <span className="text-lg font-bold text-ink-500">
-                    {" "}
-                    / {cap!.toLocaleString("el-GR")}
-                  </span>
-                </p>
-                <p className="mt-1 text-sm font-semibold text-ink-700">
-                  Μένουν {remaining!.toLocaleString("el-GR")}
-                </p>
-              </div>
-            ) : (
-              <div className="text-right">
-                <p className="text-[11px] font-black uppercase tracking-widest text-brand-900/60">
-                  Χωρίς όριο
-                </p>
-                <p className="mt-1 text-2xl font-extrabold text-brand-900">
-                  Απεριόριστα
-                </p>
-              </div>
-            )}
-          </div>
 
-          {hasCap && (
-            <div className="mt-5">
-              {/* Track is now h-4 with a stronger border-radius so it reads
-                  as a proper progress bar rather than a hairline. When usage
-                  is above 0 but rounds to 0% (e.g. 3 / 1500), we force a
-                  minimum sliver width so the user can see something happened. */}
-              <div className="h-4 w-full overflow-hidden rounded-full bg-ink-200 shadow-inner">
-                <div
-                  className={
-                    "h-full rounded-full transition-all " +
-                    (overWarn
-                      ? "bg-red-600"
-                      : nearWarn
-                        ? "bg-amber-500"
-                        : "bg-brand-900")
-                  }
-                  style={{
-                    width:
-                      used > 0 && pct < 2
-                        ? "2%"
-                        : `${pct}%`,
-                  }}
-                  aria-valuenow={pct}
-                  role="progressbar"
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                />
-              </div>
-              <p className="mt-2 text-xs font-semibold text-ink-500">
-                {pctDisplay} χρήση
-              </p>
-              {overWarn && (
-                <p className="mt-2 text-sm font-semibold text-red-700">
-                  Πλησιάζεις το όριο του πακέτου — σκέψου αναβάθμιση.
+            <div className="min-w-0 flex-1">
+              {hasCap ? (
+                <>
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="text-xs font-semibold text-ink-700">
+                      <span className="font-bold text-brand-900">
+                        {used.toLocaleString("el-GR")}
+                      </span>
+                      {" / "}
+                      {cap!.toLocaleString("el-GR")} παραστατικά
+                    </span>
+                    <span
+                      className={
+                        "text-xs font-bold tabular-nums " +
+                        (overWarn
+                          ? "text-red-700"
+                          : nearWarn
+                            ? "text-amber-800"
+                            : "text-ink-700")
+                      }
+                    >
+                      {pctDisplay}
+                    </span>
+                  </div>
+                  <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-ink-200">
+                    <div
+                      className={
+                        "h-full rounded-full transition-all " +
+                        (overWarn
+                          ? "bg-red-600"
+                          : nearWarn
+                            ? "bg-amber-500"
+                            : "bg-brand-900")
+                      }
+                      style={{
+                        width: used > 0 && pct < 2 ? "2%" : `${pct}%`,
+                      }}
+                      aria-valuenow={pct}
+                      role="progressbar"
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                    />
+                  </div>
+                  {overWarn && (
+                    <p className="mt-1 text-xs font-semibold text-red-700">
+                      Πλησιάζεις το όριο — σκέψου αναβάθμιση πακέτου.
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p className="text-sm font-semibold text-ink-700">
+                  Χωρίς όριο παραστατικών.
                 </p>
               )}
             </div>
-          )}
+          </div>
         </CardBody>
       </Card>
     </div>
