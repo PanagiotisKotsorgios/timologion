@@ -284,12 +284,12 @@ export default async function PaymentsPage({
         <CardBody className="p-0">
           <form
             method="get"
-            className="grid gap-3 border-b-2 border-ink-200 bg-white p-4 md:grid-cols-12"
+            className="grid gap-3 border-b-2 border-ink-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-12"
           >
             <input type="hidden" name="method" value={methodFilter} />
             <input type="hidden" name="from" value={from} />
             <input type="hidden" name="to" value={to} />
-            <Field label="Αναζήτηση" htmlFor="q" className="md:col-span-3">
+            <Field label="Αναζήτηση" htmlFor="q" className="lg:col-span-3">
               <Input
                 id="q"
                 name="q"
@@ -297,7 +297,7 @@ export default async function PaymentsPage({
                 placeholder="Πελάτης, ΑΦΜ, σειρά..."
               />
             </Field>
-            <Field label="Πελάτης" htmlFor="client" className="md:col-span-3">
+            <Field label="Πελάτης" htmlFor="client" className="lg:col-span-3">
               <Select id="client" name="client" defaultValue={clientFilter}>
                 <option value="">Όλοι</option>
                 {clients.map((c) => (
@@ -307,7 +307,7 @@ export default async function PaymentsPage({
                 ))}
               </Select>
             </Field>
-            <Field label="Τύπος" htmlFor="type" className="md:col-span-2">
+            <Field label="Τύπος" htmlFor="type" className="lg:col-span-2">
               <Select id="type" name="type" defaultValue={typeFilter ?? ""}>
                 <option value="">Όλοι</option>
                 <option value="invoice">Τιμολόγιο</option>
@@ -318,7 +318,7 @@ export default async function PaymentsPage({
             <Field
               label="Ημέρες καθυστέρησης"
               htmlFor="aging"
-              className="md:col-span-2"
+              className="lg:col-span-2"
             >
               <Select id="aging" name="aging" defaultValue={aging ?? ""}>
                 <option value="">
@@ -338,7 +338,7 @@ export default async function PaymentsPage({
                 </option>
               </Select>
             </Field>
-            <div className="md:col-span-2 md:self-end">
+            <div className="sm:col-span-2 lg:col-span-2 lg:self-end">
               <Field label=" " htmlFor="submit-open">
                 <Button
                   type="submit"
@@ -478,13 +478,13 @@ export default async function PaymentsPage({
         <CardBody className="p-0">
           <form
             method="get"
-            className="grid gap-3 border-b-2 border-ink-200 bg-white p-4 md:grid-cols-12"
+            className="grid gap-3 border-b-2 border-ink-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-12"
           >
             <input type="hidden" name="q" value={search} />
             <input type="hidden" name="client" value={clientFilter} />
             <input type="hidden" name="type" value={typeFilter ?? ""} />
             {aging && <input type="hidden" name="aging" value={aging} />}
-            <Field label="Μέθοδος" htmlFor="method" className="md:col-span-3">
+            <Field label="Μέθοδος" htmlFor="method" className="lg:col-span-3">
               <Select id="method" name="method" defaultValue={methodFilter}>
                 <option value="">Όλες</option>
                 <option value="cash">Μετρητά</option>
@@ -496,13 +496,13 @@ export default async function PaymentsPage({
                 <option value="other">Άλλο</option>
               </Select>
             </Field>
-            <Field label="Από" htmlFor="from" className="md:col-span-3">
+            <Field label="Από" htmlFor="from" className="lg:col-span-3">
               <Input id="from" name="from" type="date" defaultValue={from} />
             </Field>
-            <Field label="Έως" htmlFor="to" className="md:col-span-3">
+            <Field label="Έως" htmlFor="to" className="lg:col-span-3">
               <Input id="to" name="to" type="date" defaultValue={to} />
             </Field>
-            <div className="md:col-span-3 md:self-end">
+            <div className="sm:col-span-2 lg:col-span-3 lg:self-end">
               <Field label=" " htmlFor="submit-history">
                 <Button
                   type="submit"

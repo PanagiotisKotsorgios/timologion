@@ -39,6 +39,27 @@ td, .break-anywhere {
   overflow-wrap: anywhere;
   word-break: break-word;
 }
+/* Opt-out: cells that should stay on a single line with an ellipsis
+   instead of wrapping. Used for client-name / long-label columns in
+   dashboard and list tables where a 3-line wrap eats vertical space. */
+.truncate-cell {
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 0; /* required for text-overflow inside table cell */
+}
+/* The child span/link inside the truncated cell inherits the ellipsis
+   behavior — needed when the cell content is wrapped in an anchor. */
+.truncate-cell > * {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+}
 /* Headings should NOT split words (a Greek word breaking into vertical
    characters looks worse than horizontal scroll). */
 h1, h2, h3, h4, h5, h6 {

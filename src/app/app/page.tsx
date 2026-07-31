@@ -201,8 +201,8 @@ export default async function DashboardPage() {
         used={quotaUsed}
       />
 
-      <div className="mt-6 grid gap-4 md:gap-6 lg:grid-cols-4">
-        <div className="min-w-0 lg:col-span-3">
+      <div className="mt-6 grid gap-4 md:gap-6 xl:grid-cols-4">
+        <div className="min-w-0 xl:col-span-3">
           <Card>
             <CardHeader
               title="Πρόσφατα παραστατικά"
@@ -262,8 +262,20 @@ export default async function DashboardPage() {
                               {date(d.issueDate)}
                             </Link>
                           </td>
-                          <td>{d.client?.legalName ?? "—"}</td>
-                          <td>{t.documents.types[d.type]}</td>
+                          <td
+                            className="truncate-cell"
+                            title={d.client?.legalName ?? "—"}
+                            style={{ maxWidth: "220px", width: "220px" }}
+                          >
+                            {d.client?.legalName ?? "—"}
+                          </td>
+                          <td
+                            className="truncate-cell"
+                            title={t.documents.types[d.type]}
+                            style={{ maxWidth: "180px", width: "180px" }}
+                          >
+                            {t.documents.types[d.type]}
+                          </td>
                           <td className="text-right font-semibold">
                             {money(d.totalAmount)}
                           </td>
@@ -494,27 +506,27 @@ function StatCard({
   const tokens = ACCENT_TOKENS[accent];
   return (
     <Card className="overflow-hidden">
-      <CardBody className="p-4 sm:p-6 md:p-8">
+      <CardBody className="p-3 sm:p-4 md:p-5">
         <p
           className={
-            "text-[10px] font-black uppercase tracking-widest sm:text-[12px] " +
+            "text-[10px] font-black uppercase tracking-widest sm:text-[11px] " +
             tokens.tileText
           }
         >
           {eyebrow}
         </p>
-        <div className="mt-3 flex items-end gap-3 sm:mt-4">
-          {/* Fluid size: 2rem at ~320px viewport, 3.75rem at ≥1280px.
-              Prevents the giant KPI number from overflowing its card on
-              small laptops where 4 KPIs sit side-by-side in a 4-col grid. */}
+        <div className="mt-2 flex items-end gap-2 sm:mt-3">
+          {/* Tighter fluid size — the KPI cards live in a 4-col grid at
+              lg+ where each cell is ~200-260px. Cap at 2.25rem so 6-char
+              currency values ("2.499,00 €") don't overflow the card. */}
           <p
-            className="font-extrabold leading-none tracking-tightest text-ink-900"
-            style={{ fontSize: "clamp(2rem, 6vw, 3.75rem)" }}
+            className="font-extrabold leading-none tracking-tight text-ink-900"
+            style={{ fontSize: "clamp(1.5rem, 3.6vw, 2.25rem)" }}
           >
             {value}
           </p>
         </div>
-        <p className="mt-2 text-sm font-medium text-ink-700 sm:mt-3 sm:text-base md:text-lg">
+        <p className="mt-1.5 text-xs font-medium text-ink-700 sm:mt-2 sm:text-sm">
           {label}
         </p>
 

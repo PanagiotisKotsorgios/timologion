@@ -208,18 +208,34 @@ export default async function DocumentsPage({
                         {date(d.issueDate)}
                       </Link>
                     </td>
-                    <td>
-                      <span className="font-semibold text-ink-900">
-                        {t.documents.types[d.type]}
-                      </span>
-                      {d.series && (
-                        <span className="ml-2 text-sm text-ink-500">
-                          {d.series}
-                          {d.number ? ` #${d.number}` : ""}
+                    <td
+                      className="truncate-cell"
+                      title={`${t.documents.types[d.type]}${
+                        d.series
+                          ? " · " + d.series + (d.number ? " #" + d.number : "")
+                          : ""
+                      }`}
+                      style={{ maxWidth: "220px" }}
+                    >
+                      <span>
+                        <span className="font-semibold text-ink-900">
+                          {t.documents.types[d.type]}
                         </span>
-                      )}
+                        {d.series && (
+                          <span className="ml-2 text-sm text-ink-500">
+                            {d.series}
+                            {d.number ? ` #${d.number}` : ""}
+                          </span>
+                        )}
+                      </span>
                     </td>
-                    <td>{d.client?.legalName ?? "—"}</td>
+                    <td
+                      className="truncate-cell"
+                      title={d.client?.legalName ?? "—"}
+                      style={{ maxWidth: "260px" }}
+                    >
+                      {d.client?.legalName ?? "—"}
+                    </td>
                     <td className="text-right text-sm tabular-nums text-ink-700">
                       {money(d.netTotalAmount)}
                     </td>
@@ -244,17 +260,23 @@ export default async function DocumentsPage({
               </tbody>
               <tfoot className="bg-brand-50 font-bold text-brand-900">
                 <tr>
-                  <td colSpan={3} className="px-4 py-3 text-right text-sm uppercase tracking-widest">
-                    Σύνολα ({total.toLocaleString("el-GR")} εγγραφές
-                    {total > rows.length ? " — με τα τρέχοντα φίλτρα" : ""})
+                  <td colSpan={3} className="px-4 py-3.5 text-right text-[11px] font-black uppercase tracking-widest sm:text-xs">
+                    <div className="flex flex-col items-end gap-0.5">
+                      <span>Σύνολα</span>
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-brand-800/80">
+                        {total.toLocaleString("el-GR")}{" "}
+                        {total === 1 ? "εγγραφή" : "εγγραφές"}
+                        {total > rows.length ? " · με φίλτρα" : ""}
+                      </span>
+                    </div>
                   </td>
-                  <td className="px-4 py-3 text-right tabular-nums">
+                  <td className="px-4 py-3.5 text-right text-sm tabular-nums">
                     {money(filterNetSum)}
                   </td>
-                  <td className="px-4 py-3 text-right tabular-nums">
+                  <td className="px-4 py-3.5 text-right text-sm tabular-nums">
                     {money(filterVatSum)}
                   </td>
-                  <td className="px-4 py-3 text-right text-base tabular-nums">
+                  <td className="px-4 py-3.5 text-right text-base tabular-nums">
                     {money(filterTotalSum)}
                   </td>
                   <td colSpan={2}></td>
@@ -324,9 +346,15 @@ function FilterBar({
   return (
     <form
       method="get"
-      className="mb-5 grid gap-3 rounded-2xl border-2 border-ink-300 bg-white p-4 md:grid-cols-12"
+      className="mb-5 grid gap-3 rounded-2xl border-2 border-ink-300 bg-white p-4 sm:grid-cols-2 lg:grid-cols-12"
     >
-      <Field label="Αναζήτηση" htmlFor="q" className="md:col-span-4">
+      {/* Grid tiers:
+          - phone (<640):   single-column stack, every field gets full width
+          - sm (640-1024):  2-column grid — pairs 2 fields per row
+          - lg (1024+):     12-column grid with the wider layout below
+          On lg the search + type get more room since their values are the
+          longest ("Τιμολόγιο πώλησης — ενδοκοινοτικό" wouldn't fit in <200px). */}
+      <Field label="Αναζήτηση" htmlFor="q" className="lg:col-span-4">
         <Input
           id="q"
           name="q"
@@ -334,7 +362,7 @@ function FilterBar({
           placeholder="Πελάτης, ΑΦΜ ή σειρά..."
         />
       </Field>
-      <Field label="Τύπος" htmlFor="type" className="md:col-span-3">
+      <Field label="Τύπος" htmlFor="type" className="lg:col-span-4">
         <Select id="type" name="type" defaultValue={type ?? ""}>
           <option value="">Όλοι οι τύποι</option>
           {DOC_TYPES.map((d) => (
@@ -344,7 +372,7 @@ function FilterBar({
           ))}
         </Select>
       </Field>
-      <Field label="Κατάσταση" htmlFor="status" className="md:col-span-2">
+      <Field label="Κατάσταση" htmlFor="status" className="lg:col-span-2">
         <Select id="status" name="status" defaultValue={status ?? ""}>
           <option value="">Όλες</option>
           <option value="draft">Πρόχειρο</option>
@@ -354,7 +382,7 @@ function FilterBar({
           <option value="cancelled">Ακυρωμένο</option>
         </Select>
       </Field>
-      <Field label="Ταξινόμηση" htmlFor="sort" className="md:col-span-3">
+      <Field label="Ταξινόμηση" htmlFor="sort" className="lg:col-span-2">
         <Select id="sort" name="sort" defaultValue={sort}>
           <option value="recent">Πιο πρόσφατα</option>
           <option value="oldest">Πιο παλιά</option>
@@ -362,13 +390,13 @@ function FilterBar({
           <option value="amount_asc">Ποσό ↑</option>
         </Select>
       </Field>
-      <Field label="Από" htmlFor="from" className="md:col-span-3">
+      <Field label="Από" htmlFor="from" className="lg:col-span-3">
         <Input id="from" name="from" type="date" defaultValue={from} />
       </Field>
-      <Field label="Έως" htmlFor="to" className="md:col-span-3">
+      <Field label="Έως" htmlFor="to" className="lg:col-span-3">
         <Input id="to" name="to" type="date" defaultValue={to} />
       </Field>
-      <div className="md:col-span-6 md:self-end">
+      <div className="sm:col-span-2 lg:col-span-6 lg:self-end">
         <Field label=" " htmlFor="submit">
           <Button type="submit" size="md" className="w-full" icon={Search}>
             Εφαρμογή φίλτρων
