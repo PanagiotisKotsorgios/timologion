@@ -226,15 +226,11 @@ export async function vatSearchAction(formData: FormData) {
       parsed.data.vat,
     );
     if (!result) {
-      if (!hasAadeCreds) {
-        return {
-          ok: false as const,
-          code: "aade_credentials_missing" as const,
-          error:
-            "Για ολοκληρωμένη αναζήτηση ΑΦΜ χρειάζονται τα διαπιστευτήρια ΓΓΠΣ. Ρύθμισέ τα από τις Ρυθμίσεις → ΓΓΠΣ / Αναζήτηση ΑΦΜ.",
-        };
-      }
-      return { ok: false as const, error: "Το ΑΦΜ δεν βρέθηκε." };
+      return {
+        ok: false as const,
+        error:
+          "Το ΑΦΜ δεν βρέθηκε στο μητρώο. Έλεγξε ότι είναι σωστό και δοκίμασε ξανά.",
+      };
     }
     return {
       ok: true as const,
@@ -243,14 +239,10 @@ export async function vatSearchAction(formData: FormData) {
       hasAadeCreds,
     };
   } catch {
-    if (!hasAadeCreds) {
-      return {
-        ok: false as const,
-        code: "aade_credentials_missing" as const,
-        error:
-          "Για ολοκληρωμένη αναζήτηση ΑΦΜ χρειάζονται τα διαπιστευτήρια ΓΓΠΣ. Ρύθμισέ τα από τις Ρυθμίσεις → ΓΓΠΣ / Αναζήτηση ΑΦΜ.",
-      };
-    }
-    return { ok: false as const, error: "Το ΑΦΜ δεν βρέθηκε." };
+    return {
+      ok: false as const,
+      error:
+        "Αδυναμία επικοινωνίας με τον πάροχο για αναζήτηση ΑΦΜ. Δοκίμασε ξανά σε λίγο.",
+    };
   }
 }

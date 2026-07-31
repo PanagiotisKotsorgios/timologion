@@ -5,7 +5,6 @@ import {
   MapPin,
   Hash,
   Send,
-  KeyRound,
   UserCog,
   ArrowRight,
   type LucideIcon,
@@ -53,12 +52,12 @@ const CARDS: SettingCard[] = [
     description:
       "Κατάσταση σύνδεσης με τον πάροχο, χειροκίνητη επανασυγχρόνιση.",
   },
-  {
-    href: "/app/settings/aade",
-    icon: KeyRound,
-    title: "Αναζήτηση ΑΦΜ (ΓΓΠΣ)",
-    description: "Διαπιστευτήρια για αυτόματη συμπλήρωση στοιχείων πελατών.",
-  },
+  // ΓΓΠΣ / ΑΑΔΕ direct integration removed from the UI — the Wrapp
+  // /vat_search endpoint already returns everything the client form
+  // needs (legal_name, trade_name, tax_office, activity, address,
+  // city, postal_code) so a separate credential setup was redundant
+  // and confusing. Kept the backend columns + code paths so we can
+  // re-enable direct AADE lookup as an optional alt source later.
   {
     href: "/app/settings/subscription",
     icon: CreditCard,
