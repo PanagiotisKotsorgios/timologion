@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { X, ListPlus, Check, Search } from "lucide-react";
+import { X, Check, Search, Plus, Minus } from "lucide-react";
 import type { DocumentType } from "@prisma/client";
 import { Button } from "@/components/ui/Button";
 
@@ -9,12 +9,12 @@ type Option = { value: DocumentType; label: string };
 
 /**
  * Modal that lets the user pick which document types appear in the
- * "Τύπος παραστατικού" dropdown. Backed by localStorage so the choice
- * is instant and per-browser. Search field on top so 31 types stay
- * scannable; groups by myDATA code range (1.x / 2.x / 5.x / etc.).
+ * "Τύπος παραστατικού" dropdown. Split into two clear lists:
+ *   • Ενεργοί — the types shown in the dropdown right now
+ *   • Διαθέσιμοι — everything else, one click to add
  *
- * The parent (DraftEditor) reads the same localStorage key on mount
- * and re-reads whenever this modal closes with a save.
+ * Backed by localStorage; changes are staged in `picked` and only
+ * committed on Αποθήκευση so the user can cancel out of a mistake.
  */
 export function DocTypePickerModal({
   allOptions,
@@ -47,18 +47,19 @@ export function DocTypePickerModal({
     };
   }, [onClose]);
 
-  function toggle(v: DocumentType) {
+  function add(v: DocumentType) {
+    setPicked((prev) => new Set(prev).add(v));
+  }
+  function remove(v: DocumentType) {
+    if (v === currentType) return; // never remove the currently-active
     setPicked((prev) => {
       const next = new Set(prev);
-      if (next.has(v)) next.delete(v);
-      else next.add(v);
+      next.delete(v);
       return next;
     });
   }
 
   function save() {
-    // Always keep the currently-selected type in the visible list so
-    // the dropdown doesn't disappear from under the user.
     const arr = Array.from(picked);
     if (!arr.includes(currentType)) arr.push(currentType);
     onSaved(arr);
@@ -66,12 +67,16 @@ export function DocTypePickerModal({
   }
 
   const q = query.trim().toLowerCase();
-  const filtered = useMemo(() => {
-    if (!q) return allOptions;
-    return allOptions.filter((o) => o.label.toLowerCase().includes(q));
-  }, [allOptions, q]);
+  const matches = (o: Option) => !q || o.label.toLowerCase().includes(q);
 
-  const groups = useMemo(() => groupByCode(filtered), [filtered]);
+  const active = useMemo(
+    () => allOptions.filter((o) => picked.has(o.value) && matches(o)),
+    [allOptions, picked, q],
+  );
+  const available = useMemo(
+    () => allOptions.filter((o) => !picked.has(o.value) && matches(o)),
+    [allOptions, picked, q],
+  );
 
   return (
     <div
@@ -86,26 +91,14 @@ export function DocTypePickerModal({
         onClick={onClose}
         className="fixed inset-0 bg-black/60 backdrop-blur-sm"
       />
-      <div className="relative w-full max-w-2xl overflow-hidden rounded-3xl border border-ink-300/70 bg-white shadow-2xl">
-        <div className="flex items-start justify-between gap-4 border-b border-ink-300/60 px-6 py-5 sm:px-8">
-          <div className="flex items-start gap-3">
-            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-brand-50 text-brand-800">
-              <ListPlus size={20} aria-hidden />
-            </div>
-            <div className="min-w-0">
-              <h2
-                id="doc-type-picker-title"
-                className="text-xl font-extrabold text-brand-900 sm:text-2xl"
-              >
-                Διαχείριση τύπων παραστατικών
-              </h2>
-              <p className="mt-1 text-sm text-ink-700">
-                Επίλεξε ποιοι τύποι θα εμφανίζονται στο dropdown σου.
-                Επιλεγμένοι τώρα: <strong>{picked.size}</strong> από{" "}
-                {allOptions.length}.
-              </p>
-            </div>
-          </div>
+      <div className="relative w-full max-w-2xl overflow-hidden rounded-2xl border border-ink-300/70 bg-white shadow-2xl">
+        <div className="flex items-center justify-between gap-4 border-b border-ink-300/60 px-5 py-4 sm:px-6">
+          <h2
+            id="doc-type-picker-title"
+            className="text-lg font-extrabold text-ink-900 sm:text-xl"
+          >
+            Διαχείριση τύπων παραστατικών
+          </h2>
           <button
             type="button"
             aria-label="Κλείσιμο"
@@ -116,7 +109,7 @@ export function DocTypePickerModal({
           </button>
         </div>
 
-        <div className="px-6 pt-5 sm:px-8">
+        <div className="px-5 pt-4 sm:px-6">
           <div className="relative">
             <Search
               size={16}
@@ -127,82 +120,115 @@ export function DocTypePickerModal({
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Αναζήτηση τύπου (π.χ. τιμολόγιο, 5.1, φόρος)"
+              placeholder="Αναζήτηση τύπου"
               className="h-11 w-full rounded-lg border-2 border-ink-300 bg-white pl-9 pr-3 text-base text-ink-900 placeholder:text-ink-500 focus:border-brand-700 focus:outline-none focus:ring-4 focus:ring-brand-500/15"
               autoFocus
             />
           </div>
         </div>
 
-        <div className="max-h-[52vh] overflow-y-auto px-6 py-4 sm:px-8">
-          {groups.length === 0 ? (
-            <p className="py-8 text-center text-sm text-ink-500">
-              Δεν βρέθηκε τύπος για «{query}».
-            </p>
-          ) : (
-            <div className="space-y-5">
-              {groups.map((g) => (
-                <div key={g.label}>
-                  <p className="mb-2 text-[11px] font-black uppercase tracking-widest text-ink-500">
-                    {g.label}
-                  </p>
-                  <ul className="grid gap-1.5 sm:grid-cols-2">
-                    {g.items.map((opt) => {
-                      const on = picked.has(opt.value);
-                      const isCurrent = opt.value === currentType;
-                      return (
-                        <li key={opt.value}>
-                          <button
-                            type="button"
-                            onClick={() => toggle(opt.value)}
-                            disabled={isCurrent && on}
-                            title={
-                              isCurrent && on
-                                ? "Ο τρέχων επιλεγμένος τύπος δεν μπορεί να αφαιρεθεί"
-                                : undefined
-                            }
-                            className={`flex w-full items-center justify-between gap-2 rounded-lg border-2 px-3 py-2 text-left text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-70 ${
-                              on
-                                ? "border-brand-700 bg-brand-50 text-brand-900"
-                                : "border-ink-300 bg-white text-ink-700 hover:border-ink-500"
-                            }`}
-                          >
-                            <span className="min-w-0 truncate">{opt.label}</span>
-                            {on && (
-                              <Check
-                                size={16}
-                                strokeWidth={2.5}
-                                className="shrink-0 text-brand-700"
-                                aria-hidden
-                              />
-                            )}
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              ))}
+        <div className="max-h-[58vh] overflow-y-auto px-5 py-4 sm:px-6">
+          <section className="mb-5">
+            <div className="mb-2 flex items-baseline justify-between">
+              <p className="text-[11px] font-black uppercase tracking-widest text-brand-800">
+                Ενεργοί ({picked.size})
+              </p>
+              <span className="text-xs text-ink-500">
+                Εμφανίζονται στο dropdown
+              </span>
             </div>
-          )}
+            {active.length === 0 ? (
+              <p className="rounded-lg border-2 border-dashed border-ink-300 py-4 text-center text-sm text-ink-500">
+                Κανένας ενεργός τύπος.
+              </p>
+            ) : (
+              <ul className="space-y-1.5">
+                {active.map((opt) => {
+                  const isCurrent = opt.value === currentType;
+                  return (
+                    <li
+                      key={opt.value}
+                      className="flex items-center justify-between gap-2 rounded-lg border-2 border-brand-200 bg-brand-50/60 px-3 py-2"
+                    >
+                      <span className="min-w-0 truncate text-sm font-semibold text-brand-900">
+                        {opt.label}
+                        {isCurrent && (
+                          <span className="ml-2 rounded-full bg-brand-700 px-2 py-0.5 text-[10px] font-bold uppercase text-white">
+                            Ενεργός
+                          </span>
+                        )}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => remove(opt.value)}
+                        disabled={isCurrent}
+                        aria-label={`Αφαίρεση ${opt.label}`}
+                        title={
+                          isCurrent
+                            ? "Ο τρέχων επιλεγμένος τύπος δεν μπορεί να αφαιρεθεί"
+                            : "Αφαίρεση"
+                        }
+                        className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md border-2 border-ink-300 bg-white px-2.5 text-xs font-bold text-ink-700 transition-colors hover:border-red-500 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-ink-300 disabled:hover:bg-white disabled:hover:text-ink-700"
+                      >
+                        <Minus size={12} strokeWidth={3} aria-hidden />
+                        Αφαίρεση
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+
+          <section>
+            <div className="mb-2 flex items-baseline justify-between">
+              <p className="text-[11px] font-black uppercase tracking-widest text-ink-500">
+                Διαθέσιμοι ({available.length})
+              </p>
+              <span className="text-xs text-ink-500">
+                Πάτησε «Προσθήκη» για να εμφανιστούν
+              </span>
+            </div>
+            {available.length === 0 ? (
+              <p className="rounded-lg border-2 border-dashed border-ink-300 py-4 text-center text-sm text-ink-500">
+                {q
+                  ? `Δεν βρέθηκε άλλος τύπος για «${query}».`
+                  : "Έχουν προστεθεί όλοι οι τύποι."}
+              </p>
+            ) : (
+              <ul className="space-y-1.5">
+                {available.map((opt) => (
+                  <li
+                    key={opt.value}
+                    className="flex items-center justify-between gap-2 rounded-lg border border-ink-300 bg-white px-3 py-2"
+                  >
+                    <span className="min-w-0 truncate text-sm text-ink-800">
+                      {opt.label}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => add(opt.value)}
+                      aria-label={`Προσθήκη ${opt.label}`}
+                      title="Προσθήκη"
+                      className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md bg-brand-700 px-2.5 text-xs font-bold text-white transition-colors hover:bg-brand-800"
+                    >
+                      <Plus size={12} strokeWidth={3} aria-hidden />
+                      Προσθήκη
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
         </div>
 
-        <div className="flex flex-col-reverse gap-2 border-t border-ink-300/60 px-6 py-4 sm:flex-row sm:justify-between sm:px-8">
-          <button
-            type="button"
-            onClick={() => setPicked(new Set([currentType]))}
-            className="text-sm font-semibold text-ink-700 hover:text-ink-900"
-          >
-            Καθαρισμός · μόνο ο τρέχων
-          </button>
-          <div className="flex flex-col-reverse gap-2 sm:flex-row">
-            <Button type="button" variant="secondary" onClick={onClose}>
-              Άκυρο
-            </Button>
-            <Button type="button" onClick={save} icon={Check}>
-              Αποθήκευση επιλογών
-            </Button>
-          </div>
+        <div className="flex flex-col-reverse gap-2 border-t border-ink-300/60 px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
+          <Button type="button" variant="secondary" onClick={onClose}>
+            Άκυρο
+          </Button>
+          <Button type="button" onClick={save} icon={Check}>
+            Αποθήκευση
+          </Button>
         </div>
       </div>
     </div>

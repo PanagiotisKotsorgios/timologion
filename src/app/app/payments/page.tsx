@@ -396,7 +396,11 @@ export default async function PaymentsPage({
                             {date(d.issueDate)}
                           </Link>
                         </td>
-                        <td className="text-sm text-ink-900">
+                        <td
+                          className="truncate-cell text-sm text-ink-900"
+                          title={clientLabel}
+                          style={{ maxWidth: "240px" }}
+                        >
                           {clientLabel}
                         </td>
                         <td className="mono text-sm">
@@ -541,7 +545,13 @@ export default async function PaymentsPage({
                   {payments.map((p) => (
                     <tr key={p.id}>
                       <td className="mono">{date(p.receivedAt)}</td>
-                      <td>{p.client?.legalName ?? "—"}</td>
+                      <td
+                        className="truncate-cell"
+                        title={p.client?.legalName ?? "—"}
+                        style={{ maxWidth: "240px" }}
+                      >
+                        {p.client?.legalName ?? "—"}
+                      </td>
                       <td>
                         {p.document ? (
                           <Link

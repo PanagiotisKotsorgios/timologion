@@ -13,7 +13,6 @@ import {
   Eye,
   ExternalLink,
   ListPlus,
-  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Select, Textarea } from "@/components/ui/Input";
@@ -575,91 +574,36 @@ export function DraftEditor({
                 required
                 help="Ο κωδικός myDATA καθορίζει τι δηλώνεται στην ΑΑΔΕ. Για πωλήσεις με ΑΦΜ → Τιμολόγιο. Για λιανική/ιδιώτες → Απόδειξη. Για ακύρωση παλιότερου → Πιστωτικό."
               >
-                <Select
-                  id="type"
-                  value={type}
-                  onChange={(e) => setType(e.target.value as DraftInput["type"])}
-                  required
-                >
-                  {visibleOptions.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </Select>
-                {/* Chips row: shows every enabled type with a × so users
-                    can remove/switch without opening the full modal.
-                    Currently-active type is highlighted and its × is
-                    disabled (never let the last type disappear). */}
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {visibleOptions.map((o) => {
-                    const active = o.value === type;
-                    // Short label = the myDATA code in parens, extracted
-                    // once so the chips stay compact even when the full
-                    // label is long ("Τιμολόγιο πώλησης — ενδοκοινοτικό (1.2)").
-                    const shortMatch = o.label.match(/\(([^)]+)\)/);
-                    const short = shortMatch
-                      ? shortMatch[1]
-                      : o.label.slice(0, 12);
-                    return (
-                      <span
-                        key={o.value}
-                        title={o.label}
-                        className={`inline-flex items-center gap-1 rounded-full border-2 pl-2.5 pr-1 py-0.5 text-xs font-bold transition-colors ${
-                          active
-                            ? "border-brand-700 bg-brand-700 text-white"
-                            : "border-ink-300 bg-white text-ink-700 hover:border-ink-500"
-                        }`}
-                      >
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setType(o.value as DraftInput["type"])
-                          }
-                          className="cursor-pointer"
-                        >
-                          {short}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (active) return;
-                            saveVisibleTypes(
-                              visibleTypes.filter((v) => v !== o.value),
-                            );
-                          }}
-                          disabled={active}
-                          title={
-                            active
-                              ? "Ο τρέχων τύπος δεν μπορεί να αφαιρεθεί"
-                              : "Αφαίρεση από το dropdown"
-                          }
-                          aria-label={
-                            active
-                              ? "Ο τρέχων τύπος δεν μπορεί να αφαιρεθεί"
-                              : `Αφαίρεση ${o.label}`
-                          }
-                          className={`grid h-5 w-5 place-items-center rounded-full transition-colors ${
-                            active
-                              ? "cursor-not-allowed opacity-40"
-                              : "hover:bg-red-600 hover:text-white"
-                          }`}
-                        >
-                          <X size={11} strokeWidth={3} aria-hidden />
-                        </button>
-                      </span>
-                    );
-                  })}
+                <div className="flex gap-2">
+                  <Select
+                    id="type"
+                    value={type}
+                    onChange={(e) =>
+                      setType(e.target.value as DraftInput["type"])
+                    }
+                    required
+                    className="min-w-0 flex-1"
+                  >
+                    {visibleOptions.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </Select>
+                  <button
+                    type="button"
+                    onClick={() => setPickerOpen(true)}
+                    title={`Διαχείριση τύπων — ${visibleTypes.length} από ${DOC_TYPE_OPTIONS.length} ενεργοί`}
+                    aria-label="Διαχείριση τύπων"
+                    className="inline-flex h-12 shrink-0 items-center gap-1.5 rounded-lg border-2 border-ink-300 bg-white px-3 text-sm font-bold text-ink-900 transition-colors hover:border-ink-900 hover:bg-ink-900 hover:text-white"
+                  >
+                    <ListPlus size={16} strokeWidth={2.5} aria-hidden />
+                    <span className="hidden sm:inline">Διαχείριση</span>
+                    <span className="text-xs opacity-70 sm:font-normal">
+                      {visibleTypes.length}/{DOC_TYPE_OPTIONS.length}
+                    </span>
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setPickerOpen(true)}
-                  className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-bold text-brand-800 underline underline-offset-4 hover:text-brand-900"
-                >
-                  <ListPlus size={13} strokeWidth={2.5} aria-hidden />
-                  Διαχείριση τύπων… ({visibleTypes.length} από {DOC_TYPE_OPTIONS.length})
-                </button>
               </Field>
               <Field
                 label="Ημ. έκδοσης"

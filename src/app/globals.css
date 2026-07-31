@@ -75,6 +75,23 @@ h1, h2, h3, h4, h5, h6 {
   min-width: 720px;
   width: 100%;
 }
+/* All cells inside a data-table stay on a single line by default. This
+   overrides the global `td { overflow-wrap: anywhere }` rule that was
+   forcing dates ("28/07/2026") and short-form values to wrap onto
+   multiple lines on narrow viewports. If a specific cell genuinely
+   needs to wrap (e.g., a description), opt in with class="wrap-cell". */
+.data-table th,
+.data-table td {
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+.data-table td.wrap-cell,
+.data-table th.wrap-cell {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
 .data-table-wrap {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
