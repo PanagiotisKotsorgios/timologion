@@ -31,10 +31,13 @@ const variants: Record<Variant, string> = {
   danger: "bg-red-700 text-white hover:bg-red-800",
 };
 
+// Responsive sizing — smaller on phones, upgrades at sm/md so the same
+// button doesn't crowd a mobile viewport while still being tap-friendly.
+// Text stays readable (min-14px so no iOS zoom) but padding/height shrink.
 const sizes: Record<Size, string> = {
-  sm: "h-9 px-4 text-sm",
-  md: "h-12 px-5 text-base",
-  lg: "h-14 px-6 text-lg",
+  sm: "h-8 px-3 text-xs sm:h-9 sm:px-4 sm:text-sm",
+  md: "h-10 px-3.5 text-sm sm:h-11 sm:px-4 sm:text-base md:h-12 md:px-5",
+  lg: "h-11 px-4 text-base sm:h-12 sm:px-5 md:h-14 md:px-6 md:text-lg",
 };
 
 const iconSize: Record<Size, number> = { sm: 16, md: 18, lg: 20 };

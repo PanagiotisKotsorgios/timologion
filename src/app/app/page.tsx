@@ -281,21 +281,28 @@ export default async function DashboardPage() {
         </div>
 
         <Card className="min-w-0 overflow-hidden">
-          <CardBody className="p-6 md:p-7">
-            <p className="text-[11px] font-black uppercase tracking-widest text-ink-500">
+          <CardBody className="p-4 sm:p-6 md:p-7">
+            <p className="text-[10px] font-black uppercase tracking-widest text-ink-500 sm:text-[11px]">
               Πρόχειρα
             </p>
-            <p className="mt-3 text-5xl font-extrabold leading-none tracking-tightest text-ink-900 md:text-6xl">
+            {/* Fluid font-size so the giant number scales linearly with the
+                container width. 1.75rem at the smallest supported viewport,
+                capped at ~3.5rem on desktop. Prevents overflow on the
+                narrow 25%-column that this card lives in on tablets. */}
+            <p
+              className="mt-2 font-extrabold leading-none tracking-tightest text-ink-900 sm:mt-3"
+              style={{ fontSize: "clamp(2rem, 6vw, 3.75rem)" }}
+            >
               {draftCount}
             </p>
-            <p className="mt-2 text-sm font-medium text-ink-700 md:text-base">
+            <p className="mt-2 text-xs font-medium text-ink-700 sm:text-sm md:text-base">
               ανοιχτά προς επεξεργασία
             </p>
             <LinkButton
               href="/app/documents?status=draft"
               variant="secondary"
-              size="md"
-              className="mt-5 border-2 border-ink-900 text-ink-900 hover:bg-ink-900 hover:text-white"
+              size="sm"
+              className="mt-4 border-2 border-ink-900 text-ink-900 hover:bg-ink-900 hover:text-white sm:mt-5"
             >
               Άνοιξε τα πρόχειρα →
             </LinkButton>
@@ -487,20 +494,27 @@ function StatCard({
   const tokens = ACCENT_TOKENS[accent];
   return (
     <Card className="overflow-hidden">
-      <CardBody className="p-6 md:p-8">
+      <CardBody className="p-4 sm:p-6 md:p-8">
         <p
           className={
-            "text-[12px] font-black uppercase tracking-widest " + tokens.tileText
+            "text-[10px] font-black uppercase tracking-widest sm:text-[12px] " +
+            tokens.tileText
           }
         >
           {eyebrow}
         </p>
-        <div className="mt-4 flex items-end gap-3">
-          <p className="text-5xl font-extrabold leading-none tracking-tightest text-ink-900 md:text-6xl">
+        <div className="mt-3 flex items-end gap-3 sm:mt-4">
+          {/* Fluid size: 2rem at ~320px viewport, 3.75rem at ≥1280px.
+              Prevents the giant KPI number from overflowing its card on
+              small laptops where 4 KPIs sit side-by-side in a 4-col grid. */}
+          <p
+            className="font-extrabold leading-none tracking-tightest text-ink-900"
+            style={{ fontSize: "clamp(2rem, 6vw, 3.75rem)" }}
+          >
             {value}
           </p>
         </div>
-        <p className="mt-3 text-base font-medium text-ink-700 md:text-lg">
+        <p className="mt-2 text-sm font-medium text-ink-700 sm:mt-3 sm:text-base md:text-lg">
           {label}
         </p>
 
