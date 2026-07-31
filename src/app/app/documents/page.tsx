@@ -138,20 +138,20 @@ export default async function DocumentsPage({
         actions={
           <>
             <ExportMenu baseUrl="/api/export/documents" />
-            <LinkButton
+            <a
               href="/app/documents/statistics"
-              variant="secondary"
-              icon={BarChart3}
+              className="inline-flex h-10 items-center gap-2 rounded-lg border-2 border-sky-700 bg-sky-600 px-4 text-sm font-bold text-white shadow-sm transition-colors hover:bg-sky-700 sm:h-11 sm:text-base"
             >
+              <BarChart3 size={16} strokeWidth={2.5} aria-hidden />
               Στατιστικά
-            </LinkButton>
-            <LinkButton
+            </a>
+            <a
               href="/app/documents/repeating"
-              variant="secondary"
-              icon={Repeat}
+              className="inline-flex h-10 items-center gap-2 rounded-lg border-2 border-violet-700 bg-violet-600 px-4 text-sm font-bold text-white shadow-sm transition-colors hover:bg-violet-700 sm:h-11 sm:text-base"
             >
+              <Repeat size={16} strokeWidth={2.5} aria-hidden />
               Επαναλαμβανόμενα
-            </LinkButton>
+            </a>
             <LinkButton href="/app/documents/new" icon={FilePlus2}>
               Νέο Παραστατικό
             </LinkButton>

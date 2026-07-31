@@ -56,13 +56,13 @@ export default async function DocumentDetailPage({
         actions={
           <div className="flex flex-wrap gap-2">
             {isDraft && can(ctx.role, "document:write") && (
-              <LinkButton
+              <a
                 href={`/app/documents/${doc.id}/edit`}
-                variant="secondary"
-                icon={Pencil}
+                className="inline-flex h-10 items-center gap-2 rounded-lg border-2 border-amber-600 bg-amber-500 px-4 text-sm font-bold text-white shadow-sm transition-colors hover:bg-amber-600 sm:h-11 sm:text-base"
               >
+                <Pencil size={16} strokeWidth={2.5} aria-hidden />
                 Μεταβολή
-              </LinkButton>
+              </a>
             )}
             {/* Print + PDF live on the provider's side and only make sense
                 after the document has been transmitted to myDATA. Drafts
@@ -73,35 +73,39 @@ export default async function DocumentDetailPage({
                   href={`/app/documents/${doc.id}/pdf`}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex h-10 items-center gap-2 rounded-lg border-2 border-ink-300 bg-white px-4 text-sm font-semibold text-ink-900 hover:border-ink-500 hover:bg-ink-100 sm:h-11 sm:text-base"
+                  className="inline-flex h-10 items-center gap-2 rounded-lg border-2 border-brand-800 bg-brand-700 px-4 text-sm font-bold text-white shadow-sm transition-colors hover:bg-brand-800 sm:h-11 sm:text-base"
                 >
-                  <Printer size={16} aria-hidden />
+                  <Printer size={16} strokeWidth={2.5} aria-hidden />
                   Εκτύπωση
                 </a>
                 <a
                   href={`/app/documents/${doc.id}/pdf`}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex h-10 items-center gap-2 rounded-lg border-2 border-ink-300 bg-white px-4 text-sm font-semibold text-ink-900 hover:border-ink-500 hover:bg-ink-100 sm:h-11 sm:text-base"
+                  className="inline-flex h-10 items-center gap-2 rounded-lg border-2 border-indigo-700 bg-indigo-600 px-4 text-sm font-bold text-white shadow-sm transition-colors hover:bg-indigo-700 sm:h-11 sm:text-base"
                 >
-                  <FileDown size={16} aria-hidden />
+                  <FileDown size={16} strokeWidth={2.5} aria-hidden />
                   Λήψη PDF
                 </a>
               </>
             )}
             {mailtoHref && (
-              <LinkButton href={mailtoHref} variant="secondary" icon={Mail}>
+              <a
+                href={mailtoHref}
+                className="inline-flex h-10 items-center gap-2 rounded-lg border-2 border-cyan-700 bg-cyan-600 px-4 text-sm font-bold text-white shadow-sm transition-colors hover:bg-cyan-700 sm:h-11 sm:text-base"
+              >
+                <Mail size={16} strokeWidth={2.5} aria-hidden />
                 Αποστολή Email
-              </LinkButton>
+              </a>
             )}
             {doc.wrappInvoiceUrl && (
               <a
                 href={doc.wrappInvoiceUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex h-12 items-center gap-2 rounded-lg border-2 border-ink-300 bg-white px-5 text-base font-semibold text-ink-900 hover:border-ink-500 hover:bg-ink-100"
+                className="inline-flex h-10 items-center gap-2 rounded-lg border-2 border-teal-700 bg-teal-600 px-4 text-sm font-bold text-white shadow-sm transition-colors hover:bg-teal-700 sm:h-11 sm:text-base"
               >
-                <ExternalLink size={18} aria-hidden />
+                <ExternalLink size={16} strokeWidth={2.5} aria-hidden />
                 Δημόσιος σύνδεσμος
               </a>
             )}

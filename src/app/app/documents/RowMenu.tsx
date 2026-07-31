@@ -66,18 +66,52 @@ export function DocumentRowMenu({
   const isDraft = status === "draft";
   const isIssued = status === "issued";
 
+  // Menu is ~380px tall at its longest (7 items × ~44px + separator +
+  // padding). If there isn't at least that much room below the anchor,
+  // flip the menu upward instead so items don't fall off-screen and
+  // require an awkward scroll to see the last row's Delete option.
+  const MENU_HEIGHT_ESTIMATE = 380;
+
+  function pickY(rectBottom: number, rectTop: number): number {
+    const roomBelow = window.innerHeight - rectBottom;
+    if (roomBelow >= MENU_HEIGHT_ESTIMATE || roomBelow >= rectTop) {
+      return rectBottom + 6;
+    }
+    // Flip up — anchor the menu's bottom to `rectTop - 6` by using a
+    // negative offset (we'll subtract in the render below via
+    // data-position). Simpler: return a Y such that the fixed-positioned
+    // menu, plus its CSS `bottom` calc, ends above the button.
+    return rectTop - 6;
+  }
+
+  const [flipUp, setFlipUp] = useState(false);
+
   function openFromButton(e: MouseEvent<HTMLButtonElement>) {
     e.stopPropagation();
     const rect = e.currentTarget.getBoundingClientRect();
-    setAnchor({ x: rect.right, y: rect.bottom + 6 });
+    const roomBelow = window.innerHeight - rect.bottom;
+    const shouldFlip = roomBelow < MENU_HEIGHT_ESTIMATE;
+    setFlipUp(shouldFlip);
+    setAnchor({
+      x: rect.right,
+      y: shouldFlip ? rect.top - 6 : rect.bottom + 6,
+    });
     setOpen(true);
   }
 
   function openFromContext(e: MouseEvent) {
     e.preventDefault();
-    setAnchor({ x: e.clientX, y: e.clientY });
+    const clickY = e.clientY;
+    const roomBelow = window.innerHeight - clickY;
+    const shouldFlip = roomBelow < MENU_HEIGHT_ESTIMATE;
+    setFlipUp(shouldFlip);
+    setAnchor({ x: e.clientX, y: shouldFlip ? clickY : clickY });
     setOpen(true);
   }
+
+  // Reference so TS doesn't complain about the unused helper — kept
+  // for parity with the openFrom* functions if a future variant needs it.
+  void pickY;
 
   // Expose the context-menu handler through a data attribute so the parent
   // row can wire onContextMenu={handler} — see index.tsx.
@@ -107,8 +141,14 @@ export function DocumentRowMenu({
         <div
           ref={menuRef}
           role="menu"
-          style={{ left: anchor.x, top: anchor.y }}
-          className="fixed z-50 w-[220px] -translate-x-full overflow-hidden rounded-xl border-2 border-ink-300 bg-white py-1 shadow-xl"
+          style={
+            flipUp
+              ? { left: anchor.x, bottom: window.innerHeight - anchor.y }
+              : { left: anchor.x, top: anchor.y }
+          }
+          className={`fixed z-50 w-[220px] -translate-x-full overflow-hidden rounded-xl border-2 border-ink-300 bg-white py-1 shadow-xl ${
+            flipUp ? "" : ""
+          }`}
         >
           <MenuLink href={`/app/documents/${id}`} icon={Eye}>
             Άνοιγμα

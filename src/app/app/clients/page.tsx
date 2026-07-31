@@ -245,9 +245,9 @@ function FilterBar({
   return (
     <form
       method="get"
-      className="mb-5 grid gap-3 rounded-2xl border-2 border-ink-300 bg-white p-4 md:grid-cols-12"
+      className="mb-5 grid gap-3 rounded-2xl border-2 border-ink-300 bg-white p-4 sm:grid-cols-2 lg:grid-cols-12"
     >
-      <Field label="Αναζήτηση" htmlFor="q" className="md:col-span-5">
+      <Field label="Αναζήτηση" htmlFor="q" className="lg:col-span-5">
         <Input
           id="q"
           name="q"
@@ -255,14 +255,14 @@ function FilterBar({
           placeholder="Επωνυμία, τίτλος ή ΑΦΜ..."
         />
       </Field>
-      <Field label="Ταξινόμηση" htmlFor="sort" className="md:col-span-3">
+      <Field label="Ταξινόμηση" htmlFor="sort" className="lg:col-span-3">
         <Select id="sort" name="sort" defaultValue={sort}>
           <option value="name">Επωνυμία (Α–Ω)</option>
           <option value="recent">Πιο πρόσφατοι πρώτα</option>
           <option value="vat">ΑΦΜ (αύξουσα)</option>
         </Select>
       </Field>
-      <Field label="Πόλη" htmlFor="city" className="md:col-span-2">
+      <Field label="Πόλη" htmlFor="city" className="lg:col-span-2">
         <Select id="city" name="city" defaultValue={city}>
           <option value="">Όλες</option>
           {cities.map((c) => (
@@ -272,7 +272,7 @@ function FilterBar({
           ))}
         </Select>
       </Field>
-      <Field label="Ετικέτα" htmlFor="tag" className="md:col-span-2">
+      <Field label="Ετικέτα" htmlFor="tag" className="lg:col-span-2">
         <Select id="tag" name="tag" defaultValue={tag}>
           <option value="">Όλες</option>
           {tags.map((t) => (
@@ -282,14 +282,14 @@ function FilterBar({
           ))}
         </Select>
       </Field>
-      <div className="md:col-span-2 md:self-end">
+      <div className="sm:col-span-2 lg:col-span-2 lg:self-end">
         <Field label=" " htmlFor="submit">
           <Button type="submit" size="md" className="w-full" icon={Search}>
             Εφαρμογή
           </Button>
         </Field>
       </div>
-      <div className="md:col-span-12 -mt-1 flex items-center gap-3">
+      <div className="sm:col-span-2 lg:col-span-12 -mt-1 flex items-center gap-3">
         <label className="flex items-center gap-2 text-sm font-medium text-ink-900">
           <input
             type="checkbox"

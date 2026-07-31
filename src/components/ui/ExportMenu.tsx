@@ -1,18 +1,29 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Download, FileSpreadsheet, FileText, FileType2, ChevronDown } from "lucide-react";
+import {
+  Download,
+  FileSpreadsheet,
+  FileText,
+  FileType2,
+  ChevronDown,
+} from "lucide-react";
 
 /**
  * Small dropdown export button. Renders as "Εξαγωγή ▾" and opens a menu
- * with XLSX / CSV / PDF options that all point at the same backend URL
- * with different `?format=` query params. Used on list pages
- * (Πληρωμές, Παραστατικά, Πελάτες, Είδη, Έξοδα, Ραντεβού).
+ * with XLSX / PDF options that all point at the same backend URL with
+ * different `?format=` query params. Used on list pages (Πληρωμές,
+ * Παραστατικά, Πελάτες, Είδη, Έξοδα, Ραντεβού).
+ *
+ * CSV format is still supported by the backend (kept for legacy /
+ * automation callers), but no longer surfaced in the UI — XLSX covers
+ * the "give me a spreadsheet" case and PDF covers "give me something
+ * to print/email".
  */
 export function ExportMenu({
   baseUrl,
   extraQuery,
-  formats = ["xlsx", "csv", "pdf"],
+  formats = ["xlsx", "pdf"],
   label = "Εξαγωγή",
   align = "right",
 }: {
@@ -58,9 +69,9 @@ export function ExportMenu({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex h-11 items-center gap-2 rounded-lg border-2 border-ink-300 bg-white px-4 text-sm font-bold text-ink-900 transition-colors hover:border-ink-900 hover:bg-ink-900 hover:text-white focus:outline-none focus:ring-4 focus:ring-brand-500/20"
+        className="inline-flex h-10 items-center gap-2 rounded-lg border-2 border-emerald-700 bg-emerald-600 px-4 text-sm font-bold text-white shadow-sm transition-colors hover:bg-emerald-700 focus:outline-none focus:ring-4 focus:ring-emerald-500/30 sm:h-11 sm:text-base"
       >
-        <Download size={16} strokeWidth={2.25} />
+        <Download size={16} strokeWidth={2.5} />
         {label}
         <ChevronDown size={14} strokeWidth={2.5} className={open ? "rotate-180 transition-transform" : "transition-transform"} />
       </button>

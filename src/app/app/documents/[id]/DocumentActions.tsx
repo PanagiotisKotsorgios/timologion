@@ -3,7 +3,6 @@
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { FileMinus } from "lucide-react";
-import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { issueCreditNoteAction } from "../actions";
 
@@ -12,11 +11,8 @@ export function CreditNoteButton({ documentId }: { documentId: string }) {
   const toast = useToast();
   const [pending, start] = useTransition();
   return (
-    <Button
+    <button
       type="button"
-      variant="secondary"
-      size="md"
-      icon={FileMinus}
       disabled={pending}
       onClick={() =>
         start(async () => {
@@ -34,8 +30,10 @@ export function CreditNoteButton({ documentId }: { documentId: string }) {
           }
         })
       }
+      className="inline-flex h-10 items-center gap-2 rounded-lg border-2 border-red-700 bg-red-600 px-4 text-sm font-bold text-white shadow-sm transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60 sm:h-11 sm:text-base"
     >
+      <FileMinus size={16} strokeWidth={2.5} aria-hidden />
       {pending ? "Δημιουργία..." : "Έκδοση πιστωτικού"}
-    </Button>
+    </button>
   );
 }
