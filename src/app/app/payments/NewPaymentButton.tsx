@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { Plus, X, Wallet } from "lucide-react";
-import { Button } from "@/components/ui/Button";
 import { PaymentForm } from "./PaymentForm";
 
 /**
@@ -29,14 +28,14 @@ export function NewPaymentButton() {
 
   return (
     <>
-      <Button
+      <button
         type="button"
         onClick={() => setOpen(true)}
-        icon={Plus}
-        size="md"
+        className="inline-flex h-10 items-center gap-2 rounded-lg border-2 border-emerald-700 bg-emerald-600 px-4 text-sm font-bold text-white shadow-sm transition-colors hover:bg-emerald-700 sm:h-11 sm:text-base"
       >
+        <Plus size={16} strokeWidth={2.5} aria-hidden />
         Νέα είσπραξη
-      </Button>
+      </button>
 
       {open && (
         <div

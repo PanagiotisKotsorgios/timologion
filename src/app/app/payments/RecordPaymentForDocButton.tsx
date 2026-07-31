@@ -50,10 +50,11 @@ export function RecordPaymentForDocButton({
       <button
         type="button"
         onClick={() => setOpen(true)}
+        title="Καταχώρηση είσπραξης με συγκεκριμένη μέθοδο / ημερομηνία"
         className={
           compact
-            ? "inline-flex items-center gap-1 rounded-full border-2 border-ink-900 bg-white px-2.5 py-0.5 text-xs font-bold text-ink-900 transition-colors hover:bg-ink-900 hover:text-white"
-            : "inline-flex items-center gap-1.5 rounded-full border-2 border-ink-900 bg-white px-3 py-1.5 text-sm font-bold text-ink-900 transition-colors hover:bg-ink-900 hover:text-white"
+            ? "inline-flex items-center gap-1 rounded-full border-2 border-brand-800 bg-brand-700 px-2.5 py-0.5 text-xs font-bold text-white shadow-sm transition-colors hover:bg-brand-800"
+            : "inline-flex items-center gap-1.5 rounded-full border-2 border-brand-800 bg-brand-700 px-3 py-1.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-brand-800"
         }
       >
         <Plus size={compact ? 12 : 14} strokeWidth={2.5} aria-hidden />

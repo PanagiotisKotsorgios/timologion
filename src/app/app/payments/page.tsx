@@ -577,14 +577,14 @@ export default async function PaymentsPage({
                       <td className="text-right">
                         <form action={deletePaymentAction}>
                           <input type="hidden" name="id" value={p.id} />
-                          <Button
+                          <button
                             type="submit"
-                            variant="ghost"
-                            size="sm"
-                            icon={Trash2}
+                            title="Διαγραφή είσπραξης"
+                            aria-label="Διαγραφή είσπραξης"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border-2 border-red-300 bg-red-50 text-red-700 shadow-sm transition-colors hover:border-red-700 hover:bg-red-600 hover:text-white"
                           >
-                            <span className="sr-only">Διαγραφή</span>
-                          </Button>
+                            <Trash2 size={14} strokeWidth={2.5} aria-hidden />
+                          </button>
                         </form>
                       </td>
                     </tr>
