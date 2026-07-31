@@ -12,11 +12,13 @@ import {
   Send,
   Eye,
   ExternalLink,
+  ListPlus,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Select, Textarea } from "@/components/ui/Input";
 import { HelpTip } from "@/components/ui/HelpTip";
 import { AutoTextarea } from "@/components/ui/AutoTextarea";
+import { DocTypePickerModal } from "./DocTypePickerModal";
 import { Alert } from "@/components/ui/Alert";
 import { useToast } from "@/components/ui/Toast";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
@@ -132,6 +134,23 @@ const DOC_TYPE_OPTIONS: { value: DraftInput["type"]; label: string }[] = [
   { value: "order", label: "Παραγγελία" },
 ];
 
+/**
+ * The 6 basic types that appear in the dropdown by default. Everything
+ * else is hidden behind "Διαχείριση τύπων..." so the dropdown stays
+ * readable for the typical small business (which only uses 2-3 types).
+ * User can enable additional types via the DocTypePicker modal — the
+ * choice is persisted per-browser in localStorage under
+ * "timologion.visibleDocTypes".
+ */
+const DEFAULT_VISIBLE_DOC_TYPES: DraftInput["type"][] = [
+  "invoice",
+  "service_invoice",
+  "retail_receipt",
+  "service_receipt",
+  "credit_note",
+  "delivery_note",
+];
+
 const FOREIGN_TYPES = new Set<DraftInput["type"]>([
   "eu_sale_invoice",
   "third_country_sale_invoice",
@@ -233,6 +252,46 @@ export function DraftEditor({
   const toast = useToast();
   const [type, setType] = useState<DraftInput["type"]>(
     editing?.type ?? initialType ?? "invoice",
+  );
+
+  // Which doc types appear in the dropdown. Persisted per-browser in
+  // localStorage — defaults to the 6 basic ones so the dropdown stays
+  // readable for typical users. Managed via DocTypePickerModal below.
+  const [visibleTypes, setVisibleTypes] = useState<DraftInput["type"][]>(
+    DEFAULT_VISIBLE_DOC_TYPES,
+  );
+  const [pickerOpen, setPickerOpen] = useState(false);
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem("timologion.visibleDocTypes");
+      if (raw) {
+        const parsed = JSON.parse(raw) as DraftInput["type"][];
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setVisibleTypes(parsed);
+        }
+      }
+    } catch {
+      // localStorage disabled / SSR — stick with defaults.
+    }
+  }, []);
+  function saveVisibleTypes(next: DraftInput["type"][]) {
+    setVisibleTypes(next);
+    try {
+      window.localStorage.setItem(
+        "timologion.visibleDocTypes",
+        JSON.stringify(next),
+      );
+    } catch {
+      // ignore — the in-memory update still applies for this session.
+    }
+  }
+  const visibleTypeSet = useMemo(() => new Set(visibleTypes), [visibleTypes]);
+  const visibleOptions = useMemo(
+    () =>
+      DOC_TYPE_OPTIONS.filter(
+        (o) => visibleTypeSet.has(o.value) || o.value === type,
+      ),
+    [visibleTypeSet, type],
   );
   // Local mirrors so the "Νέος πελάτης" / "Νέο είδος" quick-add modals
   // can push freshly created rows into the pickers without a route
@@ -521,12 +580,20 @@ export function DraftEditor({
                   onChange={(e) => setType(e.target.value as DraftInput["type"])}
                   required
                 >
-                  {DOC_TYPE_OPTIONS.map((o) => (
+                  {visibleOptions.map((o) => (
                     <option key={o.value} value={o.value}>
                       {o.label}
                     </option>
                   ))}
                 </Select>
+                <button
+                  type="button"
+                  onClick={() => setPickerOpen(true)}
+                  className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-bold text-brand-800 underline underline-offset-4 hover:text-brand-900"
+                >
+                  <ListPlus size={13} strokeWidth={2.5} aria-hidden />
+                  Διαχείριση τύπων… ({visibleTypes.length} από {DOC_TYPE_OPTIONS.length})
+                </button>
               </Field>
               <Field
                 label="Ημ. έκδοσης"
@@ -1084,6 +1151,16 @@ export function DraftEditor({
             setCashLimitModal(false);
             submit("issue");
           }}
+        />
+      )}
+
+      {pickerOpen && (
+        <DocTypePickerModal
+          allOptions={DOC_TYPE_OPTIONS}
+          selected={visibleTypes}
+          currentType={type}
+          onSaved={saveVisibleTypes}
+          onClose={() => setPickerOpen(false)}
         />
       )}
     </div>
