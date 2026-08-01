@@ -12,7 +12,6 @@ import {
   Send,
   Eye,
   ExternalLink,
-  ListPlus,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Select, Textarea } from "@/components/ui/Input";
@@ -593,13 +592,13 @@ export function DraftEditor({
                   <button
                     type="button"
                     onClick={() => setPickerOpen(true)}
-                    title={`Διαχείριση τύπων — ${visibleTypes.length} από ${DOC_TYPE_OPTIONS.length} ενεργοί`}
-                    aria-label="Διαχείριση τύπων"
-                    className="inline-flex h-12 shrink-0 items-center gap-1.5 rounded-lg border-2 border-ink-300 bg-white px-3 text-sm font-bold text-ink-900 transition-colors hover:border-ink-900 hover:bg-ink-900 hover:text-white"
+                    title={`Πρόσθεσε ή αφαίρεσε τύπους από το dropdown — τώρα βλέπεις ${visibleTypes.length} από ${DOC_TYPE_OPTIONS.length}`}
+                    aria-label="Προσθήκη ή αφαίρεση τύπων παραστατικού"
+                    className="inline-flex h-12 shrink-0 items-center gap-1.5 rounded-lg border-2 border-emerald-700 bg-emerald-600 px-3 text-sm font-bold text-white shadow-sm transition-colors hover:bg-emerald-700"
                   >
-                    <ListPlus size={16} strokeWidth={2.5} aria-hidden />
-                    <span className="hidden sm:inline">Διαχείριση</span>
-                    <span className="text-xs opacity-70 sm:font-normal">
+                    <Plus size={16} strokeWidth={3} aria-hidden />
+                    <span className="hidden sm:inline">Προσθήκη / αφαίρεση</span>
+                    <span className="text-[11px] font-semibold opacity-90">
                       {visibleTypes.length}/{DOC_TYPE_OPTIONS.length}
                     </span>
                   </button>

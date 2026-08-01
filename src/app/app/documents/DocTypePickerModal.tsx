@@ -168,7 +168,7 @@ export function DocTypePickerModal({
                             ? "Ο τρέχων επιλεγμένος τύπος δεν μπορεί να αφαιρεθεί"
                             : "Αφαίρεση"
                         }
-                        className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md border-2 border-ink-300 bg-white px-2.5 text-xs font-bold text-ink-700 transition-colors hover:border-red-500 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-ink-300 disabled:hover:bg-white disabled:hover:text-ink-700"
+                        className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md border-2 border-red-700 bg-red-600 px-2.5 text-xs font-bold text-white shadow-sm transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:border-ink-300 disabled:bg-ink-100 disabled:text-ink-500 disabled:shadow-none"
                       >
                         <Minus size={12} strokeWidth={3} aria-hidden />
                         Αφαίρεση

@@ -16,6 +16,7 @@ import { RowActions } from "./RowActions";
 import { ClickableRow } from "../ClickableRow";
 import { Pagination, resolvePageSize } from "@/components/ui/Pagination";
 import { ExportMenu } from "@/components/ui/ExportMenu";
+import { DocTypeFilterSelect } from "./DocTypeFilterSelect";
 
 type Sort = "recent" | "oldest" | "amount_desc" | "amount_asc";
 
@@ -29,18 +30,6 @@ type SearchParams = {
   page?: string;
   size?: string;
 };
-
-const DOC_TYPES: DocumentType[] = [
-  "invoice",
-  "service_invoice",
-  "retail_receipt",
-  "service_receipt",
-  "credit_note",
-  "proforma",
-  "quote",
-  "order",
-  "delivery_note",
-];
 
 export default async function DocumentsPage({
   searchParams,
@@ -363,14 +352,7 @@ function FilterBar({
         />
       </Field>
       <Field label="Τύπος" htmlFor="type" className="lg:col-span-4">
-        <Select id="type" name="type" defaultValue={type ?? ""}>
-          <option value="">Όλοι οι τύποι</option>
-          {DOC_TYPES.map((d) => (
-            <option key={d} value={d}>
-              {t.documents.types[d]}
-            </option>
-          ))}
-        </Select>
+        <DocTypeFilterSelect currentValue={type} />
       </Field>
       <Field label="Κατάσταση" htmlFor="status" className="lg:col-span-2">
         <Select id="status" name="status" defaultValue={status ?? ""}>
