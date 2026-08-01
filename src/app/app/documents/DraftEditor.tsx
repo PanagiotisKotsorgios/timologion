@@ -573,36 +573,36 @@ export function DraftEditor({
                 required
                 help="Ο κωδικός myDATA καθορίζει τι δηλώνεται στην ΑΑΔΕ. Για πωλήσεις με ΑΦΜ → Τιμολόγιο. Για λιανική/ιδιώτες → Απόδειξη. Για ακύρωση παλιότερου → Πιστωτικό."
               >
-                <div className="flex gap-2">
-                  <Select
-                    id="type"
-                    value={type}
-                    onChange={(e) =>
-                      setType(e.target.value as DraftInput["type"])
-                    }
-                    required
-                    className="min-w-0 flex-1"
-                  >
-                    {visibleOptions.map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </Select>
-                  <button
-                    type="button"
-                    onClick={() => setPickerOpen(true)}
-                    title={`Πρόσθεσε ή αφαίρεσε τύπους από το dropdown — τώρα βλέπεις ${visibleTypes.length} από ${DOC_TYPE_OPTIONS.length}`}
-                    aria-label="Προσθήκη ή αφαίρεση τύπων παραστατικού"
-                    className="inline-flex h-12 shrink-0 items-center gap-1.5 rounded-lg border-2 border-emerald-700 bg-emerald-600 px-3 text-sm font-bold text-white shadow-sm transition-colors hover:bg-emerald-700"
-                  >
-                    <Plus size={16} strokeWidth={3} aria-hidden />
-                    <span className="hidden sm:inline">Προσθήκη / αφαίρεση</span>
-                    <span className="text-[11px] font-semibold opacity-90">
-                      {visibleTypes.length}/{DOC_TYPE_OPTIONS.length}
-                    </span>
-                  </button>
-                </div>
+                <Select
+                  id="type"
+                  value={type}
+                  onChange={(e) =>
+                    setType(e.target.value as DraftInput["type"])
+                  }
+                  required
+                >
+                  {visibleOptions.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </Select>
+                {/* Placed BELOW the Select (not beside) so it never squeezes
+                    the dropdown on narrow filter grids — dropdown always
+                    gets the full field width. */}
+                <button
+                  type="button"
+                  onClick={() => setPickerOpen(true)}
+                  title={`Πρόσθεσε ή αφαίρεσε τύπους από το dropdown — τώρα βλέπεις ${visibleTypes.length} από ${DOC_TYPE_OPTIONS.length}`}
+                  aria-label="Προσθήκη ή αφαίρεση τύπων παραστατικού"
+                  className="mt-2 inline-flex h-9 items-center gap-1.5 self-start rounded-lg border-2 border-emerald-700 bg-emerald-600 px-3 text-xs font-bold text-white shadow-sm transition-colors hover:bg-emerald-700"
+                >
+                  <Plus size={14} strokeWidth={3} aria-hidden />
+                  Προσθήκη / αφαίρεση τύπων
+                  <span className="rounded-full bg-white/20 px-1.5 py-0.5 text-[10px] font-bold">
+                    {visibleTypes.length}/{DOC_TYPE_OPTIONS.length}
+                  </span>
+                </button>
               </Field>
               <Field
                 label="Ημ. έκδοσης"
