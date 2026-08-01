@@ -200,9 +200,13 @@ function FilterBar({
   return (
     <form
       method="get"
-      className="mb-5 grid gap-3 rounded-2xl border-2 border-ink-300 bg-white p-4 md:grid-cols-12"
+      className="mb-5 grid gap-3 rounded-2xl border-2 border-ink-300 bg-white p-4 sm:grid-cols-2 lg:grid-cols-12"
     >
-      <Field label="Αναζήτηση" htmlFor="q" className="md:col-span-4">
+      <Field
+        label="Αναζήτηση"
+        htmlFor="q"
+        className="sm:col-span-2 lg:col-span-4"
+      >
         <Input
           id="q"
           name="q"
@@ -210,14 +214,14 @@ function FilterBar({
           placeholder="Ονομασία ή κωδικός..."
         />
       </Field>
-      <Field label="Τύπος" htmlFor="kind" className="md:col-span-2">
+      <Field label="Τύπος" htmlFor="kind" className="lg:col-span-2">
         <Select id="kind" name="kind" defaultValue={kind ?? ""}>
           <option value="">Όλα</option>
           <option value="service">Υπηρεσίες</option>
           <option value="product">Προϊόντα</option>
         </Select>
       </Field>
-      <Field label="ΦΠΑ" htmlFor="vat" className="md:col-span-2">
+      <Field label="ΦΠΑ" htmlFor="vat" className="lg:col-span-2">
         <Select id="vat" name="vat" defaultValue={vat}>
           <option value="">Όλα</option>
           <option value="0">0%</option>
@@ -226,7 +230,11 @@ function FilterBar({
           <option value="24">24%</option>
         </Select>
       </Field>
-      <Field label="Ταξινόμηση" htmlFor="sort" className="md:col-span-2">
+      <Field
+        label="Ταξινόμηση"
+        htmlFor="sort"
+        className="sm:col-span-2 lg:col-span-2"
+      >
         <Select id="sort" name="sort" defaultValue={sort}>
           <option value="name">Ονομασία (Α–Ω)</option>
           <option value="recent">Πιο πρόσφατα</option>
@@ -234,7 +242,7 @@ function FilterBar({
           <option value="price_asc">Τιμή ↑</option>
         </Select>
       </Field>
-      <div className="md:col-span-2 md:self-end">
+      <div className="sm:col-span-2 lg:col-span-2 lg:self-end">
         <Field label=" " htmlFor="submit">
           <Button type="submit" size="md" className="w-full" icon={Search}>
             Εφαρμογή

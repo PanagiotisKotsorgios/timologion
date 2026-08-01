@@ -331,9 +331,9 @@ function FilterBar({
   return (
     <form
       method="get"
-      className="mb-5 grid gap-3 rounded-2xl border-2 border-ink-300 bg-white p-4 md:grid-cols-12"
+      className="mb-5 grid gap-3 rounded-2xl border-2 border-ink-300 bg-white p-4 sm:grid-cols-2 lg:grid-cols-12"
     >
-      <Field label="Αναζήτηση" htmlFor="q" className="md:col-span-4">
+      <Field label="Αναζήτηση" htmlFor="q" className="lg:col-span-4">
         <Input
           id="q"
           name="q"
@@ -341,7 +341,7 @@ function FilterBar({
           placeholder="Προμηθευτής, κατηγορία, παραστατικό..."
         />
       </Field>
-      <Field label="Προμηθευτής" htmlFor="supplier" className="md:col-span-3">
+      <Field label="Προμηθευτής" htmlFor="supplier" className="lg:col-span-3">
         <Select id="supplier" name="supplier" defaultValue={supplier}>
           <option value="">Όλοι</option>
           {suppliers.map((s) => (
@@ -351,7 +351,7 @@ function FilterBar({
           ))}
         </Select>
       </Field>
-      <Field label="Πληρωμή" htmlFor="status" className="md:col-span-2">
+      <Field label="Πληρωμή" htmlFor="status" className="lg:col-span-2">
         <Select id="status" name="status" defaultValue={status ?? ""}>
           <option value="">Όλα</option>
           <option value="unpaid">Ανεξόφλητα</option>
@@ -359,7 +359,7 @@ function FilterBar({
           <option value="paid">Εξοφλημένα</option>
         </Select>
       </Field>
-      <Field label="Τύπος myDATA" htmlFor="mydata" className="md:col-span-3">
+      <Field label="Τύπος myDATA" htmlFor="mydata" className="lg:col-span-3">
         <Select id="mydata" name="mydata" defaultValue={myDataFilter}>
           <option value="">Όλοι</option>
           {EXPENSE_MYDATA_TYPES.map((t) => (
@@ -369,13 +369,13 @@ function FilterBar({
           ))}
         </Select>
       </Field>
-      <Field label="Από" htmlFor="from" className="md:col-span-2">
+      <Field label="Από" htmlFor="from" className="lg:col-span-2">
         <Input id="from" name="from" type="date" defaultValue={from} />
       </Field>
-      <Field label="Έως" htmlFor="to" className="md:col-span-2">
+      <Field label="Έως" htmlFor="to" className="lg:col-span-2">
         <Input id="to" name="to" type="date" defaultValue={to} />
       </Field>
-      <div className="md:col-span-3 md:self-end">
+      <div className="sm:col-span-2 lg:col-span-3 lg:self-end">
         <Field label=" " htmlFor="submit">
           <Button type="submit" size="md" className="w-full" icon={Search}>
             Εφαρμογή φίλτρων

@@ -202,9 +202,9 @@ export default async function StatisticsPage({
 
       <form
         method="get"
-        className="mb-6 grid gap-3 rounded-2xl border-2 border-ink-300 bg-white p-4 md:grid-cols-12"
+        className="mb-6 grid gap-3 rounded-2xl border-2 border-ink-300 bg-white p-4 sm:grid-cols-2 lg:grid-cols-12"
       >
-        <Field label="Έτος" htmlFor="year" className="md:col-span-3">
+        <Field label="Έτος" htmlFor="year" className="lg:col-span-3">
           <Select id="year" name="year" defaultValue={String(selectedYear)}>
             {availableYears.map((y) => (
               <option key={y} value={y}>
@@ -213,7 +213,7 @@ export default async function StatisticsPage({
             ))}
           </Select>
         </Field>
-        <Field label="Τύπος παραστατικού" htmlFor="type" className="md:col-span-6">
+        <Field label="Τύπος παραστατικού" htmlFor="type" className="lg:col-span-6">
           <Select id="type" name="type" defaultValue={typeFilter ?? ""}>
             <option value="">Όλοι οι τύποι</option>
             {DOC_TYPES.map((d) => (
@@ -223,7 +223,7 @@ export default async function StatisticsPage({
             ))}
           </Select>
         </Field>
-        <div className="md:col-span-3 md:self-end">
+        <div className="sm:col-span-2 lg:col-span-3 lg:self-end">
           <Field label=" " htmlFor="submit">
             <Button type="submit" size="md" className="w-full" icon={Filter}>
               Εφαρμογή

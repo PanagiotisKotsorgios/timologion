@@ -131,8 +131,8 @@ export function NotificationsClient({
 
   return (
     <>
-      <div className="mb-6 grid gap-3 rounded-2xl border-2 border-ink-300 bg-white p-4 md:grid-cols-12">
-        <Field label="Αναζήτηση" htmlFor="q" className="md:col-span-4">
+      <div className="mb-6 grid gap-3 rounded-2xl border-2 border-ink-300 bg-white p-4 sm:grid-cols-2 lg:grid-cols-12">
+        <Field label="Αναζήτηση" htmlFor="q" className="lg:col-span-4">
           <Input
             id="q"
             value={q}
@@ -140,7 +140,7 @@ export function NotificationsClient({
             placeholder="Τίτλος ή περιεχόμενο..."
           />
         </Field>
-        <Field label="Είδος" htmlFor="tone" className="md:col-span-3">
+        <Field label="Είδος" htmlFor="tone" className="lg:col-span-3">
           <Select
             id="tone"
             value={tone}
@@ -154,7 +154,7 @@ export function NotificationsClient({
             <option value="success">Επιτυχία</option>
           </Select>
         </Field>
-        <Field label="Κατάσταση" htmlFor="status" className="md:col-span-2">
+        <Field label="Κατάσταση" htmlFor="status" className="lg:col-span-2">
           <Select
             id="status"
             value={status}
@@ -167,7 +167,7 @@ export function NotificationsClient({
             <option value="read">Αναγνωσμένες</option>
           </Select>
         </Field>
-        <Field label="Ταξινόμηση" htmlFor="sort" className="md:col-span-3">
+        <Field label="Ταξινόμηση" htmlFor="sort" className="lg:col-span-3">
           <Select
             id="sort"
             value={sort}

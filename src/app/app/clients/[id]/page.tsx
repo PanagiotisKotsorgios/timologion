@@ -75,11 +75,11 @@ export default async function ClientDetailPage({
           </CardBody>
         </Card>
       ) : (
-        <div className="grid gap-8 md:grid-cols-3">
-          <div className="md:col-span-2">
+        <div className="grid gap-6 md:gap-8 xl:grid-cols-3">
+          <div className="min-w-0 xl:col-span-2">
             <Card>
               <CardHeader title="Στοιχεία" />
-              <CardBody className="grid gap-6 p-6 sm:grid-cols-2 md:p-8">
+              <CardBody className="grid gap-4 p-5 sm:grid-cols-2 sm:gap-6 sm:p-6 md:p-8">
                 <Detail label="Νόμιμη επωνυμία" value={client.legalName} />
                 <Detail label="Διακριτικός τίτλος" value={client.tradeName} />
                 <Detail label="ΑΦΜ" value={client.vatNumber} mono />

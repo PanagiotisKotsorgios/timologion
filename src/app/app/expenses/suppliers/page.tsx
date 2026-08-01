@@ -92,9 +92,9 @@ export default async function SuppliersPage({
 
       <form
         method="get"
-        className="mb-5 grid gap-3 rounded-2xl border-2 border-ink-300 bg-white p-4 md:grid-cols-12"
+        className="mb-5 grid gap-3 rounded-2xl border-2 border-ink-300 bg-white p-4 sm:grid-cols-2 lg:grid-cols-12"
       >
-        <Field label="Αναζήτηση" htmlFor="q" className="md:col-span-9">
+        <Field label="Αναζήτηση" htmlFor="q" className="lg:col-span-9">
           <Input
             id="q"
             name="q"
@@ -102,7 +102,7 @@ export default async function SuppliersPage({
             placeholder="Επωνυμία, τίτλος ή ΑΦΜ..."
           />
         </Field>
-        <div className="md:col-span-3 md:self-end">
+        <div className="sm:col-span-2 lg:col-span-3 lg:self-end">
           <Field label=" " htmlFor="submit">
             <Button type="submit" size="md" className="w-full" icon={Search}>
               Εφαρμογή
