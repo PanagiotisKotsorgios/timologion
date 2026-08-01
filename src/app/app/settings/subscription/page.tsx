@@ -10,6 +10,7 @@ import { money, date } from "@/lib/format";
 import { checkDocumentQuota } from "@/lib/quota";
 import { ChangePlanForm } from "./ChangePlanForm";
 import { CancelButton } from "./CancelButton";
+import { findTierByName, formatEur } from "@/lib/pricing";
 
 export const dynamic = "force-dynamic";
 
@@ -65,13 +66,13 @@ export default async function SubscriptionSettingsPage() {
         </Alert>
       ) : (
         <Card className="mb-6 overflow-hidden">
-          <div className="bg-brand-900 px-8 py-6 text-white">
+          <div className="bg-brand-900 px-6 py-5 text-white sm:px-8 sm:py-6">
             <div className="flex flex-wrap items-start justify-between gap-6">
-              <div>
+              <div className="min-w-0">
                 <p className="text-[11px] font-black uppercase tracking-widest text-brand-200">
                   Ενεργό πακέτο
                 </p>
-                <p className="mt-2 text-3xl font-extrabold md:text-4xl">
+                <p className="mt-2 text-2xl font-extrabold sm:text-3xl md:text-4xl">
                   {subscription.plan.name}
                 </p>
                 {subscription.plan.description && (
@@ -81,7 +82,7 @@ export default async function SubscriptionSettingsPage() {
                 )}
               </div>
               <div className="text-right">
-                <p className="text-4xl font-extrabold">
+                <p className="text-3xl font-extrabold sm:text-4xl">
                   {money(activePrice)}
                 </p>
                 <p className="mt-1 text-sm text-brand-200">
@@ -89,6 +90,39 @@ export default async function SubscriptionSettingsPage() {
                 </p>
               </div>
             </div>
+
+            {/* Retail price breakdown pulled from the shared catalog. */}
+            {(() => {
+              const tier = findTierByName(subscription.plan.name);
+              if (!tier) return null;
+              return (
+                <div className="mt-4 rounded-xl border border-white/15 bg-white/5 p-3 text-[12px] text-white/85">
+                  <p className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-white/60">
+                    Πώς προκύπτει η τιμή
+                  </p>
+                  <ul className="mt-1.5 space-y-0.5">
+                    <li className="flex items-baseline justify-between gap-3">
+                      <span>Τιμή Wrapp (με ΦΠΑ)</span>
+                      <span className="tabular-nums font-semibold">
+                        {formatEur(tier.wrappPriceInclVat)}
+                      </span>
+                    </li>
+                    <li className="flex items-baseline justify-between gap-3">
+                      <span>Markup timologion</span>
+                      <span className="tabular-nums font-semibold">
+                        +{formatEur(tier.markupInclVat)}
+                      </span>
+                    </li>
+                    <li className="mt-1 flex items-baseline justify-between gap-3 border-t border-white/20 pt-1 font-black">
+                      <span>Τελική τιμή λιανικής</span>
+                      <span className="tabular-nums">
+                        {formatEur(tier.retailInclVat)}
+                      </span>
+                    </li>
+                  </ul>
+                </div>
+              );
+            })()}
           </div>
           <CardBody className="space-y-4">
             <Row

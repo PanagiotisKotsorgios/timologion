@@ -26,7 +26,7 @@ import { PricingSwitcher } from "./PricingSwitcher";
 export const metadata: Metadata = pageMetadata({
   title: "Κόστος & Πακέτα Ηλεκτρονικής Τιμολόγησης",
   description:
-    "Απλή, διάφανη τιμολόγηση για το Τιμολόγιον. Πακέτα Basic, Growth, Scale, Pro, Enterprise και Corporate με ηλεκτρονική τιμολόγηση myDATA. Από 35,96€/έτος. Ξεκίνα δωρεάν, χωρίς κάρτα.",
+    "Απλή, διάφανη τιμολόγηση για το Τιμολόγιον. Πακέτα Basic, Standard, Business, Pro, Enterprise και Corporate με ηλεκτρονική τιμολόγηση myDATA. Από 40,96€/έτος. Ξεκίνα δωρεάν, χωρίς κάρτα.",
   path: "/pricing",
   keywords: [
     "τιμές τιμολόγηση",
@@ -139,7 +139,7 @@ const FAQ = [
   },
   {
     q: "Ποιο πακέτο μου ταιριάζει;",
-    a: "Basic (35,96€/έτος) για freelancers με ~120 παραστατικά τον μήνα. Growth (122,76€/έτος) για μικρές επιχειρήσεις έως 500 παραστατικά μηνιαίως — προτεινόμενο. Scale (209,56€/έτος) για ώριμες επιχειρήσεις με ομάδα και έως 1.500 παραστατικά μηνιαίως. Για μεγαλύτερους όγκους δες Pro, Enterprise, Corporate.",
+    a: "Basic (40,96€/έτος) για freelancers με ~120 παραστατικά τον μήνα. Standard (132,76€/έτος) για μικρές επιχειρήσεις έως 500 παραστατικά μηνιαίως — προτεινόμενο. Business (224,56€/έτος) για ώριμες επιχειρήσεις με ομάδα και έως 1.500 παραστατικά μηνιαίως. Για μεγαλύτερους όγκους δες Pro, Enterprise, Corporate.",
   },
   {
     q: "Είναι μηνιαία ή ετήσια χρέωση;",
@@ -242,11 +242,11 @@ export default function PricingPage() {
                   </th>
                   <ThHead name="Basic" />
                   <ThHead
-                    name="Growth"
+                    name="Standard"
                     featured
                     badge={{ icon: Star, label: "Προτεινόμενο" }}
                   />
-                  <ThHead name="Scale" />
+                  <ThHead name="Business" />
                 </tr>
               </thead>
               <tbody>

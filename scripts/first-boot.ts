@@ -35,6 +35,9 @@ const ARGON2 = {
  * B2G (Business-to-Government) is a +€37.20/year add-on quoted separately by
  * the provider and is not part of any base tier.
  */
+// Retail prices (Wrapp partner price + timologion markup, incl. Greek 24% VAT).
+// Kept in sync with src/lib/pricing.ts — this file seeds the DB, the other
+// file is what the UI reads. Both must match on `code`.
 const DEFAULT_PLANS: Array<{
   code: string;
   name: string;
@@ -48,9 +51,9 @@ const DEFAULT_PLANS: Array<{
   {
     code: "basic",
     name: "Basic",
-    description: "Χαμηλού όγκου έκδοση παραστατικών — ιδανικό σημείο εκκίνησης.",
+    description: "Ιδανικό σημείο εκκίνησης — freelancers και μικρές επιχειρήσεις.",
     priceMonthly: 0,
-    priceYearly: 35.96,
+    priceYearly: 40.96, // 35,96 Wrapp + 5,00 markup
     includedDocsMonth: 1500,
     features:
       "1.500 παραστατικά/έτος · Ηλεκτρονική τιμολόγηση myDATA · Πελατολόγιο & αναζήτηση ΑΦΜ · Email υποστήριξη",
@@ -58,10 +61,10 @@ const DEFAULT_PLANS: Array<{
   },
   {
     code: "growth",
-    name: "Growth",
+    name: "Standard",
     description: "Για μικρές επιχειρήσεις με σταθερή ροή εκδόσεων.",
     priceMonthly: 0,
-    priceYearly: 122.76,
+    priceYearly: 132.76, // 122,76 Wrapp + 10,00 markup
     includedDocsMonth: 6000,
     features:
       "6.000 παραστατικά/έτος · Επαναλαμβανόμενα παραστατικά · Πληρωμές & εισπράξεις · Προηγμένες αναφορές · Email υποστήριξη",
@@ -69,10 +72,10 @@ const DEFAULT_PLANS: Array<{
   },
   {
     code: "scale",
-    name: "Scale",
+    name: "Business",
     description: "Για ώριμες επιχειρήσεις με ομάδα και μεγαλύτερο όγκο.",
     priceMonthly: 0,
-    priceYearly: 209.56,
+    priceYearly: 224.56, // 209,56 Wrapp + 15,00 markup
     includedDocsMonth: 18000,
     features:
       "18.000 παραστατικά/έτος · POS & CRM · Απόθεμα ειδών · Έως 5 χρήστες με ρόλους · Υποστήριξη προτεραιότητας",
@@ -83,10 +86,10 @@ const DEFAULT_PLANS: Array<{
     name: "Pro",
     description: "Για επιχειρήσεις υψηλού όγκου συναλλαγών.",
     priceMonthly: 0,
-    priceYearly: 296.36,
+    priceYearly: 316.36, // 296,36 Wrapp + 20,00 markup
     includedDocsMonth: 200000,
     features:
-      "200.000 παραστατικά/έτος · Απεριόριστοι χρήστες · Όλες οι λειτουργίες Scale · Υποστήριξη προτεραιότητας",
+      "200.000 παραστατικά/έτος · Απεριόριστοι χρήστες · Όλες οι λειτουργίες Business · Υποστήριξη προτεραιότητας",
     sortOrder: 40,
   },
   {
@@ -94,7 +97,7 @@ const DEFAULT_PLANS: Array<{
     name: "Enterprise",
     description: "Για επιχειρήσεις μεγάλης κλίμακας.",
     priceMonthly: 0,
-    priceYearly: 680.76,
+    priceYearly: 700.76, // 680,76 Wrapp + 20,00 markup
     includedDocsMonth: 750000,
     features:
       "750.000 παραστατικά/έτος · Όλες οι λειτουργίες Pro · SLA · Dedicated account manager",
@@ -105,7 +108,7 @@ const DEFAULT_PLANS: Array<{
     name: "Corporate",
     description: "Για πολύ μεγάλες επιχειρήσεις και ομίλους.",
     priceMonthly: 0,
-    priceYearly: 2478.76,
+    priceYearly: 2498.76, // 2.478,76 Wrapp + 20,00 markup
     includedDocsMonth: 4000000,
     features:
       "4.000.000 παραστατικά/έτος · Custom SLA · Priority engineering support",
