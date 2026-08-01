@@ -20,11 +20,16 @@ export type PricingTier = {
   tagline: string;
   /** Παραστατικά ανά έτος. */
   docsPerYear: number;
-  /** Wrapp partner price (incl. Greek 24% VAT). */
+  /** API calls ανά έτος (όπου διαφέρει από τα παραστατικά). */
+  apiCallsPerYear: number;
+  /**
+   * Internal-only: partner price + markup breakdown. Kept for finance
+   * reference and admin tooling — the customer-facing UI shows only
+   * `retailInclVat`.
+   */
   wrappPriceInclVat: number;
-  /** timologion.gr markup (incl. VAT). */
   markupInclVat: number;
-  /** Final retail price — wrappPriceInclVat + markupInclVat. */
+  /** The only price the customer sees. Incl. Greek 24% VAT. */
   retailInclVat: number;
   /** Feature bullets shown on the marketing card. */
   features: string[];
@@ -32,20 +37,30 @@ export type PricingTier = {
   featured?: boolean;
 };
 
+/**
+ * B2G (Business-to-Government) add-on for παραστατικά προς δημόσιο.
+ * Optional on any tier — Wrapp charges +€30 net (+ΦΠΑ). Pass-through, no
+ * timologion markup on top.
+ */
+export const B2G_ADDON_INCL_VAT = 37.2; // €30 * 1.24
+
 export const PRICING_TIERS: PricingTier[] = [
   {
     code: "basic",
     name: "Basic",
     tagline: "Ιδανικό σημείο εκκίνησης — freelancers και μικρές επιχειρήσεις.",
     docsPerYear: 1_500,
+    apiCallsPerYear: 1_500,
     wrappPriceInclVat: 35.96,
     markupInclVat: 5.0,
     retailInclVat: 40.96,
     features: [
       "1.500 παραστατικά / έτος",
-      "Ηλεκτρονική τιμολόγηση myDATA",
-      "Αναζήτηση ΑΦΜ και αυτόματη συμπλήρωση πελατών",
-      "Είδη, υπηρεσίες, PDF / εκτύπωση / email",
+      "1.500 API calls / έτος",
+      "Ηλεκτρονική τιμολόγηση myDATA (όλοι οι τύποι παραστατικών)",
+      "Αναζήτηση ΑΦΜ με αυτόματη συμπλήρωση πελάτη",
+      "Απεριόριστοι πελάτες, είδη, υπηρεσίες",
+      "PDF, θερμικός εκτυπωτής, αποστολή email",
       "1 χρήστης",
       "Email υποστήριξη",
     ],
@@ -55,17 +70,20 @@ export const PRICING_TIERS: PricingTier[] = [
     name: "Standard",
     tagline: "Για μικρές επιχειρήσεις με σταθερή ροή εκδόσεων.",
     docsPerYear: 6_000,
+    apiCallsPerYear: 15_000,
     wrappPriceInclVat: 122.76,
     markupInclVat: 10.0,
     retailInclVat: 132.76,
     featured: true,
     features: [
       "6.000 παραστατικά / έτος",
+      "15.000 API calls / έτος",
       "Όλα του Basic",
-      "Εισπράξεις & πληρωμές",
-      "Επαναλαμβανόμενα παραστατικά",
-      "Προηγμένες αναφορές & εξαγωγές",
-      "Ραντεβού & ημερολόγιο",
+      "Εισπράξεις & πληρωμές με aging report",
+      "Επαναλαμβανόμενα παραστατικά (μηνιαία / ετήσια)",
+      "Προηγμένες αναφορές (ΦΠΑ, έσοδα-έξοδα, εξαγωγές XLSX/PDF)",
+      "Ραντεβού & ημερολόγιο πελατών",
+      "Ταχύτερη υποστήριξη",
     ],
   },
   {
@@ -73,16 +91,19 @@ export const PRICING_TIERS: PricingTier[] = [
     name: "Business",
     tagline: "Για ώριμες επιχειρήσεις με ομάδα και μεγαλύτερο όγκο.",
     docsPerYear: 18_000,
+    apiCallsPerYear: 45_000,
     wrappPriceInclVat: 209.56,
     markupInclVat: 15.0,
     retailInclVat: 224.56,
     features: [
       "18.000 παραστατικά / έτος",
+      "45.000 API calls / έτος",
       "Όλα του Standard",
-      "POS & Ταμείο",
+      "POS & Ταμείο για λιανική",
       "CRM (leads, ευκαιρίες, tasks)",
-      "Απόθεμα ειδών & προϊόντων",
-      "Έως 5 χρήστες με ρόλους",
+      "Απόθεμα ειδών & προϊόντων με ειδοποιήσεις χαμηλού stock",
+      "Έως 5 χρήστες με ρόλους και δικαιώματα",
+      "Υποστήριξη προτεραιότητας",
     ],
   },
   {
@@ -90,11 +111,13 @@ export const PRICING_TIERS: PricingTier[] = [
     name: "Pro",
     tagline: "Για επιχειρήσεις υψηλού όγκου συναλλαγών.",
     docsPerYear: 200_000,
+    apiCallsPerYear: 250_000,
     wrappPriceInclVat: 296.36,
     markupInclVat: 20.0,
     retailInclVat: 316.36,
     features: [
       "200.000 παραστατικά / έτος",
+      "250.000 API calls / έτος",
       "Απεριόριστοι χρήστες",
       "Όλες οι λειτουργίες Business",
       "Υποστήριξη προτεραιότητας",
@@ -105,13 +128,15 @@ export const PRICING_TIERS: PricingTier[] = [
     name: "Enterprise",
     tagline: "SLA · Dedicated account manager · Όλες οι λειτουργίες Pro.",
     docsPerYear: 750_000,
+    apiCallsPerYear: 750_000,
     wrappPriceInclVat: 680.76,
     markupInclVat: 20.0,
     retailInclVat: 700.76,
     features: [
       "750.000 παραστατικά / έτος",
+      "750.000 API calls / έτος",
       "Όλες οι λειτουργίες Pro",
-      "SLA",
+      "SLA με εγγυημένους χρόνους απόκρισης",
       "Dedicated account manager",
     ],
   },
@@ -120,13 +145,16 @@ export const PRICING_TIERS: PricingTier[] = [
     name: "Corporate",
     tagline: "Custom SLA · Priority engineering support.",
     docsPerYear: 4_000_000,
+    apiCallsPerYear: 4_000_000,
     wrappPriceInclVat: 2478.76,
     markupInclVat: 20.0,
     retailInclVat: 2498.76,
     features: [
       "4.000.000 παραστατικά / έτος",
+      "4.000.000 API calls / έτος",
       "Custom SLA",
       "Priority engineering support",
+      "Αρχιτεκτονική εξατομικευμένη στις ανάγκες σου",
     ],
   },
 ];

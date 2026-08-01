@@ -1,16 +1,14 @@
-import { Check, Calendar, TrendingUp, Info } from "lucide-react";
-import { PRICING_TIERS, formatEur } from "@/lib/pricing";
+import { Check, Calendar, TrendingUp, Plus } from "lucide-react";
+import { PRICING_TIERS, formatEur, B2G_ADDON_INCL_VAT } from "@/lib/pricing";
 
 /**
  * Wrapp partner tier grid — annual billing only.
  * Prices come from src/lib/pricing.ts (single source of truth).
  *
- * Layout: three headline tiers (Basic / Standard / Business) cover
- * ~95% of the SMB market and get full cards. The three high-volume
- * tiers (Pro / Enterprise / Corporate) sit below in a compact strip.
- *
- * Each card shows the full price breakdown per user request:
- *   Τιμή Wrapp (partner)  +  Markup timologion  =  Τελική τιμή λιανικής
+ * Customer-facing UI shows ONLY the final retail price. The internal
+ * Wrapp partner / markup breakdown stays in the catalog for admin
+ * tooling but is intentionally not exposed here — the price the user
+ * pays is the price we advertise, full stop.
  */
 
 export function PricingSwitcher() {
@@ -69,14 +67,32 @@ export function PricingSwitcher() {
                 </span>
                 <span className="text-sm text-black/50">/έτος</span>
               </div>
-              <PriceBreakdown tier={t} tone="light" />
-              <p className="mt-3 rounded-lg bg-white px-3 py-2 text-xs font-bold text-brand-900">
-                {t.docsPerYear.toLocaleString("el-GR")} παραστατικά / έτος
-              </p>
+              <div className="mt-3 grid gap-1 rounded-lg bg-white px-3 py-2 text-xs font-bold text-brand-900">
+                <span>
+                  {t.docsPerYear.toLocaleString("el-GR")} παραστατικά / έτος
+                </span>
+                <span className="text-brand-900/70">
+                  {t.apiCallsPerYear.toLocaleString("el-GR")} API calls / έτος
+                </span>
+              </div>
               <p className="mt-3 text-sm text-black/60">{t.tagline}</p>
             </div>
           ))}
         </div>
+
+        {/* B2G add-on note — pass-through from Wrapp, no timologion markup. */}
+        <div className="mt-8 flex flex-wrap items-center gap-2 rounded-xl border-2 border-dashed border-brand-900/20 bg-brand-50/40 p-4 text-sm text-brand-900">
+          <Plus size={16} strokeWidth={2.5} aria-hidden />
+          <span className="font-bold">B2G add-on (προαιρετικά)</span>
+          <span className="text-black/70">
+            Για έκδοση παραστατικών προς το δημόσιο:{" "}
+            <strong className="tabular-nums">
+              +{formatEur(B2G_ADDON_INCL_VAT)}/έτος
+            </strong>{" "}
+            σε οποιοδήποτε πακέτο.
+          </span>
+        </div>
+
         <p className="mt-6 text-xs text-black/50">
           Όλες οι τιμές είναι ετήσιες και συμπεριλαμβάνουν ΦΠΑ 24%. Η αγορά
           του πακέτου ολοκληρώνεται μέσω του πιστοποιημένου παρόχου
@@ -150,10 +166,8 @@ function TierCard({
           "mt-1 text-xs " + (featured ? "text-white/60" : "text-black/50")
         }
       >
-        Ισοδυναμεί με {formatEur(perMonth)} / μήνα
+        Ισοδυναμεί με {formatEur(perMonth)} / μήνα · συμπ. ΦΠΑ 24%
       </p>
-
-      <PriceBreakdown tier={tier} tone={featured ? "dark" : "light"} />
 
       <div
         className={
@@ -196,60 +210,3 @@ function TierCard({
   );
 }
 
-/**
- * Small "how the retail price breaks down" block, shown under the headline
- * price on each card. Transparency for the user: Wrapp partner price +
- * timologion markup = final retail total.
- */
-function PriceBreakdown({
-  tier,
-  tone,
-}: {
-  tier: (typeof PRICING_TIERS)[number];
-  tone: "dark" | "light";
-}) {
-  const isDark = tone === "dark";
-  return (
-    <div
-      className={
-        "mt-4 rounded-lg border p-3 text-[11px] leading-relaxed " +
-        (isDark
-          ? "border-white/20 bg-white/5 text-white/80"
-          : "border-black/10 bg-brand-50/60 text-black/70")
-      }
-    >
-      <p
-        className={
-          "flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest " +
-          (isDark ? "text-white/60" : "text-brand-900/60")
-        }
-      >
-        <Info size={11} aria-hidden />
-        Πώς προκύπτει η τιμή
-      </p>
-      <ul className="mt-1.5 space-y-0.5">
-        <li className="flex items-baseline justify-between gap-3">
-          <span>Τιμή Wrapp (με ΦΠΑ)</span>
-          <span className="tabular-nums font-semibold">
-            {formatEur(tier.wrappPriceInclVat)}
-          </span>
-        </li>
-        <li className="flex items-baseline justify-between gap-3">
-          <span>Markup timologion</span>
-          <span className="tabular-nums font-semibold">
-            +{formatEur(tier.markupInclVat)}
-          </span>
-        </li>
-        <li
-          className={
-            "mt-1.5 flex items-baseline justify-between gap-3 border-t pt-1.5 font-black " +
-            (isDark ? "border-white/20" : "border-black/10")
-          }
-        >
-          <span>Τελική τιμή λιανικής</span>
-          <span className="tabular-nums">{formatEur(tier.retailInclVat)}</span>
-        </li>
-      </ul>
-    </div>
-  );
-}

@@ -10,7 +10,7 @@ import { money, date } from "@/lib/format";
 import { checkDocumentQuota } from "@/lib/quota";
 import { ChangePlanForm } from "./ChangePlanForm";
 import { CancelButton } from "./CancelButton";
-import { findTierByName, formatEur } from "@/lib/pricing";
+import { findTierByName, B2G_ADDON_INCL_VAT, formatEur } from "@/lib/pricing";
 
 export const dynamic = "force-dynamic";
 
@@ -91,35 +91,30 @@ export default async function SubscriptionSettingsPage() {
               </div>
             </div>
 
-            {/* Retail price breakdown pulled from the shared catalog. */}
+            {/* Plan details from the shared catalog — features, quotas,
+                B2G add-on. Deliberately does NOT show the partner/markup
+                breakdown; the price above is the total the user pays. */}
             {(() => {
               const tier = findTierByName(subscription.plan.name);
               if (!tier) return null;
               return (
-                <div className="mt-4 rounded-xl border border-white/15 bg-white/5 p-3 text-[12px] text-white/85">
-                  <p className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-white/60">
-                    Πώς προκύπτει η τιμή
-                  </p>
-                  <ul className="mt-1.5 space-y-0.5">
-                    <li className="flex items-baseline justify-between gap-3">
-                      <span>Τιμή Wrapp (με ΦΠΑ)</span>
-                      <span className="tabular-nums font-semibold">
-                        {formatEur(tier.wrappPriceInclVat)}
-                      </span>
-                    </li>
-                    <li className="flex items-baseline justify-between gap-3">
-                      <span>Markup timologion</span>
-                      <span className="tabular-nums font-semibold">
-                        +{formatEur(tier.markupInclVat)}
-                      </span>
-                    </li>
-                    <li className="mt-1 flex items-baseline justify-between gap-3 border-t border-white/20 pt-1 font-black">
-                      <span>Τελική τιμή λιανικής</span>
-                      <span className="tabular-nums">
-                        {formatEur(tier.retailInclVat)}
-                      </span>
-                    </li>
-                  </ul>
+                <div className="mt-4 grid gap-2 rounded-xl border border-white/15 bg-white/5 p-3 text-[12px] text-white/85 sm:grid-cols-2">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-white/60">
+                      Παραστατικά
+                    </p>
+                    <p className="mt-0.5 text-sm font-bold">
+                      {tier.docsPerYear.toLocaleString("el-GR")} / έτος
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-white/60">
+                      API calls
+                    </p>
+                    <p className="mt-0.5 text-sm font-bold">
+                      {tier.apiCallsPerYear.toLocaleString("el-GR")} / έτος
+                    </p>
+                  </div>
                 </div>
               );
             })()}
@@ -194,6 +189,38 @@ export default async function SubscriptionSettingsPage() {
                 </p>
               )}
             </div>
+
+            {/* Feature bullets from the shared catalog. */}
+            {(() => {
+              const tier = findTierByName(subscription.plan.name);
+              if (!tier) return null;
+              return (
+                <div className="border-t border-ink-200 pt-4">
+                  <p className="text-[11px] font-black uppercase tracking-widest text-ink-500">
+                    Τι περιλαμβάνει το πακέτο
+                  </p>
+                  <ul className="mt-3 grid gap-1.5 text-sm text-ink-900 sm:grid-cols-2">
+                    {tier.features.map((f, i) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <span
+                          aria-hidden
+                          className="mt-1 grid h-4 w-4 shrink-0 place-items-center rounded-full bg-emerald-100 text-emerald-700"
+                        >
+                          ✓
+                        </span>
+                        <span>{f}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="mt-3 rounded-lg border-2 border-dashed border-brand-200 bg-brand-50/60 px-3 py-2 text-xs text-brand-900">
+                    <strong>B2G add-on (προαιρετικά):</strong> Για έκδοση
+                    παραστατικών προς το δημόσιο μπορείς να προσθέσεις +
+                    {formatEur(B2G_ADDON_INCL_VAT)}/έτος σε οποιοδήποτε
+                    πακέτο. Επικοινώνησε μαζί μας για ενεργοποίηση.
+                  </p>
+                </div>
+              );
+            })()}
 
             <div className="flex justify-end pt-2">
               <CancelButton />
