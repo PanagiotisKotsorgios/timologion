@@ -649,18 +649,28 @@ function StatCard({
         : "bg-brand-50 text-brand-800";
   return (
     <Card>
-      <CardBody>
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-ink-500">
+      <CardBody className="!p-3 sm:!p-4">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-ink-500 sm:text-[11px]">
               {label}
             </p>
-            <p className={`mt-2 text-3xl font-extrabold ${valueColor}`}>
+            {/* Fluid font-size so long money strings ("2.498,76 €") never
+                overflow this narrow card even on tablets where the 4-col
+                grid gives each cell ~180-220px. */}
+            <p
+              className={`mt-2 font-extrabold leading-none tabular-nums ${valueColor}`}
+              style={{ fontSize: "clamp(1.25rem, 3vw, 1.875rem)" }}
+            >
               {value}
             </p>
-            <p className="mt-1 text-sm text-ink-700">{hint}</p>
+            <p className="mt-1 truncate text-xs text-ink-700 sm:text-sm">
+              {hint}
+            </p>
           </div>
-          <div className={`grid h-10 w-10 place-items-center rounded-2xl ${iconBg}`}>
+          <div
+            className={`grid h-8 w-8 shrink-0 place-items-center rounded-xl sm:h-10 sm:w-10 sm:rounded-2xl ${iconBg}`}
+          >
             {icon}
           </div>
         </div>

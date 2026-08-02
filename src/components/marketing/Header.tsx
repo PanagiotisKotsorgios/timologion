@@ -15,6 +15,7 @@ import {
   Phone,
   Mail,
   ArrowRight,
+  Download,
 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { Container } from "./Container";
@@ -98,6 +99,13 @@ export function MarketingHeader() {
           </nav>
 
           <div className="flex items-center gap-2 md:gap-4">
+            <Link
+              href="/download"
+              className="hidden h-14 items-center gap-2 rounded-full border-2 border-emerald-700 bg-emerald-600 px-5 text-[15px] font-bold text-white shadow-sm transition-colors hover:bg-emerald-700 lg:inline-flex"
+            >
+              <Download size={18} aria-hidden />
+              Εγκατάσταση
+            </Link>
             <Link
               href="/login"
               className="hidden h-14 items-center gap-2 rounded-full border-2 border-brand-900 bg-white px-6 text-[16px] font-semibold text-brand-900 transition-colors hover:bg-brand-900 hover:text-white md:inline-flex"
@@ -228,6 +236,13 @@ export function MarketingHeader() {
                   Λογαριασμός
                 </p>
                 <div className="mt-4 space-y-3">
+                  <Link
+                    href="/download"
+                    className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-full border-2 border-emerald-400 bg-emerald-600 text-base font-bold text-white hover:bg-emerald-700"
+                  >
+                    <Download size={18} aria-hidden />
+                    Εγκατάσταση
+                  </Link>
                   <Link
                     href="/login"
                     className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-full border-2 border-white/40 bg-transparent text-base font-semibold text-white hover:bg-white/10"
