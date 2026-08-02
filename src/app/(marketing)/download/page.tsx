@@ -2,9 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   Download,
-  Apple,
-  Monitor,
-  Smartphone,
   Bell,
   Clock,
   ArrowRight,
@@ -13,6 +10,13 @@ import {
 } from "lucide-react";
 import { Container } from "@/components/marketing/Container";
 import { pageMetadata } from "@/lib/seo";
+import {
+  WindowsLogo,
+  AppleLogo,
+  IosLogo,
+  AndroidLogo,
+} from "@/components/marketing/OsLogos";
+import type { ComponentType, SVGProps } from "react";
 
 export const metadata: Metadata = pageMetadata({
   title: "Εγκατάσταση — Desktop & Mobile Εφαρμογή",
@@ -23,25 +27,25 @@ export const metadata: Metadata = pageMetadata({
 
 type Platform = {
   name: string;
-  icon: typeof Monitor;
+  logo: ComponentType<SVGProps<SVGSVGElement>>;
   requirements: string[];
   storeLabel: string;
   accent: string;
-  iconBg: string;
+  logoBg: string;
 };
 
 const PLATFORMS: Platform[] = [
   {
     name: "Windows",
-    icon: Monitor,
+    logo: WindowsLogo,
     requirements: ["Windows 10 ή νεότερο", "Αρχιτεκτονική 64-bit", "≈ 85 MB"],
     storeLabel: "Native installer (.exe)",
-    accent: "from-sky-500/20 to-transparent",
-    iconBg: "bg-sky-100 text-sky-800",
+    accent: "from-sky-500/25 to-transparent",
+    logoBg: "bg-white ring-2 ring-sky-100",
   },
   {
     name: "macOS",
-    icon: Apple,
+    logo: AppleLogo,
     requirements: [
       "macOS 12 Monterey ή νεότερο",
       "Intel & Apple Silicon (universal)",
@@ -49,27 +53,27 @@ const PLATFORMS: Platform[] = [
     ],
     storeLabel: "Native installer (.dmg)",
     accent: "from-slate-500/20 to-transparent",
-    iconBg: "bg-slate-100 text-slate-800",
+    logoBg: "bg-white ring-2 ring-slate-200",
   },
   {
     name: "iOS",
-    icon: Smartphone,
+    logo: IosLogo,
     requirements: ["iPhone & iPad", "iOS 16 ή νεότερο", "Optimized για iPad"],
     storeLabel: "Διαθέσιμο στο App Store",
     accent: "from-violet-500/20 to-transparent",
-    iconBg: "bg-violet-100 text-violet-800",
+    logoBg: "bg-white ring-2 ring-violet-100",
   },
   {
     name: "Android",
-    icon: Smartphone,
+    logo: AndroidLogo,
     requirements: [
       "Android 10 ή νεότερο",
       "Material You theming",
       "Widget οικονομικών",
     ],
     storeLabel: "Διαθέσιμο στο Google Play",
-    accent: "from-emerald-500/20 to-transparent",
-    iconBg: "bg-emerald-100 text-emerald-800",
+    accent: "from-emerald-500/25 to-transparent",
+    logoBg: "bg-white ring-2 ring-emerald-100",
   },
 ];
 
@@ -145,20 +149,23 @@ export default function DownloadPage() {
 }
 
 function PlatformCard({ platform }: { platform: Platform }) {
-  const Icon = platform.icon;
+  const Logo = platform.logo;
   return (
-    <div className="group relative overflow-hidden rounded-3xl border-2 border-ink-300/70 bg-white p-6 shadow-sm transition-shadow hover:shadow-lg md:p-7">
+    <div className="group relative overflow-hidden rounded-3xl border-2 border-ink-300/70 bg-white p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-xl md:p-7">
       {/* Subtle brand-tinted accent gradient in the top-right corner. */}
       <div
         aria-hidden
-        className={`pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-gradient-to-br ${platform.accent} blur-2xl`}
+        className={`pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-gradient-to-br ${platform.accent} blur-2xl`}
       />
 
       <div className="relative flex items-start justify-between gap-4">
         <div
-          className={`grid h-14 w-14 shrink-0 place-items-center rounded-2xl ${platform.iconBg}`}
+          className={`grid h-16 w-16 shrink-0 place-items-center rounded-2xl shadow-sm transition-transform group-hover:scale-105 ${platform.logoBg}`}
         >
-          <Icon size={26} strokeWidth={2} aria-hidden />
+          <Logo
+            className="h-9 w-9"
+            aria-label={`${platform.name} logo`}
+          />
         </div>
         <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-amber-800">
           <Clock size={10} strokeWidth={3} aria-hidden />
