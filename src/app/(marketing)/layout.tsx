@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { MarketingHeader } from "@/components/marketing/Header";
 import { MarketingFooter } from "@/components/marketing/Footer";
 import { CookieBanner } from "@/components/marketing/CookieBanner";
+import { DownloadSideButton } from "@/components/marketing/DownloadSideButton";
 
 export default function MarketingLayout({ children }: { children: ReactNode }) {
   return (
@@ -10,6 +11,7 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
       <main className="flex-1">{children}</main>
       <MarketingFooter />
       <CookieBanner />
+      <DownloadSideButton />
     </div>
   );
 }
