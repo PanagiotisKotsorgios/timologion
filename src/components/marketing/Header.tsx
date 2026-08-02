@@ -15,6 +15,7 @@ import {
   Phone,
   Mail,
   ArrowRight,
+  Download,
 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { Container } from "./Container";
@@ -243,6 +244,22 @@ export function MarketingHeader() {
                     Ξεκίνα δωρεάν
                   </Link>
                 </div>
+              </div>
+
+              {/* App download — mobile users don't see the fixed side
+                  button (it's md+), so surface it at the bottom of the
+                  slide-out menu instead. */}
+              <div className="mt-6 border-t border-white/10 pt-6">
+                <p className="text-center text-[11px] font-bold uppercase tracking-[0.25em] text-white/50">
+                  Εφαρμογή
+                </p>
+                <Link
+                  href="/download"
+                  className="mt-4 inline-flex h-14 w-full items-center justify-center gap-2 rounded-full border-2 border-emerald-500 bg-emerald-600 text-base font-black uppercase tracking-widest text-white shadow-lg shadow-emerald-900/40 hover:bg-emerald-700"
+                >
+                  <Download size={18} strokeWidth={2.5} aria-hidden />
+                  Εγκατάσταση εφαρμογής
+                </Link>
               </div>
 
               <div className="mt-8 flex items-center justify-center gap-6 text-xs text-white/60">
