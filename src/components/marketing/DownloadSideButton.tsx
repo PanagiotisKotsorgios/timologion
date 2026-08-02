@@ -36,11 +36,11 @@ export function DownloadSideButton() {
         />
 
         <span
-          className="relative text-[16px] font-black uppercase tracking-[0.28em] transition-[font-size,letter-spacing] duration-500 ease-out
+          className="relative text-[15px] font-black uppercase tracking-[0.22em] transition-[font-size,letter-spacing] duration-500 ease-out
                      [writing-mode:vertical-rl] rotate-180
-                     group-hover:text-[19px] group-hover:tracking-[0.34em]"
+                     group-hover:text-[17px] group-hover:tracking-[0.28em]"
         >
-          Εγκατάσταση
+          Εγκατάσταση εφαρμογής
         </span>
       </span>
     </Link>
