@@ -4,9 +4,9 @@ import { prisma } from "@/lib/db";
 import { requireTenant } from "@/lib/tenant";
 import { assertCan } from "@/lib/rbac";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { LinkButton } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { PosCart } from "../PosCart";
+import { PosItemsGrid } from "../PosItemsGrid";
 
 export const dynamic = "force-dynamic";
 
@@ -55,21 +55,21 @@ export default async function PosTabPage({
             : "Πάτησε ένα είδος για να το προσθέσεις στο καλάθι."
         }
         actions={
-          <div className="flex gap-2">
-            <LinkButton
+          <div className="flex flex-wrap gap-2">
+            <a
               href="/app/pos"
-              variant="secondary"
-              icon={ArrowLeft}
+              className="inline-flex h-10 items-center gap-2 rounded-lg border-2 border-ink-300 bg-white px-4 text-sm font-bold text-ink-900 shadow-sm transition-colors hover:border-ink-500 hover:bg-ink-100 sm:h-11 sm:text-base"
             >
+              <ArrowLeft size={16} strokeWidth={2.5} aria-hidden />
               Πίσω
-            </LinkButton>
-            <LinkButton
+            </a>
+            <a
               href={`/app/pos/${tab.id}/receipt`}
-              variant="secondary"
-              icon={Printer}
+              className="inline-flex h-10 items-center gap-2 rounded-lg border-2 border-brand-800 bg-brand-700 px-4 text-sm font-bold text-white shadow-sm transition-colors hover:bg-brand-800 sm:h-11 sm:text-base"
             >
+              <Printer size={16} strokeWidth={2.5} aria-hidden />
               Εκτύπωση απόδειξης
-            </LinkButton>
+            </a>
           </div>
         }
       />
@@ -78,29 +78,19 @@ export default async function PosTabPage({
         <Card>
           <CardHeader
             title="Είδη"
-            subtitle={`${items.length} διαθέσιμα`}
+            subtitle={`${items.length} διαθέσιμα · Πάτα για γρήγορη προσθήκη στο καλάθι`}
           />
           <CardBody>
-            {items.length === 0 ? (
-              <p className="text-sm text-ink-500">
-                Δεν έχεις είδη ακόμα. Προσθέτεις από την ενότητα Είδη &
-                Υπηρεσίες.
-              </p>
-            ) : (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-                {items.map((it) => (
-                  <ItemButton
-                    key={it.id}
-                    tabId={tab.id}
-                    itemId={it.id}
-                    name={it.name}
-                    price={it.defaultPrice.toString()}
-                    vat={it.vatRate.toString()}
-                    disabled={isClosed}
-                  />
-                ))}
-              </div>
-            )}
+            <PosItemsGrid
+              tabId={tab.id}
+              isClosed={isClosed}
+              initialItems={items.map((it) => ({
+                id: it.id,
+                name: it.name,
+                defaultPrice: it.defaultPrice.toString(),
+                vatRate: it.vatRate.toString(),
+              }))}
+            />
           </CardBody>
         </Card>
 
@@ -125,45 +115,3 @@ export default async function PosTabPage({
   );
 }
 
-function ItemButton({
-  tabId,
-  itemId,
-  name,
-  price,
-  vat,
-  disabled,
-}: {
-  tabId: string;
-  itemId: string;
-  name: string;
-  price: string;
-  vat: string;
-  disabled: boolean;
-}) {
-  return (
-    <form
-      action={async (fd: FormData) => {
-        "use server";
-        const { addTabItemAction } = await import("../actions");
-        await addTabItemAction(fd);
-      }}
-    >
-      <input type="hidden" name="tabId" value={tabId} />
-      <input type="hidden" name="itemId" value={itemId} />
-      <input type="hidden" name="name" value={name} />
-      <input type="hidden" name="quantity" value="1" />
-      <input type="hidden" name="unitPrice" value={price} />
-      <input type="hidden" name="vatRate" value={vat} />
-      <button
-        type="submit"
-        disabled={disabled}
-        className="w-full rounded-xl border-2 border-ink-200 bg-white p-3 text-left shadow-sm transition-colors hover:border-brand-700 hover:bg-brand-50 disabled:opacity-60"
-      >
-        <p className="line-clamp-2 text-sm font-semibold text-brand-900">
-          {name}
-        </p>
-        <p className="mt-1 text-xs font-bold text-brand-700">€{price}</p>
-      </button>
-    </form>
-  );
-}
