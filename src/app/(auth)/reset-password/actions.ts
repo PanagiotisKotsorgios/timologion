@@ -1,12 +1,14 @@
 "use server";
 
 import { createHmac } from "node:crypto";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { env } from "@/lib/env";
 import { hashPassword } from "@/lib/auth/password";
 import { logAudit } from "@/lib/audit";
+import { consume, LIMITS, clientIp } from "@/lib/rate-limit";
 
 const schema = z.object({
   token: z.string().min(10),
@@ -20,6 +22,19 @@ export async function completePasswordResetAction(
   _prev: ResetState,
   formData: FormData,
 ): Promise<ResetState> {
+  const hdrs = await headers();
+  const rl = consume(
+    `reset:${clientIp(hdrs)}`,
+    LIMITS.forgotPassword.capacity,
+    LIMITS.forgotPassword.refillMs,
+  );
+  if (!rl.ok) {
+    return {
+      error:
+        "Πολλές προσπάθειες. Δοκίμασε ξανά σε λίγα λεπτά.",
+    };
+  }
+
   const parsed = schema.safeParse({
     token: String(formData.get("token") ?? ""),
     password: String(formData.get("password") ?? ""),

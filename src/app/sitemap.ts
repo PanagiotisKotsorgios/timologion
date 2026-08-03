@@ -65,6 +65,18 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.3,
       lastModified: now,
     },
+    {
+      url: `${base}/refunds`,
+      changeFrequency: "yearly",
+      priority: 0.3,
+      lastModified: now,
+    },
+    {
+      url: `${base}/download`,
+      changeFrequency: "monthly",
+      priority: 0.6,
+      lastModified: now,
+    },
   ];
 
   const guideRoutes: MetadataRoute.Sitemap = GUIDES.map((g) => ({

@@ -22,6 +22,7 @@ import {
   Mail,
   Zap,
   Trash2,
+  Webhook,
   type LucideIcon,
 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
@@ -45,6 +46,7 @@ const SECONDARY: NavItem[] = [
   { href: "/admin/announcements", label: "Ανακοινώσεις", icon: Megaphone },
   { href: "/admin/email", label: "Ρυθμίσεις email", icon: Mail },
   { href: "/admin/wrapp", label: "Ρυθμίσεις Wrapp", icon: Zap },
+  { href: "/admin/webhooks", label: "Webhooks Wrapp", icon: Webhook },
   { href: "/admin/system-settings", label: "Ρυθμίσεις πλατφόρμας", icon: Settings2 },
   { href: "/admin/admins", label: "Platform admins", icon: Shield },
 ];
