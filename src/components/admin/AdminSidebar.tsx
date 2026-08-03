@@ -27,6 +27,10 @@ import {
   HardDrive,
   Activity,
   ToggleLeft,
+  TrendingUp,
+  Brush,
+  Send,
+  Timer,
   type LucideIcon,
 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
@@ -36,6 +40,7 @@ type NavItem = { href: string; label: string; icon: LucideIcon };
 const PRIMARY: NavItem[] = [
   { href: "/admin", label: "Επισκόπηση", icon: LayoutDashboard },
   { href: "/admin/health", label: "Υγεία συστήματος", icon: Activity },
+  { href: "/admin/metrics", label: "Δείκτες / MRR", icon: TrendingUp },
   { href: "/admin/billing", label: "Χρέωση & έσοδα", icon: CreditCard },
   { href: "/admin/plans", label: "Πακέτα", icon: Package },
   { href: "/admin/economics", label: "Οικονομικά", icon: LineChart },
@@ -45,11 +50,14 @@ const PRIMARY: NavItem[] = [
   { href: "/admin/documents", label: "Παραστατικά", icon: FileText },
   { href: "/admin/audit", label: "Audit log", icon: ScrollText },
   { href: "/admin/errors", label: "Σφάλματα εφαρμογής", icon: AlertOctagon },
+  { href: "/admin/integrity", label: "Ακεραιότητα δεδομένων", icon: Brush },
+  { href: "/admin/cron", label: "Cron runs", icon: Timer },
   { href: "/admin/deletions", label: "Διαγραφές λογαριασμών", icon: Trash2 },
 ];
 
 const SECONDARY: NavItem[] = [
   { href: "/admin/announcements", label: "Ανακοινώσεις", icon: Megaphone },
+  { href: "/admin/broadcasts", label: "Broadcast email", icon: Send },
   { href: "/admin/email", label: "Ρυθμίσεις email", icon: Mail },
   { href: "/admin/wrapp", label: "Ρυθμίσεις Wrapp", icon: Zap },
   { href: "/admin/webhooks", label: "Webhooks Wrapp", icon: Webhook },

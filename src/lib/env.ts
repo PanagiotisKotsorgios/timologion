@@ -36,6 +36,12 @@ const envSchema = z.object({
   // Retention window for BackupRun rows (default: forever). Prune runs
   // older than N days from the /admin/backups page cron. 0 = keep all.
   BACKUP_RETENTION_DAYS: z.coerce.number().optional().default(0),
+  // Comma-separated IP CIDRs allowed to reach /admin. Empty = no
+  // restriction. Example: "10.0.0.0/8,203.0.113.5/32". IPv6 works too.
+  ADMIN_IP_ALLOWLIST: z.string().optional().default(""),
+  // When "true", any admin session without an active 2FA setup is
+  // redirected to /app/settings/security to enable it before proceeding.
+  ADMIN_REQUIRE_2FA: z.string().optional().default(""),
   NODE_ENV: z
     .enum(["development", "test", "production"])
     .default("development"),
@@ -63,6 +69,8 @@ const parsed = envSchema.safeParse({
   BACKUP_S3_ACCESS_KEY_ID: process.env.BACKUP_S3_ACCESS_KEY_ID,
   BACKUP_S3_SECRET_ACCESS_KEY: process.env.BACKUP_S3_SECRET_ACCESS_KEY,
   BACKUP_RETENTION_DAYS: process.env.BACKUP_RETENTION_DAYS,
+  ADMIN_IP_ALLOWLIST: process.env.ADMIN_IP_ALLOWLIST,
+  ADMIN_REQUIRE_2FA: process.env.ADMIN_REQUIRE_2FA,
   NODE_ENV: process.env.NODE_ENV,
 });
 
@@ -103,6 +111,8 @@ export const env = parsed.success
       BACKUP_RETENTION_DAYS: process.env.BACKUP_RETENTION_DAYS
         ? Number(process.env.BACKUP_RETENTION_DAYS)
         : 0,
+      ADMIN_IP_ALLOWLIST: process.env.ADMIN_IP_ALLOWLIST ?? "",
+      ADMIN_REQUIRE_2FA: process.env.ADMIN_REQUIRE_2FA ?? "",
       NODE_ENV: (process.env.NODE_ENV as
         | "development"
         | "test"

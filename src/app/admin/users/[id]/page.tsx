@@ -1,6 +1,12 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { Ban, CheckCircle, UserCog, KeyRound } from "lucide-react";
+import {
+  Ban,
+  CheckCircle,
+  UserCog,
+  KeyRound,
+  Download,
+} from "lucide-react";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -106,6 +112,14 @@ export default async function AdminUserDetailPage({
                     Αποστολή reset link
                   </Button>
                 </form>
+                <a
+                  href={`/api/admin/users/${user.id}/gdpr-export`}
+                  className="inline-flex h-11 items-center gap-2 rounded-lg border-2 border-ink-300 bg-white px-4 text-sm font-bold text-ink-900 shadow-sm transition-colors hover:border-ink-500"
+                  title="Πλήρες bundle δεδομένων χρήστη κατά Άρθρο 20 GDPR."
+                >
+                  <Download size={14} strokeWidth={2.5} aria-hidden />
+                  GDPR export
+                </a>
               </>
             )}
             {user.suspendedAt ? (

@@ -744,6 +744,54 @@ model BusinessFeatureFlag {
   @@map("business_feature_flags")
 }
 
+// ─── Cron run history ───────────────────────────────────────────────────
+// Every cron endpoint appends a row here on success/failure so /admin/cron
+// can render "did X actually run and when?" without SSHing the box.
+// jobKey is a free-form string ("backup", "recurring", "low-stock" etc.)
+// so new crons don't need a schema change to be logged.
+
+enum CronStatus {
+  running
+  success
+  failed
+}
+
+model CronRun {
+  id          String     @id @default(cuid())
+  jobKey      String     @db.VarChar(60)
+  status      CronStatus @default(running)
+  itemsDone   Int        @default(0)
+  durationMs  Int        @default(0)
+  error       String?    @db.Text
+  startedAt   DateTime   @default(now())
+  finishedAt  DateTime?
+
+  @@index([jobKey, startedAt])
+  @@index([startedAt])
+  @@map("cron_runs")
+}
+
+// ─── Broadcast history ──────────────────────────────────────────────────
+// Records every admin-initiated broadcast email + its recipient segment,
+// so we can see "who got the September announcement" without digging
+// through email provider logs.
+
+model Broadcast {
+  id           String   @id @default(cuid())
+  senderId     String
+  segment      String   @db.VarChar(120)
+  subject      String   @db.VarChar(500)
+  bodyHtml     String   @db.Text
+  recipients   Int      @default(0)
+  sent         Int      @default(0)
+  failed       Int      @default(0)
+  dryRun       Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("broadcasts")
+}
+
 // ─── Account deletion snapshots ─────────────────────────────────────────
 // When a user deletes their account we take a snapshot of who they were
 // + what businesses they owned so the platform admin has a record even
