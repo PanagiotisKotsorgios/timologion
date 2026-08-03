@@ -155,43 +155,36 @@ export function PosCart({
                     </div>
                     {!isClosed && (
                       <div className="mt-2 flex items-center justify-between gap-2">
-                        {/* Quantity stepper — the whole reason this row is
-                            two-line. Users don't have to re-click the item
-                            grid to add another; they nudge here instead. */}
+                        {/* Quantity stepper — plain display + side buttons.
+                            Number-typed inputs eat their own padding at this
+                            size, so the value showed up blank; a static
+                            <span> is honest and readable. */}
                         <div className="inline-flex items-stretch overflow-hidden rounded-lg border-2 border-ink-300 bg-white">
                           <button
                             type="button"
                             onClick={() => setQuantity(it.id, it.quantity - 1)}
                             disabled={pending}
-                            className="grid h-8 w-8 place-items-center bg-ink-50 text-ink-700 transition-colors hover:bg-ink-100 disabled:opacity-50"
+                            className="grid h-9 w-9 place-items-center bg-ink-50 text-ink-800 transition-colors hover:bg-ink-100 active:bg-ink-200 disabled:opacity-50"
                             aria-label="Μείωση ποσότητας"
                           >
-                            <Minus size={14} strokeWidth={2.5} />
+                            <Minus size={16} strokeWidth={2.75} />
                           </button>
-                          <input
-                            type="number"
-                            inputMode="numeric"
-                            min={0}
-                            max={999}
-                            step={1}
-                            value={it.quantity}
-                            onChange={(e) => {
-                              const v = Number(e.target.value);
-                              if (Number.isFinite(v))
-                                setQuantity(it.id, Math.floor(v));
-                            }}
-                            disabled={pending}
-                            className="h-8 w-12 border-x-2 border-ink-300 bg-white text-center text-sm font-bold tabular-nums text-ink-900 outline-none focus:bg-brand-50 [appearance:textfield] disabled:opacity-60 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                          <span
+                            className="grid h-9 min-w-[3rem] place-items-center border-x-2 border-ink-300 bg-white px-2 text-base font-black tabular-nums text-ink-900"
                             aria-label="Ποσότητα"
-                          />
+                          >
+                            {Number.isInteger(it.quantity)
+                              ? it.quantity
+                              : it.quantity.toFixed(2).replace(".", ",")}
+                          </span>
                           <button
                             type="button"
                             onClick={() => setQuantity(it.id, it.quantity + 1)}
                             disabled={pending}
-                            className="grid h-8 w-8 place-items-center bg-ink-50 text-ink-700 transition-colors hover:bg-ink-100 disabled:opacity-50"
+                            className="grid h-9 w-9 place-items-center bg-ink-50 text-ink-800 transition-colors hover:bg-ink-100 active:bg-ink-200 disabled:opacity-50"
                             aria-label="Αύξηση ποσότητας"
                           >
-                            <Plus size={14} strokeWidth={2.5} />
+                            <Plus size={16} strokeWidth={2.75} />
                           </button>
                         </div>
                         <button
