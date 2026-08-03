@@ -50,10 +50,17 @@ model PlatformAnnouncement {
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
   authorId     String?
+  // Optional per-tenant targeting. When null, the announcement is
+  // global (visible to every logged-in tenant). When set, only that
+  // business sees the banner — used for VIP notices, individual
+  // scheduled maintenance, per-account escalations, etc.
+  businessId   String?
 
   author       User?            @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  business     Business?        @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
   @@index([publishedAt])
+  @@index([businessId, publishedAt])
   @@map("platform_announcements")
 }
 
@@ -540,6 +547,8 @@ model Business {
   pluginActivations PluginActivation[]
   appointments      Appointment[]
   featureFlags      BusinessFeatureFlag[]
+  announcements     PlatformAnnouncement[]
+  rateLimitOverrides RateLimitOverride[]
 
   @@index([vatNumber])
   @@map("businesses")
@@ -790,6 +799,45 @@ model Broadcast {
 
   @@index([createdAt])
   @@map("broadcasts")
+}
+
+// ─── Email templates ────────────────────────────────────────────────────
+// Editable copies of transactional email content (welcome, verify,
+// reset, etc.). The code side falls back to a hardcoded template when
+// a key is missing, so a bad edit degrades gracefully instead of
+// silently killing email.
+
+model EmailTemplate {
+  key         String   @id @db.VarChar(80)
+  description String?  @db.VarChar(500)
+  subject     String   @db.VarChar(500)
+  bodyHtml    String   @db.Text
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+
+  @@map("email_templates")
+}
+
+// ─── Rate-limit overrides ───────────────────────────────────────────────
+// Bump or throttle a specific action for a specific business — used to
+// give VIPs more headroom or to clamp down on abusive tenants without
+// suspending them entirely. The rate-limit consumer reads these before
+// falling back to LIMITS defaults.
+
+model RateLimitOverride {
+  id         String   @id @default(cuid())
+  businessId String
+  action     String   @db.VarChar(60)
+  capacity   Int
+  refillMs   Int
+  note       String?  @db.VarChar(500)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, action])
+  @@map("rate_limit_overrides")
 }
 
 // ─── Account deletion snapshots ─────────────────────────────────────────

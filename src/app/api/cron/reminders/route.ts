@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { authorizeCron } from "@/lib/cron-auth";
+import { withCronLog } from "@/lib/cron-logger";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -9,14 +10,18 @@ export const dynamic = "force-dynamic";
  * Fires open CRM tasks that are due today or overdue as notifications.
  * Runs once a day. Idempotent-ish: won't re-notify a task in the same day
  * because we filter by `notifiedAt IS NULL OR notifiedAt < today`.
- *
- * For now we log to the Notification model (bell icon). Email delivery can
- * be added by the notification worker.
  */
 export async function GET(req: Request) {
   const unauth = authorizeCron(req);
   if (unauth) return unauth;
+  const wrapped = await withCronLog("reminders", () => runReminders());
+  if (!wrapped.ok) {
+    return NextResponse.json({ ok: false, error: wrapped.error }, { status: 500 });
+  }
+  return NextResponse.json(wrapped.result);
+}
 
+async function runReminders() {
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
@@ -64,5 +69,8 @@ export async function GET(req: Request) {
     created += 1;
   }
 
-  return NextResponse.json({ ok: true, tasks: tasks.length, notifications: created });
+  return {
+    result: { ok: true, tasks: tasks.length, notifications: created },
+    itemsDone: created,
+  };
 }

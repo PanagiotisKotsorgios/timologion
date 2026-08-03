@@ -31,6 +31,9 @@ import {
   Brush,
   Send,
   Timer,
+  Wrench,
+  MailPlus,
+  Gauge,
   type LucideIcon,
 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
@@ -41,6 +44,7 @@ const PRIMARY: NavItem[] = [
   { href: "/admin", label: "Επισκόπηση", icon: LayoutDashboard },
   { href: "/admin/health", label: "Υγεία συστήματος", icon: Activity },
   { href: "/admin/metrics", label: "Δείκτες / MRR", icon: TrendingUp },
+  { href: "/admin/ops", label: "Operations", icon: Wrench },
   { href: "/admin/billing", label: "Χρέωση & έσοδα", icon: CreditCard },
   { href: "/admin/plans", label: "Πακέτα", icon: Package },
   { href: "/admin/economics", label: "Οικονομικά", icon: LineChart },
@@ -58,7 +62,9 @@ const PRIMARY: NavItem[] = [
 const SECONDARY: NavItem[] = [
   { href: "/admin/announcements", label: "Ανακοινώσεις", icon: Megaphone },
   { href: "/admin/broadcasts", label: "Broadcast email", icon: Send },
+  { href: "/admin/email-templates", label: "Πρότυπα email", icon: MailPlus },
   { href: "/admin/email", label: "Ρυθμίσεις email", icon: Mail },
+  { href: "/admin/rate-limits", label: "Rate limits", icon: Gauge },
   { href: "/admin/wrapp", label: "Ρυθμίσεις Wrapp", icon: Zap },
   { href: "/admin/webhooks", label: "Webhooks Wrapp", icon: Webhook },
   { href: "/admin/backups", label: "Backups βάσης", icon: HardDrive },

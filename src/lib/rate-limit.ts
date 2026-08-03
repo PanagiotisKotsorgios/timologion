@@ -116,3 +116,27 @@ export const LIMITS = {
   // Generic API endpoint bucket.
   api: { capacity: 60, refillMs: 1000 },
 } as const;
+
+/**
+ * Tenant-scoped variant that consults the RateLimitOverride table first.
+ * If a row exists for the given (businessId, action), its capacity /
+ * refillMs win; otherwise we fall back to the passed defaults. This is
+ * how VIP tenants get more headroom and abusive ones get clamped
+ * without code changes.
+ */
+export async function consumeForBusiness(
+  action: string,
+  businessId: string,
+  defaults: { capacity: number; refillMs: number },
+): Promise<RateLimitResult> {
+  const { prisma } = await import("@/lib/db");
+  const override = await prisma.rateLimitOverride
+    .findUnique({
+      where: { businessId_action: { businessId, action } },
+      select: { capacity: true, refillMs: true },
+    })
+    .catch(() => null);
+  const cap = override?.capacity ?? defaults.capacity;
+  const refill = override?.refillMs ?? defaults.refillMs;
+  return consume(`${action}:${businessId}`, cap, refill);
+}

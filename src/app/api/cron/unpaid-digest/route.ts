@@ -1,19 +1,26 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { authorizeCron } from "@/lib/cron-auth";
+import { withCronLog } from "@/lib/cron-logger";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
  * Weekly digest of unpaid & overdue issued documents. Delivered as a single
- * in-app notification per owner/admin so they can quickly triage. Emails can
- * later reuse the same aggregation.
+ * in-app notification per owner/admin so they can quickly triage.
  */
 export async function GET(req: Request) {
   const unauth = authorizeCron(req);
   if (unauth) return unauth;
+  const wrapped = await withCronLog("unpaid-digest", () => runUnpaidDigest());
+  if (!wrapped.ok) {
+    return NextResponse.json({ ok: false, error: wrapped.error }, { status: 500 });
+  }
+  return NextResponse.json(wrapped.result);
+}
 
+async function runUnpaidDigest() {
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
@@ -81,9 +88,12 @@ export async function GET(req: Request) {
     }
   }
 
-  return NextResponse.json({
-    ok: true,
-    businesses: businesses.length,
-    notifications: created,
-  });
+  return {
+    result: {
+      ok: true,
+      businesses: businesses.length,
+      notifications: created,
+    },
+    itemsDone: created,
+  };
 }

@@ -33,7 +33,7 @@ export async function Topbar({
 }: TopbarProps) {
   const session = await getSession();
   const [announcements, userNotifs, systemNotifs] = await Promise.all([
-    getPublishedAnnouncements(),
+    getPublishedAnnouncements(activeBusinessId),
     session ? getUserNotifications(session.userId) : Promise.resolve([]),
     session ? getSystemNotifications(session.userId) : Promise.resolve([]),
   ]);

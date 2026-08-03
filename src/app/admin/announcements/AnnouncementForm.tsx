@@ -16,6 +16,7 @@ type Initial = {
   ctaHref?: string | null;
   ctaLabel?: string | null;
   publishedAt?: Date | null;
+  businessId?: string | null;
 };
 
 export function AnnouncementForm({ initial }: { initial?: Initial }) {
@@ -89,6 +90,22 @@ export function AnnouncementForm({ initial }: { initial?: Initial }) {
             defaultValue={initial?.ctaHref ?? ""}
             maxLength={300}
             placeholder="π.χ. /app/settings/aade"
+          />
+        </Field>
+      </div>
+
+      <div>
+        <Field
+          label="Στόχευση επιχείρησης (προαιρετικά)"
+          htmlFor="businessId"
+          hint="Άφησέ το κενό για global δημοσίευση. Δώσε business ID για να δει η ανακοίνωση μόνο η συγκεκριμένη επιχείρηση."
+        >
+          <Input
+            id="businessId"
+            name="businessId"
+            defaultValue={initial?.businessId ?? ""}
+            maxLength={191}
+            placeholder="cuid της επιχείρησης — από /admin/businesses/[id]"
           />
         </Field>
       </div>

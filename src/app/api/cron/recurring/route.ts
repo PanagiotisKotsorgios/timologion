@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { computeLine, computeDocument } from "@/lib/totals";
 import { authorizeCron } from "@/lib/cron-auth";
+import { withCronLog } from "@/lib/cron-logger";
 import type { RecurrenceCadence } from "@prisma/client";
 
 export const runtime = "nodejs";
@@ -29,7 +30,14 @@ function addByCadence(from: Date, cadence: RecurrenceCadence): Date {
 export async function GET(req: Request) {
   const unauth = authorizeCron(req);
   if (unauth) return unauth;
+  const wrapped = await withCronLog("recurring", () => runRecurring());
+  if (!wrapped.ok) {
+    return NextResponse.json({ ok: false, error: wrapped.error }, { status: 500 });
+  }
+  return NextResponse.json(wrapped.result);
+}
 
+async function runRecurring() {
   const now = new Date();
   const due = await prisma.recurringDocument.findMany({
     where: { status: "active", nextRunAt: { lte: now } },
@@ -104,9 +112,8 @@ export async function GET(req: Request) {
     }
   }
 
-  return NextResponse.json({
-    ok: true,
-    processed: results.length,
-    results,
-  });
+  return {
+    result: { ok: true, processed: results.length, results },
+    itemsDone: results.filter((r) => !r.error).length,
+  };
 }

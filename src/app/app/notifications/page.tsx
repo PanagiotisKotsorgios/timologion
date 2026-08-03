@@ -11,10 +11,10 @@ import { NotificationsClient } from "./NotificationsClient";
 export const dynamic = "force-dynamic";
 
 export default async function NotificationsPage() {
-  await requireTenant();
+  const ctx = await requireTenant();
   const session = await getSession();
   const [announcements, userNotifs, systemNotifs] = await Promise.all([
-    getPublishedAnnouncements(),
+    getPublishedAnnouncements(ctx.businessId),
     session ? getUserNotifications(session.userId) : Promise.resolve([]),
     session ? getSystemNotifications(session.userId) : Promise.resolve([]),
   ]);

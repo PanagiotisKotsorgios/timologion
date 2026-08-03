@@ -12,13 +12,22 @@ export type Announcement = {
 };
 
 /**
- * Public feed — only rows with publishedAt <= now, newest first. Used by the
- * tenant NotificationsBell and /app/notifications page.
+ * Public feed — published announcements the caller should see. Global
+ * announcements (businessId=null) go to everyone; targeted ones only
+ * fire for their specific tenant. `businessId` filter is inclusive:
+ * pass the caller's current business and they get both universes.
  */
-export async function getPublishedAnnouncements(): Promise<Announcement[]> {
+export async function getPublishedAnnouncements(
+  businessId?: string | null,
+): Promise<Announcement[]> {
   const now = new Date();
   const rows = await prisma.platformAnnouncement.findMany({
-    where: { publishedAt: { lte: now } },
+    where: {
+      publishedAt: { lte: now },
+      OR: businessId
+        ? [{ businessId: null }, { businessId }]
+        : [{ businessId: null }],
+    },
     orderBy: { publishedAt: "desc" },
     take: 200,
   });

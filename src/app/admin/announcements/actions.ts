@@ -15,6 +15,7 @@ const schema = z.object({
   body: z.string().min(2).max(20000),
   ctaHref: z.string().max(300).optional().or(z.literal("")),
   ctaLabel: z.string().max(80).optional().or(z.literal("")),
+  businessId: z.string().max(191).optional().or(z.literal("")),
   publish: z.string().optional(),
 });
 
@@ -36,6 +37,7 @@ export async function saveAnnouncementAction(
     body: parsed.data.body,
     ctaHref: o(parsed.data.ctaHref),
     ctaLabel: o(parsed.data.ctaLabel),
+    businessId: o(parsed.data.businessId),
   };
 
   let id = parsed.data.id;

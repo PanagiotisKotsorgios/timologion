@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { authorizeCron } from "@/lib/cron-auth";
+import { withCronLog } from "@/lib/cron-logger";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,6 +14,14 @@ export async function GET(req: Request) {
   const unauth = authorizeCron(req);
   if (unauth) return unauth;
 
+  const wrapped = await withCronLog("low-stock", () => runLowStock());
+  if (!wrapped.ok) {
+    return NextResponse.json({ ok: false, error: wrapped.error }, { status: 500 });
+  }
+  return NextResponse.json(wrapped.result);
+}
+
+async function runLowStock() {
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
@@ -77,10 +86,13 @@ export async function GET(req: Request) {
     }
   }
 
-  return NextResponse.json({
-    ok: true,
-    scanned: lowItems.length,
-    lowStock: truly.length,
-    notifications: created,
-  });
+  return {
+    result: {
+      ok: true,
+      scanned: lowItems.length,
+      lowStock: truly.length,
+      notifications: created,
+    },
+    itemsDone: created,
+  };
 }
