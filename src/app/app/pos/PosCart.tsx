@@ -10,10 +10,16 @@ import {
   X,
   Check,
   Save,
+  Minus,
+  Plus,
 } from "lucide-react";
-import { Button } from "@/components/ui/Button";
 import { Field, Select } from "@/components/ui/Input";
-import { closeTabAction, removeTabItemAction, cancelTabAction } from "./actions";
+import {
+  closeTabAction,
+  removeTabItemAction,
+  cancelTabAction,
+  setTabItemQuantityAction,
+} from "./actions";
 
 const nfEur = new Intl.NumberFormat("el-GR", {
   style: "currency",
@@ -59,6 +65,17 @@ export function PosCart({
     fd.set("id", id);
     startTx(async () => {
       await removeTabItemAction(fd);
+      router.refresh();
+    });
+  }
+
+  function setQuantity(id: string, quantity: number) {
+    const q = Math.max(0, Math.min(999, quantity));
+    const fd = new FormData();
+    fd.set("id", id);
+    fd.set("quantity", String(q));
+    startTx(async () => {
+      await setTabItemQuantityAction(fd);
       router.refresh();
     });
   }
@@ -119,33 +136,74 @@ export function PosCart({
           ) : (
             <ul className="divide-y divide-ink-200">
               {initial.items.map((it) => {
-                const rowTotal = it.quantity * it.unitPrice * (1 + it.vatRate / 100);
+                const rowTotal =
+                  it.quantity * it.unitPrice * (1 + it.vatRate / 100);
                 return (
-                  <li
-                    key={it.id}
-                    className="flex items-center justify-between gap-2 p-3"
-                  >
-                    <div className="flex-1">
-                      <p className="text-sm font-semibold text-ink-900">
-                        {it.name}
-                      </p>
-                      <p className="text-xs text-ink-500">
-                        {it.quantity} × {money(it.unitPrice)} · ΦΠΑ{" "}
-                        {it.vatRate}%
+                  <li key={it.id} className="p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-ink-900">
+                          {it.name}
+                        </p>
+                        <p className="text-xs text-ink-500">
+                          {money(it.unitPrice)} · ΦΠΑ {it.vatRate}%
+                        </p>
+                      </div>
+                      <p className="whitespace-nowrap text-sm font-bold text-brand-900">
+                        {money(rowTotal)}
                       </p>
                     </div>
-                    <p className="text-sm font-bold text-brand-900">
-                      {money(rowTotal)}
-                    </p>
                     {!isClosed && (
-                      <button
-                        type="button"
-                        onClick={() => removeItem(it.id)}
-                        className="text-ink-500 hover:text-red-700"
-                        aria-label="Αφαίρεση"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      <div className="mt-2 flex items-center justify-between gap-2">
+                        {/* Quantity stepper — the whole reason this row is
+                            two-line. Users don't have to re-click the item
+                            grid to add another; they nudge here instead. */}
+                        <div className="inline-flex items-stretch overflow-hidden rounded-lg border-2 border-ink-300 bg-white">
+                          <button
+                            type="button"
+                            onClick={() => setQuantity(it.id, it.quantity - 1)}
+                            disabled={pending}
+                            className="grid h-8 w-8 place-items-center bg-ink-50 text-ink-700 transition-colors hover:bg-ink-100 disabled:opacity-50"
+                            aria-label="Μείωση ποσότητας"
+                          >
+                            <Minus size={14} strokeWidth={2.5} />
+                          </button>
+                          <input
+                            type="number"
+                            inputMode="numeric"
+                            min={0}
+                            max={999}
+                            step={1}
+                            value={it.quantity}
+                            onChange={(e) => {
+                              const v = Number(e.target.value);
+                              if (Number.isFinite(v))
+                                setQuantity(it.id, Math.floor(v));
+                            }}
+                            disabled={pending}
+                            className="h-8 w-12 border-x-2 border-ink-300 bg-white text-center text-sm font-bold tabular-nums text-ink-900 outline-none focus:bg-brand-50 [appearance:textfield] disabled:opacity-60 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                            aria-label="Ποσότητα"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setQuantity(it.id, it.quantity + 1)}
+                            disabled={pending}
+                            className="grid h-8 w-8 place-items-center bg-ink-50 text-ink-700 transition-colors hover:bg-ink-100 disabled:opacity-50"
+                            aria-label="Αύξηση ποσότητας"
+                          >
+                            <Plus size={14} strokeWidth={2.5} />
+                          </button>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeItem(it.id)}
+                          disabled={pending}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-transparent text-ink-500 transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-700 disabled:opacity-50"
+                          aria-label="Αφαίρεση"
+                        >
+                          <Trash2 size={15} strokeWidth={2.25} />
+                        </button>
+                      </div>
                     )}
                   </li>
                 );

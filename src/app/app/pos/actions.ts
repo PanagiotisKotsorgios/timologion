@@ -126,16 +126,39 @@ export async function addTabItemAction(
   });
   if (!tab) return { ok: false, error: "Ο λογαριασμός δεν βρέθηκε ή είναι κλειστός." };
 
-  await prisma.posTabItem.create({
-    data: {
-      tabId: tab.id,
-      itemId: parsed.data.itemId || null,
-      name: parsed.data.name,
-      quantity: parsed.data.quantity,
-      unitPrice: parsed.data.unitPrice,
-      vatRate: parsed.data.vatRate,
-    },
-  });
+  // Merge with an existing identical line (same catalog item + same price
+  // + same VAT) instead of creating a second row. This is standard POS
+  // behavior — the stepper in the cart is the honest edit surface, and
+  // duplicate rows for the same product just add friction.
+  const existing = parsed.data.itemId
+    ? await prisma.posTabItem.findFirst({
+        where: {
+          tabId: tab.id,
+          itemId: parsed.data.itemId,
+          unitPrice: parsed.data.unitPrice,
+          vatRate: parsed.data.vatRate,
+        },
+        select: { id: true, quantity: true },
+      })
+    : null;
+
+  if (existing) {
+    await prisma.posTabItem.update({
+      where: { id: existing.id },
+      data: { quantity: Number(existing.quantity) + parsed.data.quantity },
+    });
+  } else {
+    await prisma.posTabItem.create({
+      data: {
+        tabId: tab.id,
+        itemId: parsed.data.itemId || null,
+        name: parsed.data.name,
+        quantity: parsed.data.quantity,
+        unitPrice: parsed.data.unitPrice,
+        vatRate: parsed.data.vatRate,
+      },
+    });
+  }
   await refreshTabTotals(tab.id);
   revalidatePath(`/app/pos/${tab.id}`);
   return { ok: true };
@@ -153,6 +176,48 @@ export async function removeTabItemAction(formData: FormData) {
   await prisma.posTabItem.delete({ where: { id } });
   await refreshTabTotals(item.tabId);
   revalidatePath(`/app/pos/${item.tabId}`);
+}
+
+const setQtySchema = z.object({
+  id: z.string().min(1),
+  quantity: z.coerce.number().min(0).max(999),
+});
+
+// Adjust an existing cart line's quantity. If it drops to 0 the row is
+// removed — that way the +/- controls in PosCart can double as a delete
+// without a second server round-trip.
+export async function setTabItemQuantityAction(
+  formData: FormData,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const ctx = await requireTenant();
+  assertCan(ctx.role, "document:write");
+  const parsed = setQtySchema.safeParse({
+    id: formData.get("id"),
+    quantity: formData.get("quantity"),
+  });
+  if (!parsed.success)
+    return { ok: false, error: formatZodError(parsed.error) };
+
+  const item = await prisma.posTabItem.findUnique({
+    where: { id: parsed.data.id },
+    select: { tabId: true, tab: { select: { businessId: true, status: true } } },
+  });
+  if (!item || item.tab.businessId !== ctx.businessId)
+    return { ok: false, error: "Το είδος δεν βρέθηκε." };
+  if (item.tab.status !== "open")
+    return { ok: false, error: "Ο λογαριασμός δεν είναι ανοικτός." };
+
+  if (parsed.data.quantity <= 0) {
+    await prisma.posTabItem.delete({ where: { id: parsed.data.id } });
+  } else {
+    await prisma.posTabItem.update({
+      where: { id: parsed.data.id },
+      data: { quantity: parsed.data.quantity },
+    });
+  }
+  await refreshTabTotals(item.tabId);
+  revalidatePath(`/app/pos/${item.tabId}`);
+  return { ok: true };
 }
 
 const closeTabSchema = z.object({
