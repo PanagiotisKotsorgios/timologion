@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Alert } from "@/components/ui/Alert";
+import { AdminExportButton } from "@/components/admin/AdminExportButton";
 import { env } from "@/lib/env";
 import { RunBackupButton } from "./RunBackupButton";
 
@@ -57,6 +58,7 @@ export default async function AdminBackupsPage() {
       <PageHeader
         title="Backups βάσης"
         subtitle="Ιστορικό εκτελέσεων του mysqldump → S3 pipeline."
+        actions={<AdminExportButton entity="backups" />}
       />
 
       {!configured && (

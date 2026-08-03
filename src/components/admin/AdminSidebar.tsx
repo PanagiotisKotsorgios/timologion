@@ -25,6 +25,8 @@ import {
   Webhook,
   AlertOctagon,
   HardDrive,
+  Activity,
+  ToggleLeft,
   type LucideIcon,
 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
@@ -33,6 +35,7 @@ type NavItem = { href: string; label: string; icon: LucideIcon };
 
 const PRIMARY: NavItem[] = [
   { href: "/admin", label: "Επισκόπηση", icon: LayoutDashboard },
+  { href: "/admin/health", label: "Υγεία συστήματος", icon: Activity },
   { href: "/admin/billing", label: "Χρέωση & έσοδα", icon: CreditCard },
   { href: "/admin/plans", label: "Πακέτα", icon: Package },
   { href: "/admin/economics", label: "Οικονομικά", icon: LineChart },
@@ -51,6 +54,7 @@ const SECONDARY: NavItem[] = [
   { href: "/admin/wrapp", label: "Ρυθμίσεις Wrapp", icon: Zap },
   { href: "/admin/webhooks", label: "Webhooks Wrapp", icon: Webhook },
   { href: "/admin/backups", label: "Backups βάσης", icon: HardDrive },
+  { href: "/admin/feature-flags", label: "Feature flags", icon: ToggleLeft },
   { href: "/admin/system-settings", label: "Ρυθμίσεις πλατφόρμας", icon: Settings2 },
   { href: "/admin/admins", label: "Platform admins", icon: Shield },
 ];

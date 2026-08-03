@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { LinkButton } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
+import { AdminExportButton } from "@/components/admin/AdminExportButton";
 import { money, date } from "@/lib/format";
 
 type SearchParams = { q?: string; page?: string };
@@ -64,6 +65,7 @@ export default async function AdminBusinessesPage({
       <PageHeader
         title="Επιχειρήσεις"
         subtitle={`${total} επιχειρήσεις συνολικά στην πλατφόρμα`}
+        actions={<AdminExportButton entity="businesses" params={{ q: search }} />}
       />
 
       <form className="mb-4 max-w-md">

@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { LinkButton } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
+import { AdminExportButton } from "@/components/admin/AdminExportButton";
 import { date } from "@/lib/format";
 
 type SearchParams = { q?: string; page?: string };
@@ -59,6 +60,7 @@ export default async function AdminUsersPage({
       <PageHeader
         title="Χρήστες"
         subtitle={`${total} χρήστες συνολικά στην πλατφόρμα`}
+        actions={<AdminExportButton entity="users" params={{ q: search }} />}
       />
 
       <form className="mb-4 max-w-md">

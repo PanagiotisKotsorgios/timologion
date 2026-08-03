@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { LinkButton } from "@/components/ui/Button";
+import { AdminExportButton } from "@/components/admin/AdminExportButton";
 import { date } from "@/lib/format";
 
 const PAGE_SIZE = 50;
@@ -70,6 +71,7 @@ export default async function AdminAuditPage({
       <PageHeader
         title="Audit log"
         subtitle={`${total} events. Πλήρες ιστορικό ενεργειών σε επίπεδο πλατφόρμας.`}
+        actions={<AdminExportButton entity="audit" params={{ q: search }} />}
       />
 
       <form className="mb-4 max-w-md">

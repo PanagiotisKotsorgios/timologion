@@ -5,6 +5,7 @@ import { Card, CardBody } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Input } from "@/components/ui/Input";
 import { LinkButton } from "@/components/ui/Button";
+import { AdminExportButton } from "@/components/admin/AdminExportButton";
 
 export const dynamic = "force-dynamic";
 
@@ -78,6 +79,7 @@ export default async function AdminErrorsPage({
             ? `Τελευταίο: ${latestOverall.createdAt.toLocaleString("el-GR")}`
             : "Δεν έχουν καταγραφεί σφάλματα ακόμη."
         }
+        actions={<AdminExportButton entity="errors" params={{ level }} />}
       />
 
       <div className="mb-6 grid gap-3 sm:grid-cols-3">

@@ -5,6 +5,7 @@ import { Card, CardBody } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Input } from "@/components/ui/Input";
 import { LinkButton } from "@/components/ui/Button";
+import { AdminExportButton } from "@/components/admin/AdminExportButton";
 import { env } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
@@ -94,6 +95,7 @@ export default async function AdminWebhooksPage({
       <PageHeader
         title="Webhooks Wrapp"
         subtitle={`${total.toLocaleString("el-GR")} events με τα τρέχοντα φίλτρα`}
+        actions={<AdminExportButton entity="webhooks" />}
       />
 
       <Card className="mb-4">

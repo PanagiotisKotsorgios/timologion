@@ -507,6 +507,11 @@ model Business {
   defaultDocumentNotes String? @db.Text
   suspendedAt       DateTime?
   suspendedReason   String?  @db.VarChar(255)
+  // Admin-only annotations. Never surfaced to the tenant — visible only
+  // from /admin/businesses/[id]. Support uses these for VIP flagging,
+  // running notes, escalation history, refund pending, etc.
+  supportNotes      String?  @db.Text
+  supportTags       String?  @db.VarChar(500)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
@@ -534,6 +539,7 @@ model Business {
   expensePayments   ExpensePayment[]
   pluginActivations PluginActivation[]
   appointments      Appointment[]
+  featureFlags      BusinessFeatureFlag[]
 
   @@index([vatNumber])
   @@map("businesses")
@@ -698,6 +704,44 @@ model BackupRun {
 
   @@index([startedAt])
   @@map("backup_runs")
+}
+
+// ─── Feature flags ──────────────────────────────────────────────────────
+// Global on/off per feature (rollout=all/beta/none) with per-business
+// overrides via BusinessFeatureFlag. Reading is single-query — one
+// findMany on the joined view. Keys are opaque strings so the code
+// side stays typo-guarded via a shared constant map.
+
+enum FeatureRollout {
+  none
+  beta
+  all
+}
+
+model FeatureFlag {
+  key         String              @id @db.VarChar(80)
+  description String?             @db.VarChar(500)
+  rollout     FeatureRollout      @default(none)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  overrides   BusinessFeatureFlag[]
+
+  @@map("feature_flags")
+}
+
+model BusinessFeatureFlag {
+  businessId String
+  flagKey    String  @db.VarChar(80)
+  enabled    Boolean
+  updatedAt  DateTime @updatedAt
+
+  business   Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  flag       FeatureFlag @relation(fields: [flagKey], references: [key], onDelete: Cascade)
+
+  @@id([businessId, flagKey])
+  @@index([flagKey])
+  @@map("business_feature_flags")
 }
 
 // ─── Account deletion snapshots ─────────────────────────────────────────

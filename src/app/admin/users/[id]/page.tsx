@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { Ban, CheckCircle, UserCog } from "lucide-react";
+import { Ban, CheckCircle, UserCog, KeyRound } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -15,6 +15,11 @@ import {
   unbanUserAction,
   impersonateUserAction,
 } from "@/app/admin/actions";
+import {
+  revokeSessionAction,
+  revokeAllSessionsAction,
+  forcePasswordResetAction,
+} from "./session-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -78,17 +83,30 @@ export default async function AdminUserDetailPage({
               <Badge tone="warning">{user.platformRole}</Badge>
             )}
             {!user.suspendedAt && (
-              <form action={impersonateUserAction}>
-                <input type="hidden" name="userId" value={user.id} />
-                <Button
-                  type="submit"
-                  variant="secondary"
-                  icon={UserCog}
-                  title="Είσοδος ως αυτός ο χρήστης — μόνο super_admin"
-                >
-                  Σύνδεση ως αυτός
-                </Button>
-              </form>
+              <>
+                <form action={impersonateUserAction}>
+                  <input type="hidden" name="userId" value={user.id} />
+                  <Button
+                    type="submit"
+                    variant="secondary"
+                    icon={UserCog}
+                    title="Είσοδος ως αυτός ο χρήστης — μόνο super_admin"
+                  >
+                    Σύνδεση ως αυτός
+                  </Button>
+                </form>
+                <form action={forcePasswordResetAction}>
+                  <input type="hidden" name="userId" value={user.id} />
+                  <Button
+                    type="submit"
+                    variant="secondary"
+                    icon={KeyRound}
+                    title="Στέλνει email επαναφοράς κωδικού στον χρήστη."
+                  >
+                    Αποστολή reset link
+                  </Button>
+                </form>
+              </>
             )}
             {user.suspendedAt ? (
               <form action={unbanUserAction}>
@@ -182,10 +200,27 @@ export default async function AdminUserDetailPage({
           </Card>
 
           <Card>
-            <CardHeader title="Ενεργές συνεδρίες" />
+            <CardHeader
+              title="Ενεργές συνεδρίες"
+              action={
+                sessions.length > 0 && (
+                  <form action={revokeAllSessionsAction}>
+                    <input type="hidden" name="userId" value={user.id} />
+                    <button
+                      type="submit"
+                      className="inline-flex h-8 items-center gap-1.5 rounded-md border-2 border-red-700 bg-red-600 px-3 text-xs font-bold text-white hover:bg-red-700"
+                    >
+                      Logout παντού
+                    </button>
+                  </form>
+                )
+              }
+            />
             <CardBody className="p-0">
               {sessions.length === 0 ? (
-                <p className="p-6 text-sm text-ink-500">Χωρίς πρόσφατες συνεδρίες.</p>
+                <p className="p-6 text-sm text-ink-500">
+                  Χωρίς πρόσφατες συνεδρίες.
+                </p>
               ) : (
                 <table className="w-full text-sm">
                   <thead className="bg-ink-100 text-xs uppercase tracking-wide text-ink-500">
@@ -194,25 +229,56 @@ export default async function AdminUserDetailPage({
                       <th className="px-4 py-2 text-left">Λήγει</th>
                       <th className="px-4 py-2 text-left">IP</th>
                       <th className="px-4 py-2 text-left">User agent</th>
+                      <th className="px-4 py-2 text-right"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-ink-300/60">
-                    {sessions.map((s) => (
-                      <tr key={s.id}>
-                        <td className="px-4 py-2 text-ink-500">
-                          {date(s.lastSeenAt)}
-                        </td>
-                        <td className="px-4 py-2 text-ink-500">
-                          {date(s.expiresAt)}
-                        </td>
-                        <td className="px-4 py-2 text-ink-700 font-mono text-xs">
-                          {s.ipAddress ?? "—"}
-                        </td>
-                        <td className="px-4 py-2 text-ink-500 max-w-[380px] truncate">
-                          {s.userAgent ?? "—"}
-                        </td>
-                      </tr>
-                    ))}
+                    {sessions.map((s) => {
+                      const active = s.expiresAt.getTime() > Date.now();
+                      return (
+                        <tr key={s.id}>
+                          <td className="px-4 py-2 text-ink-500">
+                            {date(s.lastSeenAt)}
+                          </td>
+                          <td className="px-4 py-2 text-ink-500">
+                            {date(s.expiresAt)}
+                            {!active && (
+                              <span className="ml-2 text-[10px] font-bold uppercase text-ink-400">
+                                (ληγμένη)
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-2 text-ink-700 font-mono text-xs">
+                            {s.ipAddress ?? "—"}
+                          </td>
+                          <td className="px-4 py-2 text-ink-500 max-w-[380px] truncate">
+                            {s.userAgent ?? "—"}
+                          </td>
+                          <td className="px-4 py-2 text-right">
+                            {active && (
+                              <form action={revokeSessionAction}>
+                                <input
+                                  type="hidden"
+                                  name="sessionId"
+                                  value={s.id}
+                                />
+                                <input
+                                  type="hidden"
+                                  name="userId"
+                                  value={user.id}
+                                />
+                                <button
+                                  type="submit"
+                                  className="text-xs font-bold text-red-700 hover:text-red-900"
+                                >
+                                  Ακύρωση
+                                </button>
+                              </form>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               )}

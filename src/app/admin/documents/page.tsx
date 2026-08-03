@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { LinkButton } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
+import { AdminExportButton } from "@/components/admin/AdminExportButton";
 import { money, date } from "@/lib/format";
 import { t } from "@/lib/i18n";
 import type { DocumentStatus, DocumentType } from "@prisma/client";
@@ -68,6 +69,12 @@ export default async function AdminDocumentsPage({
       <PageHeader
         title="Παραστατικά (όλες οι επιχειρήσεις)"
         subtitle={`${total} παραστατικά με τα τρέχοντα φίλτρα`}
+        actions={
+          <AdminExportButton
+            entity="documents"
+            params={{ q: search, status }}
+          />
+        }
       />
 
       <form className="mb-4 grid gap-3 md:grid-cols-3">

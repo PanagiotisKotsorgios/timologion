@@ -20,6 +20,8 @@ import {
   RecordProviderCostForm,
   PlatformInvoiceForm,
 } from "./SubscriptionCard";
+import { SupportNotesCard } from "./SupportNotesCard";
+import { FeatureFlagOverrides } from "./FeatureFlagOverrides";
 
 export const dynamic = "force-dynamic";
 
@@ -112,6 +114,22 @@ export default async function AdminBusinessDetailPage({
       }),
     ]);
 
+  // Feature-flag matrix: every flag + this business's override (if any).
+  const [allFlags, overrides] = await Promise.all([
+    prisma.featureFlag.findMany({ orderBy: { key: "asc" } }),
+    prisma.businessFeatureFlag.findMany({
+      where: { businessId: id },
+      select: { flagKey: true, enabled: true },
+    }),
+  ]);
+  const overrideMap = new Map(overrides.map((o) => [o.flagKey, o.enabled]));
+  const flagRows = allFlags.map((f) => ({
+    key: f.key,
+    description: f.description,
+    rollout: f.rollout,
+    override: overrideMap.has(f.key) ? overrideMap.get(f.key)! : null,
+  }));
+
   if (!business) notFound();
 
   const revenue = Number(revenueAgg._sum.totalAmount ?? 0);
@@ -164,6 +182,21 @@ export default async function AdminBusinessDetailPage({
           </Alert>
         </div>
       )}
+
+      {/* Support annotations + feature flag matrix. Kept together at the
+          top because both are internal-only levers support/eng reach for
+          first when opening a business record. */}
+      <div className="mb-6 grid gap-6 md:grid-cols-2">
+        <SupportNotesCard
+          businessId={business.id}
+          initialNotes={business.supportNotes}
+          initialTags={business.supportTags}
+        />
+        <FeatureFlagOverrides
+          businessId={business.id}
+          flags={flagRows}
+        />
+      </div>
 
       {/* Billing block: subscription + provider cost + platform invoice */}
       <div className="mb-6 grid gap-6 md:grid-cols-3">
