@@ -15,7 +15,7 @@ const STAGES: {
   label: string;
   color: string;
 }[] = [
-  { key: "discovery", label: "Discovery", color: "border-blue-400 bg-blue-50" },
+  { key: "discovery", label: "Ανακάλυψη", color: "border-blue-400 bg-blue-50" },
   { key: "proposal", label: "Πρόταση", color: "border-amber-400 bg-amber-50" },
   { key: "negotiation", label: "Διαπραγμάτευση", color: "border-purple-400 bg-purple-50" },
   { key: "won", label: "Κερδισμένη", color: "border-green-500 bg-green-50" },
@@ -50,8 +50,8 @@ export default async function PipelinePage() {
   return (
     <>
       <PageHeader
-        title="Pipeline Ευκαιριών"
-        subtitle="Kanban view — σύρετε στάδια ή χρησιμοποιήστε τους ελέγχους σε κάθε κάρτα."
+        title="Ροή Ευκαιριών"
+        subtitle="Πίνακας σταδίων — σύρετε τις κάρτες μεταξύ στηλών ή χρησιμοποιήστε τους ελέγχους σε κάθε μία."
         actions={
           <>
             <LinkButton href="/app/crm" variant="secondary" icon={ArrowLeft}>

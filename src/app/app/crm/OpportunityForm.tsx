@@ -80,7 +80,7 @@ export function OpportunityForm({
       <div className="grid grid-cols-2 gap-3">
         <Field label="Στάδιο" htmlFor="stage">
           <Select id="stage" name="stage" defaultValue="discovery">
-            <option value="discovery">Discovery</option>
+            <option value="discovery">Ανακάλυψη</option>
             <option value="proposal">Πρόταση</option>
             <option value="negotiation">Διαπραγμάτευση</option>
             <option value="won">Κερδισμένη</option>

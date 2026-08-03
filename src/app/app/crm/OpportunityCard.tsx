@@ -15,7 +15,7 @@ const nfEur = new Intl.NumberFormat("el-GR", {
 });
 
 const STAGES = [
-  { value: "discovery", label: "Discovery" },
+  { value: "discovery", label: "Ανακάλυψη" },
   { value: "proposal", label: "Πρόταση" },
   { value: "negotiation", label: "Διαπραγμ." },
   { value: "won", label: "Κερδισμένη" },

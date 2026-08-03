@@ -2,7 +2,15 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2, Wallet, CreditCard, Building2, X, Check } from "lucide-react";
+import {
+  Trash2,
+  Wallet,
+  CreditCard,
+  Building2,
+  X,
+  Check,
+  Save,
+} from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Field, Select } from "@/components/ui/Input";
 import { closeTabAction, removeTabItemAction, cancelTabAction } from "./actions";
@@ -191,32 +199,48 @@ export function PosCart({
             </label>
           </div>
 
-          <div className="flex gap-2">
-            <Button
+          {/* Two-step action row per POS best practices: primary save
+              (returns to /app/pos, tab stays open for later) + solid
+              charge & close CTA. Cancel is demoted to a small red
+              destructive button below. */}
+          <div className="grid gap-2 sm:grid-cols-2">
+            <button
               type="button"
-              variant="ghost"
-              onClick={cancelTab}
+              onClick={() => router.push("/app/pos")}
               disabled={pending}
-              icon={X}
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-lg border-2 border-ink-300 bg-white px-4 text-sm font-bold text-ink-900 shadow-sm transition-colors hover:border-ink-500 hover:bg-ink-100 disabled:opacity-60"
             >
-              Ακύρωση
-            </Button>
-            <Button
+              <Save size={16} strokeWidth={2.5} aria-hidden />
+              Αποθήκευση
+            </button>
+            <button
               type="button"
               onClick={checkout}
               disabled={pending || initial.items.length === 0}
-              icon={
-                method === "card"
-                  ? CreditCard
-                  : method === "bank_transfer"
-                    ? Building2
-                    : Wallet
-              }
-              className="flex-1"
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-lg border-2 border-emerald-800 bg-emerald-600 px-4 text-sm font-black text-white shadow-md transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
+              {(() => {
+                const Icon =
+                  method === "card"
+                    ? CreditCard
+                    : method === "bank_transfer"
+                      ? Building2
+                      : Wallet;
+                return <Icon size={16} strokeWidth={2.5} aria-hidden />;
+              })()}
               {pending ? "Χρέωση..." : "Χρέωση & Κλείσιμο"}
-            </Button>
+            </button>
           </div>
+
+          <button
+            type="button"
+            onClick={cancelTab}
+            disabled={pending}
+            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border-2 border-red-700 bg-red-600 px-4 text-xs font-bold uppercase tracking-widest text-white shadow-sm transition-colors hover:bg-red-700 disabled:opacity-60"
+          >
+            <X size={14} strokeWidth={3} aria-hidden />
+            Ακύρωση λογαριασμού
+          </button>
         </>
       )}
 

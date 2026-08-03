@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import { requireTenant } from "@/lib/tenant";
 import { assertCan } from "@/lib/rbac";
 import { logAudit } from "@/lib/audit";
-import { toCsv, csvResponse } from "@/lib/csv";
+import { toXlsxBuffer, xlsxResponse } from "@/lib/xlsx";
 import { t } from "@/lib/i18n";
 
 export const runtime = "nodejs";
@@ -35,25 +35,31 @@ export async function GET(req: Request) {
     },
     orderBy: { issueDate: "asc" },
     include: {
-      client: {
-        select: { legalName: true, vatNumber: true },
-      },
+      client: { select: { legalName: true, vatNumber: true } },
     },
   });
 
-  const csv = toCsv(docs, [
-    { header: "Ημ. έκδοσης", value: (d) => d.issueDate.toISOString().slice(0, 10) },
-    { header: "Σειρά", value: (d) => d.series ?? "" },
-    { header: "Αριθμός", value: (d) => d.number ?? "" },
-    { header: "Τύπος", value: (d) => t.documents.types[d.type] ?? d.type },
-    { header: "Πελάτης", value: (d) => d.client?.legalName ?? "Λιανική" },
-    { header: "ΑΦΜ", value: (d) => d.client?.vatNumber ?? "" },
-    { header: "Καθαρή αξία", value: (d) => Number(d.netTotalAmount).toFixed(2) },
-    { header: "ΦΠΑ", value: (d) => Number(d.vatTotalAmount).toFixed(2) },
-    { header: "Σύνολο", value: (d) => Number(d.totalAmount).toFixed(2) },
-    { header: "Πληρωμή", value: (d) => d.paymentStatus },
-    { header: "ΜΑΡΚ", value: (d) => d.myDataMark ?? "" },
-  ]);
+  const buf = await toXlsxBuffer(docs, [
+    {
+      header: "Ημ. έκδοσης",
+      value: (d) => d.issueDate,
+      format: "yyyy-mm-dd",
+      width: 12,
+    },
+    { header: "Σειρά", value: (d) => d.series ?? "", width: 8 },
+    { header: "Αριθμός", value: (d) => d.number ?? "", format: "0", width: 10 },
+    { header: "Τύπος", value: (d) => t.documents.types[d.type] ?? d.type, width: 26 },
+    { header: "Πελάτης", value: (d) => d.client?.legalName ?? "Λιανική", width: 30 },
+    { header: "ΑΦΜ", value: (d) => d.client?.vatNumber ?? "", width: 12 },
+    { header: "Καθαρή αξία", value: (d) => Number(d.netTotalAmount), format: "€#,##0.00", width: 14 },
+    { header: "ΦΠΑ", value: (d) => Number(d.vatTotalAmount), format: "€#,##0.00", width: 12 },
+    { header: "Σύνολο", value: (d) => Number(d.totalAmount), format: "€#,##0.00", width: 14 },
+    { header: "Πληρωμή", value: (d) => d.paymentStatus, width: 12 },
+    { header: "ΜΑΡΚ", value: (d) => d.myDataMark ?? "", width: 20 },
+  ], {
+    sheetName: "Έσοδα-Έξοδα",
+    title: `Έσοδα-Έξοδα · ${from.toISOString().slice(0, 10)} → ${to.toISOString().slice(0, 10)}`,
+  });
 
   await logAudit({
     userId: ctx.userId,
@@ -66,6 +72,6 @@ export async function GET(req: Request) {
     },
   });
 
-  const filename = `esoda-${from.toISOString().slice(0, 10)}-${to.toISOString().slice(0, 10)}.csv`;
-  return csvResponse(csv, filename);
+  const filename = `esoda-${from.toISOString().slice(0, 10)}-${to.toISOString().slice(0, 10)}.xlsx`;
+  return xlsxResponse(buf, filename);
 }

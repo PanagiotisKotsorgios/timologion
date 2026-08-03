@@ -131,9 +131,15 @@ export default async function ItemsPage({
                 {rows.map((it) => (
                   <ClickableRow key={it.id}>
                     <td>
-                      <Badge tone={it.kind === "product" ? "brand" : "neutral"}>
-                        {it.kind === "product" ? "Προϊόν" : "Υπηρεσία"}
-                      </Badge>
+                      {it.kind === "product" ? (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-sky-300 bg-sky-100 px-2.5 py-0.5 text-[11px] font-black uppercase tracking-widest text-sky-800">
+                          Προϊόν
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-violet-300 bg-violet-100 px-2.5 py-0.5 text-[11px] font-black uppercase tracking-widest text-violet-800">
+                          Υπηρεσία
+                        </span>
+                      )}
                     </td>
                     <td className="mono">{it.code ?? "—"}</td>
                     <td>
