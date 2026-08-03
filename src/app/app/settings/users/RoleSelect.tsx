@@ -1,16 +1,8 @@
 "use client";
 
 import type { BusinessRole } from "@prisma/client";
+import { ROLE_OPTIONS_EL } from "@/lib/roles";
 import { updateMemberRoleAction } from "./actions";
-
-const OPTIONS: BusinessRole[] = [
-  "owner",
-  "admin",
-  "accountant",
-  "sales",
-  "staff",
-  "readonly",
-];
 
 export function RoleSelect({
   memberId,
@@ -31,9 +23,9 @@ export function RoleSelect({
         onChange={(e) => e.currentTarget.form?.requestSubmit()}
         className="rounded-md border border-ink-300 bg-white px-2 py-1 text-sm disabled:bg-ink-100 disabled:text-ink-500"
       >
-        {OPTIONS.map((r) => (
-          <option key={r} value={r}>
-            {r}
+        {ROLE_OPTIONS_EL.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
           </option>
         ))}
       </select>

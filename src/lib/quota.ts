@@ -33,11 +33,17 @@ export async function checkDocumentQuota(
     orderBy: { createdAt: "desc" },
   });
 
+  // Anything that consumed effort or Wrapp quota counts — issued, in-flight,
+  // and even failed attempts. Only true drafts (never submitted) and
+  // cancellations are excluded. This is what the operator actually thinks
+  // of as "παραστατικά I've made this year".
+  const countableStatuses = ["issued", "sending", "failed"] as const;
+
   // No local subscription = unlimited from our side. The provider still
   // enforces its own cap when we transmit.
   if (!sub) {
     const used = await prisma.document.count({
-      where: { businessId, status: "issued" },
+      where: { businessId, status: { in: [...countableStatuses] } },
     });
     return { ok: true, used, limit: null, remaining: null };
   }
@@ -47,7 +53,7 @@ export async function checkDocumentQuota(
     const used = await prisma.document.count({
       where: {
         businessId,
-        status: "issued",
+        status: { in: [...countableStatuses] },
         issueDate: { gte: sub.currentPeriodStart, lte: sub.currentPeriodEnd },
       },
     });
@@ -57,7 +63,7 @@ export async function checkDocumentQuota(
   const used = await prisma.document.count({
     where: {
       businessId,
-      status: "issued",
+      status: { in: [...countableStatuses] },
       issueDate: { gte: sub.currentPeriodStart, lte: sub.currentPeriodEnd },
     },
   });

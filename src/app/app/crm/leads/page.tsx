@@ -5,31 +5,11 @@ import { assertCan } from "@/lib/rbac";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card, CardBody } from "@/components/ui/Card";
 import { LinkButton } from "@/components/ui/Button";
-import { date } from "@/lib/format";
-import { LeadStatusSelect } from "../LeadStatusSelect";
 import { NewLeadButton } from "../NewLeadButton";
-import { LeadsTable, LeadRow } from "./LeadsTable";
+import { LeadsTable } from "./LeadsTable";
 import type { LeadDetail } from "./LeadDetailPopup";
 
 export const dynamic = "force-dynamic";
-
-const STATUS_LABEL: Record<string, string> = {
-  new: "Νέος",
-  contacted: "Επαφή",
-  qualified: "Καταλληλος",
-  disqualified: "Απορρίφθηκε",
-  converted: "Πελάτης",
-};
-const STATUS_TONE: Record<
-  string,
-  "brand" | "success" | "muted" | "warning" | "neutral"
-> = {
-  new: "brand",
-  contacted: "warning",
-  qualified: "success",
-  disqualified: "muted",
-  converted: "success",
-};
 
 export default async function LeadsPage() {
   const ctx = await requireTenant();
@@ -41,6 +21,19 @@ export default async function LeadsPage() {
     take: 200,
   });
 
+  const rows: LeadDetail[] = leads.map((l) => ({
+    id: l.id,
+    fullName: l.fullName,
+    email: l.email,
+    phone: l.phone,
+    company: l.company,
+    source: l.source,
+    status: l.status,
+    notes: l.notes,
+    createdAt: l.createdAt.toISOString(),
+    updatedAt: l.updatedAt.toISOString(),
+  }));
+
   return (
     <>
       <PageHeader
@@ -48,11 +41,7 @@ export default async function LeadsPage() {
         subtitle="Δυνητικοί πελάτες προς follow-up."
         actions={
           <>
-            <LinkButton
-              href="/app/crm"
-              variant="secondary"
-              icon={ArrowLeft}
-            >
+            <LinkButton href="/app/crm" variant="secondary" icon={ArrowLeft}>
               Πίσω στο CRM
             </LinkButton>
             <NewLeadButton />
@@ -62,7 +51,7 @@ export default async function LeadsPage() {
 
       <Card>
         <CardBody className="p-0">
-          {leads.length === 0 ? (
+          {rows.length === 0 ? (
             <div className="p-8 text-center">
               <Users2 className="mx-auto text-ink-400" size={40} />
               <p className="mt-3 text-sm text-ink-500">
@@ -70,84 +59,7 @@ export default async function LeadsPage() {
               </p>
             </div>
           ) : (
-            <LeadsTable
-              leads={leads.map(
-                (l): LeadDetail => ({
-                  id: l.id,
-                  fullName: l.fullName,
-                  email: l.email,
-                  phone: l.phone,
-                  company: l.company,
-                  source: l.source,
-                  status: l.status,
-                  notes: l.notes,
-                  createdAt: l.createdAt.toISOString(),
-                  updatedAt: l.updatedAt.toISOString(),
-                }),
-              )}
-            >
-              {(openLead) => (
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Ονοματεπώνυμο</th>
-                      <th>Εταιρεία</th>
-                      <th>Επικοινωνία</th>
-                      <th>Πηγή</th>
-                      <th>Κατάσταση</th>
-                      <th>Ημ/νία</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {leads.map((l) => (
-                      <LeadRow
-                        key={l.id}
-                        lead={{
-                          id: l.id,
-                          fullName: l.fullName,
-                          email: l.email,
-                          phone: l.phone,
-                          company: l.company,
-                          source: l.source,
-                          status: l.status,
-                          notes: l.notes,
-                          createdAt: l.createdAt.toISOString(),
-                          updatedAt: l.updatedAt.toISOString(),
-                        }}
-                        onOpen={openLead}
-                      >
-                        <td>
-                          <p className="font-semibold text-brand-900">
-                            {l.fullName}
-                          </p>
-                          {l.notes && (
-                            <p className="text-xs text-ink-500 line-clamp-1">
-                              {l.notes}
-                            </p>
-                          )}
-                        </td>
-                        <td>{l.company ?? "—"}</td>
-                        <td className="text-sm">
-                          {l.email && <div>{l.email}</div>}
-                          {l.phone && <div>{l.phone}</div>}
-                          {!l.email && !l.phone && "—"}
-                        </td>
-                        <td>{l.source ?? "—"}</td>
-                        <td>
-                          <LeadStatusSelect
-                            id={l.id}
-                            current={l.status}
-                            label={STATUS_LABEL[l.status] ?? l.status}
-                            tone={STATUS_TONE[l.status] ?? "neutral"}
-                          />
-                        </td>
-                        <td className="mono text-xs">{date(l.createdAt)}</td>
-                      </LeadRow>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </LeadsTable>
+            <LeadsTable leads={rows} />
           )}
         </CardBody>
       </Card>

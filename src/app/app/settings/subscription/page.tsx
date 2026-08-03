@@ -1,4 +1,4 @@
-import { Sparkles, Calendar, ExternalLink } from "lucide-react";
+import { Sparkles, Calendar } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { requireTenant } from "@/lib/tenant";
 import { assertCan } from "@/lib/rbac";
@@ -18,7 +18,7 @@ export default async function SubscriptionSettingsPage() {
   const ctx = await requireTenant();
   assertCan(ctx.role, "business:update");
 
-  const [subscription, plans, invoices] = await Promise.all([
+  const [subscription, plans] = await Promise.all([
     prisma.businessSubscription.findFirst({
       where: {
         businessId: ctx.businessId,
@@ -30,11 +30,6 @@ export default async function SubscriptionSettingsPage() {
     prisma.platformPlan.findMany({
       where: { active: true },
       orderBy: [{ sortOrder: "asc" }, { priceMonthly: "asc" }],
-    }),
-    prisma.platformInvoice.findMany({
-      where: { businessId: ctx.businessId },
-      orderBy: { createdAt: "desc" },
-      take: 12,
     }),
   ]);
 
@@ -255,72 +250,6 @@ export default async function SubscriptionSettingsPage() {
         </CardBody>
       </Card>
 
-      <Card>
-        <CardHeader
-          title="Ιστορικό παραστατικών"
-          subtitle="Τα παραστατικά που έχει εκδώσει το timologion για τη συνδρομή σου."
-        />
-        <CardBody className="p-0">
-          {invoices.length === 0 ? (
-            <p className="p-6 text-sm text-ink-700">
-              Δεν έχουν εκδοθεί παραστατικά ακόμη.
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Ημ/νία</th>
-                    <th>Περιγραφή</th>
-                    <th className="text-right">Σύνολο</th>
-                    <th>Κατάσταση</th>
-                    <th className="text-right">Σύνδεσμος</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {invoices.map((inv) => (
-                    <tr key={inv.id}>
-                      <td className="mono">{date(inv.issueDate)}</td>
-                      <td>{inv.description}</td>
-                      <td className="text-right font-semibold">
-                        {money(inv.totalAmount)}
-                      </td>
-                      <td>
-                        <Badge
-                          tone={
-                            inv.status === "issued"
-                              ? "success"
-                              : inv.status === "failed"
-                                ? "danger"
-                                : "neutral"
-                          }
-                        >
-                          {inv.status}
-                        </Badge>
-                      </td>
-                      <td className="text-right">
-                        {inv.wrappInvoiceUrl ? (
-                          <a
-                            href={inv.wrappInvoiceUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1.5 font-semibold text-brand-800 hover:text-brand-900"
-                          >
-                            Άνοιγμα
-                            <ExternalLink size={14} aria-hidden />
-                          </a>
-                        ) : (
-                          <span className="text-ink-500">—</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardBody>
-      </Card>
     </>
   );
 }

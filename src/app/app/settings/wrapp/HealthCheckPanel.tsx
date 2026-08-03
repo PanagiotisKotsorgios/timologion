@@ -5,24 +5,19 @@ import {
   Activity,
   CheckCircle2,
   XCircle,
-  MinusCircle,
   RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
-import {
-  runWrappHealthCheckAction,
-  type HealthCheckResult,
-} from "./actions";
+import { runWrappHealthCheckAction } from "./actions";
 
 type Data = Awaited<ReturnType<typeof runWrappHealthCheckAction>>;
 
 /**
- * Diagnostic panel that runs the Wrapp read-only endpoints one after
- * another and shows a per-step pass/fail/skip. Meant for the "am I
- * actually connected right now?" moment during manual staging tests —
- * one click covers everything the invoice flow depends on.
+ * User-facing health check: hides all the endpoint names and returns
+ * a single "όλα καλά" verdict or a short list of things to check.
+ * Detailed step output is only for support staff — it's off by default.
  */
 export function HealthCheckPanel() {
   const [pending, startTx] = useTransition();
@@ -41,19 +36,18 @@ export function HealthCheckPanel() {
     });
   }
 
-  const summary = data
-    ? {
-        pass: data.results.filter((r) => r.status === "pass").length,
-        fail: data.results.filter((r) => r.status === "fail").length,
-        skip: data.results.filter((r) => r.status === "skip").length,
-      }
-    : null;
+  const failCount = data?.results.filter((r) => r.status === "fail").length ?? 0;
+  const allOk =
+    data != null &&
+    failCount === 0 &&
+    data.hasPlan &&
+    data.canIssue;
 
   return (
     <Card>
       <CardHeader
-        title="Έλεγχος υγείας Wrapp"
-        subtitle="Πάτα «Εκτέλεση» για να ελέγξεις κάθε endpoint που χρησιμοποιεί η έκδοση παραστατικών."
+        title="Έλεγχος σύνδεσης"
+        subtitle="Επιβεβαίωσε ότι ο πάροχος myDATA είναι διαθέσιμος."
         action={
           <Button
             type="button"
@@ -62,7 +56,7 @@ export function HealthCheckPanel() {
             icon={pending ? RefreshCw : Activity}
             className={pending ? "[&_svg]:animate-spin" : ""}
           >
-            {pending ? "Εκτέλεση..." : "Εκτέλεση ελέγχου"}
+            {pending ? "Έλεγχος..." : "Έλεγχος τώρα"}
           </Button>
         }
       />
@@ -71,141 +65,69 @@ export function HealthCheckPanel() {
 
         {!data && !pending && (
           <p className="text-sm text-ink-700">
-            Ο έλεγχος καλεί σε σειρά:{" "}
-            <span className="mono">/tenant_details</span>,{" "}
-            <span className="mono">/branches</span>,{" "}
-            <span className="mono">/billing_books</span>,{" "}
-            <span className="mono">/vat_search</span>,{" "}
-            <span className="mono">/invoices/issued_count</span>. Επιστρέφει το
-            HTTP status και το σφάλμα ανά endpoint — έτσι βλέπεις άμεσα αν κάτι
-            είναι λάθος στη σύνδεση.
+            Πάτα «Έλεγχος τώρα» για να δούμε αν όλα είναι εντάξει με τη
+            σύνδεσή σου στον πάροχο myDATA.
           </p>
         )}
 
-        {data && (
-          <>
-            <div className="grid gap-3 rounded-2xl border-2 border-ink-200 bg-brand-50/40 p-4 md:grid-cols-4">
-              <Stat label="Base URL" value={data.baseUrl} mono />
-              <Stat
-                label="Επιτυχή / Αποτυχία"
-                value={`${summary?.pass ?? 0} / ${summary?.fail ?? 0}${
-                  summary?.skip ? " (παράλειψη: " + summary.skip + ")" : ""
-                }`}
-                tone={
-                  (summary?.fail ?? 0) === 0
-                    ? "success"
-                    : (summary?.pass ?? 0) === 0
-                      ? "danger"
-                      : "warning"
-                }
-              />
-              <Stat
-                label="Πρόγραμμα ενεργό"
-                value={data.hasPlan ? "Ναι" : "Όχι"}
-                tone={data.hasPlan ? "success" : "danger"}
-              />
-              <Stat
-                label="Άδεια έκδοσης"
-                value={data.canIssue ? "Ναι" : "Όχι"}
-                tone={data.canIssue ? "success" : "danger"}
-              />
+        {data && allOk && (
+          <div className="flex items-start gap-3 rounded-xl border-2 border-emerald-300 bg-emerald-50 p-5">
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white text-emerald-700">
+              <CheckCircle2 size={20} strokeWidth={2.5} aria-hidden />
             </div>
+            <div>
+              <p className="text-base font-black text-emerald-900">
+                Όλα εντάξει
+              </p>
+              <p className="mt-1 text-sm text-emerald-900/80">
+                Η σύνδεση είναι ενεργή, το πρόγραμμα ισχύει και μπορείς να
+                εκδίδεις παραστατικά κανονικά.
+              </p>
+            </div>
+          </div>
+        )}
 
-            {data.hasStagingFallback && !data.hasApiKey && (
-              <Alert tone="warning">
-                Λειτουργεί με το staging fallback — δεν έχει καταχωρηθεί
-                προσωπικό api_key για αυτήν την επιχείρηση. Αυτό είναι OK για
-                staging tests, αλλά όχι για παραγωγή.
-              </Alert>
-            )}
+        {data && !allOk && (
+          <div className="flex items-start gap-3 rounded-xl border-2 border-red-300 bg-red-50 p-5">
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white text-red-700">
+              <XCircle size={20} strokeWidth={2.5} aria-hidden />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-base font-black text-red-900">
+                Υπάρχει πρόβλημα
+              </p>
+              <ul className="mt-2 space-y-1 text-sm text-red-900/90">
+                {!data.hasPlan && (
+                  <li>· Δεν βρέθηκε ενεργό πρόγραμμα στον πάροχο.</li>
+                )}
+                {!data.canIssue && (
+                  <li>
+                    · Ο λογαριασμός σου στον πάροχο δεν έχει άδεια έκδοσης
+                    παραστατικών.
+                  </li>
+                )}
+                {failCount > 0 && (
+                  <li>
+                    · Απέτυχαν {failCount}{" "}
+                    {failCount === 1 ? "έλεγχος" : "έλεγχοι"} σύνδεσης.
+                  </li>
+                )}
+              </ul>
+              <p className="mt-3 text-sm text-red-900/90">
+                Επικοινώνησε με την υποστήριξη — έχουμε τα αναλυτικά και
+                μπορούμε να το διορθώσουμε.
+              </p>
+            </div>
+          </div>
+        )}
 
-            <ol className="space-y-3">
-              {data.results.map((r, i) => (
-                <StepRow key={i} r={r} index={i + 1} />
-              ))}
-            </ol>
-          </>
+        {data && data.hasStagingFallback && !data.hasApiKey && (
+          <Alert tone="warning">
+            Λειτουργείς σε δοκιμαστικό περιβάλλον. Πριν βγεις σε παραγωγή
+            χρειάζεται να καταχωρηθεί το προσωπικό σου κλειδί.
+          </Alert>
         )}
       </CardBody>
     </Card>
-  );
-}
-
-function StepRow({ r, index }: { r: HealthCheckResult; index: number }) {
-  const meta =
-    r.status === "pass"
-      ? {
-          icon: CheckCircle2,
-          bg: "bg-green-50",
-          border: "border-green-300",
-          text: "text-green-800",
-        }
-      : r.status === "fail"
-        ? {
-            icon: XCircle,
-            bg: "bg-red-50",
-            border: "border-red-300",
-            text: "text-red-800",
-          }
-        : {
-            icon: MinusCircle,
-            bg: "bg-ink-100",
-            border: "border-ink-300",
-            text: "text-ink-700",
-          };
-  const Icon = meta.icon;
-  return (
-    <li
-      className={`flex items-start gap-3 rounded-xl border-2 ${meta.border} ${meta.bg} p-4`}
-    >
-      <div className={`mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white ${meta.text}`}>
-        <Icon size={16} strokeWidth={2.5} aria-hidden />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-bold text-ink-900">
-          <span className="mr-2 text-ink-500">#{index}</span>
-          {r.step}
-        </p>
-        {r.detail && (
-          <p className={`mt-1 break-words text-sm ${meta.text}`}>{r.detail}</p>
-        )}
-        {r.extra && (
-          <p className="mt-1 break-words text-xs text-ink-700">{r.extra}</p>
-        )}
-      </div>
-    </li>
-  );
-}
-
-function Stat({
-  label,
-  value,
-  tone,
-  mono,
-}: {
-  label: string;
-  value: string;
-  tone?: "success" | "warning" | "danger";
-  mono?: boolean;
-}) {
-  const toneClass =
-    tone === "success"
-      ? "text-green-800"
-      : tone === "warning"
-        ? "text-amber-800"
-        : tone === "danger"
-          ? "text-red-800"
-          : "text-brand-900";
-  return (
-    <div>
-      <p className="text-xs font-bold uppercase tracking-widest text-ink-500">
-        {label}
-      </p>
-      <p
-        className={`mt-1 break-words text-sm font-extrabold ${toneClass} ${mono ? "mono" : ""}`}
-      >
-        {value}
-      </p>
-    </div>
   );
 }

@@ -38,17 +38,16 @@ export default async function WrappSettingsPage() {
         <Card>
           <CardHeader
             title="Κατάσταση"
-            subtitle="Ενημέρωση μέσω της Wrapp API"
+            subtitle="Η σύνδεσή σου με τον πάροχο myDATA."
             action={<StatusBadge status={status} />}
           />
           <CardBody className="space-y-5 p-6 md:p-8">
-            <Row label="Wrapp user ID" value={wrapp?.wrappUserId ?? "—"} mono />
             <Row
               label="Ενεργό πρόγραμμα"
               value={wrapp?.hasPlan ? t.common.yes : t.common.no}
             />
             <Row
-              label="Άδεια έκδοσης"
+              label="Άδεια έκδοσης παραστατικών"
               value={wrapp?.canIssueInvoice ? t.common.yes : t.common.no}
             />
             <Row
@@ -64,14 +63,6 @@ export default async function WrappSettingsPage() {
                   Ανανέωση κατάστασης
                 </Button>
               </form>
-              <a
-                href="/api/wrapp/debug"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex h-11 items-center gap-2 rounded-lg border-2 border-ink-300 bg-white px-4 text-sm font-bold text-ink-900 transition-colors hover:border-ink-900"
-              >
-                Διαγνωστικά webhook →
-              </a>
             </div>
           </CardBody>
         </Card>

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { Field, Input, Select } from "@/components/ui/Input";
 import { Alert } from "@/components/ui/Alert";
 import { t } from "@/lib/i18n";
+import { ROLE_OPTIONS_EL } from "@/lib/roles";
 import { inviteMemberAction, type UserActionState } from "./actions";
 
 export function InviteForm() {
@@ -29,15 +30,14 @@ export function InviteForm() {
         <Field
           label="Ρόλος"
           htmlFor="invite-role"
-          help="owner: πλήρη δικαιώματα + οικονομικά. admin: όλα εκτός διαγραφής επιχείρησης. accountant: παραστατικά + αναφορές. sales: πωλήσεις + πελάτες. staff: βασική έκδοση. readonly: μόνο ανάγνωση."
+          help="Ιδιοκτήτης: πλήρη δικαιώματα + οικονομικά. Διαχειριστής: όλα εκτός διαγραφής επιχείρησης. Λογιστής: παραστατικά + αναφορές. Πωλήσεις: πελάτες + πωλήσεις. Υπάλληλος: βασική έκδοση. Ανάγνωση μόνο: read-only."
         >
           <Select id="invite-role" name="role" defaultValue="staff">
-            <option value="owner">owner</option>
-            <option value="admin">admin</option>
-            <option value="accountant">accountant</option>
-            <option value="sales">sales</option>
-            <option value="staff">staff</option>
-            <option value="readonly">readonly</option>
+            {ROLE_OPTIONS_EL.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
           </Select>
         </Field>
       </div>
