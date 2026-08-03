@@ -549,6 +549,7 @@ model Business {
   featureFlags      BusinessFeatureFlag[]
   announcements     PlatformAnnouncement[]
   rateLimitOverrides RateLimitOverride[]
+  supportTickets    SupportTicket[]
 
   @@index([vatNumber])
   @@map("businesses")
@@ -838,6 +839,58 @@ model RateLimitOverride {
 
   @@unique([businessId, action])
   @@map("rate_limit_overrides")
+}
+
+// ─── Support tickets ────────────────────────────────────────────────────
+// Lightweight in-app helpdesk. External or in-app users open tickets;
+// admins reply back via email + persisted transcript. Internal notes
+// stay invisible to the customer.
+
+enum TicketStatus {
+  open
+  waiting_customer
+  waiting_support
+  resolved
+  closed
+}
+
+model SupportTicket {
+  id           String        @id @default(cuid())
+  subject      String        @db.VarChar(200)
+  status       TicketStatus  @default(open)
+  priority     Int           @default(3) // 1=urgent .. 5=low
+  category     String?       @db.VarChar(60) // billing / bug / feature / general
+  businessId   String?
+  userId       String?
+  fromEmail    String        @db.VarChar(191)
+  fromName     String?       @db.VarChar(160)
+  assignedToId String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  business     Business?     @relation(fields: [businessId], references: [id], onDelete: SetNull)
+  messages     SupportMessage[]
+
+  @@index([status, updatedAt])
+  @@index([businessId, createdAt])
+  @@index([assignedToId, status])
+  @@map("support_tickets")
+}
+
+model SupportMessage {
+  id          String   @id @default(cuid())
+  ticketId    String
+  senderId    String?
+  senderEmail String   @db.VarChar(191)
+  senderName  String?  @db.VarChar(160)
+  body        String   @db.Text
+  isInternal  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  ticket      SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId, createdAt])
+  @@map("support_messages")
 }
 
 // ─── Account deletion snapshots ─────────────────────────────────────────

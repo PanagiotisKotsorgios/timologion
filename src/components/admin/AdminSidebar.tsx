@@ -34,6 +34,9 @@ import {
   Wrench,
   MailPlus,
   Gauge,
+  LifeBuoy,
+  FileBarChart,
+  BookOpen,
   type LucideIcon,
 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
@@ -45,6 +48,8 @@ const PRIMARY: NavItem[] = [
   { href: "/admin/health", label: "Υγεία συστήματος", icon: Activity },
   { href: "/admin/metrics", label: "Δείκτες / MRR", icon: TrendingUp },
   { href: "/admin/ops", label: "Operations", icon: Wrench },
+  { href: "/admin/tickets", label: "Support tickets", icon: LifeBuoy },
+  { href: "/admin/reports", label: "Αναφορές XLSX", icon: FileBarChart },
   { href: "/admin/billing", label: "Χρέωση & έσοδα", icon: CreditCard },
   { href: "/admin/plans", label: "Πακέτα", icon: Package },
   { href: "/admin/economics", label: "Οικονομικά", icon: LineChart },
@@ -60,6 +65,7 @@ const PRIMARY: NavItem[] = [
 ];
 
 const SECONDARY: NavItem[] = [
+  { href: "/admin/docs", label: "Runbook & Onboarding", icon: BookOpen },
   { href: "/admin/announcements", label: "Ανακοινώσεις", icon: Megaphone },
   { href: "/admin/broadcasts", label: "Broadcast email", icon: Send },
   { href: "/admin/email-templates", label: "Πρότυπα email", icon: MailPlus },

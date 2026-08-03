@@ -23,6 +23,7 @@ import {
   CalendarClock,
   CalendarDays,
   Sparkles,
+  LifeBuoy,
   type LucideIcon,
 } from "lucide-react";
 import { t } from "@/lib/i18n";
@@ -76,6 +77,7 @@ const primary: NavItem[] = [
 
 const secondary: NavItem[] = [
   { href: "/app/settings/account", label: "Ο λογαριασμός μου", icon: UserCircle },
+  { href: "/app/support", label: "Υποστήριξη", icon: LifeBuoy },
   { href: "/app/settings", label: t.nav.settings, icon: Settings },
 ];
 
