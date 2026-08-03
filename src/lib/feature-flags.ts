@@ -1,4 +1,5 @@
 import "server-only";
+import { createHash } from "node:crypto";
 import { prisma } from "@/lib/db";
 
 /**
@@ -16,10 +17,28 @@ export const FLAG_KEYS = {
 export type FlagKey = (typeof FLAG_KEYS)[keyof typeof FLAG_KEYS];
 
 /**
+ * Stable 0..99 bucket for a (flag, business) pair. sha256 gives a
+ * uniform distribution so a rollout of 25 will hit ~25% of tenants,
+ * deterministically — the same tenant either always sees the feature
+ * or never does within a given percentage window.
+ */
+function rolloutBucket(flagKey: string, businessId: string): number {
+  const h = createHash("sha256").update(`${flagKey}:${businessId}`).digest();
+  // Use first 4 bytes as an unsigned int.
+  const n =
+    ((h[0] ?? 0) << 24) |
+    ((h[1] ?? 0) << 16) |
+    ((h[2] ?? 0) << 8) |
+    (h[3] ?? 0);
+  return (n >>> 0) % 100;
+}
+
+/**
  * Resolve a flag for a business. Per-business override wins over the
  * global rollout. Beta rollout = allow only businesses that were
- * explicitly enabled — an override with `enabled=false` disables even
- * a fully-rolled-out feature.
+ * explicitly enabled. All rollout further honors rolloutPct (0-100)
+ * via a deterministic bucket so a partial rollout hits the same
+ * tenants on every check.
  */
 export async function isFeatureEnabled(
   businessId: string | null | undefined,
@@ -27,7 +46,7 @@ export async function isFeatureEnabled(
 ): Promise<boolean> {
   const flag = await prisma.featureFlag.findUnique({
     where: { key },
-    select: { rollout: true },
+    select: { rollout: true, rolloutPct: true },
   });
   if (!flag) return false;
 
@@ -39,7 +58,9 @@ export async function isFeatureEnabled(
     if (override) return override.enabled;
   }
 
-  return flag.rollout === "all";
+  if (flag.rollout !== "all") return false;
+  if (!businessId) return flag.rolloutPct >= 100;
+  return rolloutBucket(key, businessId) < flag.rolloutPct;
 }
 
 /**
@@ -52,7 +73,7 @@ export async function isFeatureEnabledMap(
   const [flags, overrides] = await Promise.all([
     prisma.featureFlag.findMany({
       where: { key: { in: keys } },
-      select: { key: true, rollout: true },
+      select: { key: true, rollout: true, rolloutPct: true },
     }),
     businessId
       ? prisma.businessFeatureFlag.findMany({
@@ -62,11 +83,21 @@ export async function isFeatureEnabledMap(
       : Promise.resolve([]),
   ]);
   const overrideMap = new Map(overrides.map((o) => [o.flagKey, o.enabled]));
-  const flagMap = new Map(flags.map((f) => [f.key, f.rollout]));
+  const flagMap = new Map(flags.map((f) => [f.key, f]));
   const out: Record<string, boolean> = {};
   for (const k of keys) {
-    if (overrideMap.has(k)) out[k] = overrideMap.get(k)!;
-    else out[k] = flagMap.get(k) === "all";
+    if (overrideMap.has(k)) {
+      out[k] = overrideMap.get(k)!;
+      continue;
+    }
+    const f = flagMap.get(k);
+    if (!f || f.rollout !== "all") {
+      out[k] = false;
+      continue;
+    }
+    out[k] = businessId
+      ? rolloutBucket(k, businessId) < f.rolloutPct
+      : f.rolloutPct >= 100;
   }
   return out;
 }

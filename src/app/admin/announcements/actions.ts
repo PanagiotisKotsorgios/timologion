@@ -16,6 +16,7 @@ const schema = z.object({
   ctaHref: z.string().max(300).optional().or(z.literal("")),
   ctaLabel: z.string().max(80).optional().or(z.literal("")),
   businessId: z.string().max(191).optional().or(z.literal("")),
+  segment: z.string().max(60).optional().or(z.literal("")),
   publish: z.string().optional(),
 });
 
@@ -38,6 +39,7 @@ export async function saveAnnouncementAction(
     ctaHref: o(parsed.data.ctaHref),
     ctaLabel: o(parsed.data.ctaLabel),
     businessId: o(parsed.data.businessId),
+    segment: o(parsed.data.segment),
   };
 
   let id = parsed.data.id;

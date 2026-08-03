@@ -14,7 +14,7 @@ export default async function NotificationsPage() {
   const ctx = await requireTenant();
   const session = await getSession();
   const [announcements, userNotifs, systemNotifs] = await Promise.all([
-    getPublishedAnnouncements(ctx.businessId),
+    getPublishedAnnouncements(ctx.businessId, session?.userId),
     session ? getUserNotifications(session.userId) : Promise.resolve([]),
     session ? getSystemNotifications(session.userId) : Promise.resolve([]),
   ]);

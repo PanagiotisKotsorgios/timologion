@@ -1,13 +1,10 @@
-import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { LinkButton } from "@/components/ui/Button";
-import { Badge } from "@/components/ui/Badge";
 import { AdminExportButton } from "@/components/admin/AdminExportButton";
-import { money, date } from "@/lib/format";
+import { BulkTable } from "./BulkTable";
 
 type SearchParams = { q?: string; page?: string };
 
@@ -48,6 +45,7 @@ export default async function AdminBusinessesPage({
         vatNumber: true,
         city: true,
         createdAt: true,
+        suspendedAt: true,
         wrappConnection: { select: { status: true } },
         _count: { select: { members: true, documents: true } },
         documents: {
@@ -60,11 +58,27 @@ export default async function AdminBusinessesPage({
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
+  const tableRows = rows.map((b) => ({
+    id: b.id,
+    legalName: b.legalName,
+    tradeName: b.tradeName,
+    vatNumber: b.vatNumber,
+    city: b.city,
+    createdAt: b.createdAt.toISOString(),
+    suspendedAt: b.suspendedAt?.toISOString() ?? null,
+    members: b._count.members,
+    documents: b._count.documents,
+    revenue: b.documents
+      .filter((d) => d.status === "issued")
+      .reduce((s, d) => s + Number(d.totalAmount), 0),
+    wrappStatus: b.wrappConnection?.status ?? null,
+  }));
+
   return (
     <>
       <PageHeader
         title="Επιχειρήσεις"
-        subtitle={`${total} επιχειρήσεις συνολικά στην πλατφόρμα`}
+        subtitle={`${total} επιχειρήσεις συνολικά · Επιλογή γραμμών για bulk actions`}
         actions={<AdminExportButton entity="businesses" params={{ q: search }} />}
       />
 
@@ -76,56 +90,7 @@ export default async function AdminBusinessesPage({
         />
       </form>
 
-      <Card className="overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-ink-100 text-xs uppercase tracking-wide text-ink-500">
-            <tr>
-              <th className="px-4 py-2 text-left">Επιχείρηση</th>
-              <th className="px-4 py-2 text-left">ΑΦΜ</th>
-              <th className="px-4 py-2 text-left">Πόλη</th>
-              <th className="px-4 py-2 text-right">Μέλη</th>
-              <th className="px-4 py-2 text-right">Παραστ.</th>
-              <th className="px-4 py-2 text-right">Έσοδα</th>
-              <th className="px-4 py-2 text-left">Πάροχος</th>
-              <th className="px-4 py-2 text-left">Ημ/νία</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-ink-300/60">
-            {rows.map((b) => {
-              const revenue = b.documents
-                .filter((d) => d.status === "issued")
-                .reduce((s, d) => s + Number(d.totalAmount), 0);
-              return (
-                <tr key={b.id} className="hover:bg-ink-100/60">
-                  <td className="px-4 py-2">
-                    <Link
-                      href={`/admin/businesses/${b.id}`}
-                      className="font-medium text-brand-700 hover:text-brand-800"
-                    >
-                      {b.tradeName ?? b.legalName}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-2 text-ink-700">{b.vatNumber}</td>
-                  <td className="px-4 py-2 text-ink-700">{b.city ?? "—"}</td>
-                  <td className="px-4 py-2 text-right">{b._count.members}</td>
-                  <td className="px-4 py-2 text-right">
-                    {b._count.documents}
-                  </td>
-                  <td className="px-4 py-2 text-right font-medium">
-                    {money(revenue)}
-                  </td>
-                  <td className="px-4 py-2">
-                    <WrappBadge status={b.wrappConnection?.status} />
-                  </td>
-                  <td className="px-4 py-2 text-ink-500">
-                    {date(b.createdAt)}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </Card>
+      <BulkTable rows={tableRows} />
 
       {totalPages > 1 && (
         <nav className="mt-4 flex items-center justify-between text-sm">
@@ -156,12 +121,4 @@ export default async function AdminBusinessesPage({
       )}
     </>
   );
-}
-
-function WrappBadge({ status }: { status?: string }) {
-  if (!status || status === "inactive")
-    return <Badge tone="muted">Ανενεργός</Badge>;
-  if (status === "active") return <Badge tone="success">Ενεργός</Badge>;
-  if (status === "pending") return <Badge tone="warning">Σε αναμονή</Badge>;
-  return <Badge tone="danger">Σφάλμα</Badge>;
 }

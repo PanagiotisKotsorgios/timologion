@@ -89,13 +89,17 @@ export default async function AdminFeatureFlagsPage() {
                     </p>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Badge tone={ROLLOUT_TONE[f.rollout]}>
                     {ROLLOUT_LABEL[f.rollout]}
+                    {f.rollout === "all" && f.rolloutPct < 100
+                      ? ` · ${f.rolloutPct}%`
+                      : ""}
                   </Badge>
                   <FlagRolloutSelect
                     flagKey={f.key}
                     current={f.rollout}
+                    currentPct={f.rolloutPct}
                   />
                   <form action={deleteFlagAction}>
                     <input type="hidden" name="key" value={f.key} />

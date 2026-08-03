@@ -49,16 +49,20 @@ type BusinessRow = {
 const businesses: ExportDef<BusinessRow> = {
   fetch: async (params) => {
     const q = params.get("q")?.trim() ?? "";
+    const idsParam = params.get("ids");
+    const ids = idsParam ? idsParam.split(",").filter(Boolean) : null;
     return prisma.business.findMany({
-      where: q
-        ? {
-            OR: [
-              { legalName: { contains: q } },
-              { vatNumber: { contains: q } },
-              { tradeName: { contains: q } },
-            ],
-          }
-        : {},
+      where: ids
+        ? { id: { in: ids } }
+        : q
+          ? {
+              OR: [
+                { legalName: { contains: q } },
+                { vatNumber: { contains: q } },
+                { tradeName: { contains: q } },
+              ],
+            }
+          : {},
       orderBy: { createdAt: "desc" },
       select: {
         id: true,

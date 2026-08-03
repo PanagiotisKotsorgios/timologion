@@ -55,6 +55,11 @@ model PlatformAnnouncement {
   // business sees the banner — used for VIP notices, individual
   // scheduled maintenance, per-account escalations, etc.
   businessId   String?
+  // Optional broadcast-segment targeting. Same segment keys as broadcasts
+  // (owners / paying_owners / free_users / admins). Resolved at read time,
+  // so late-joining tenants in the segment see the banner automatically.
+  // Precedence: businessId (single tenant) → segment → global.
+  segment      String?           @db.VarChar(60)
 
   author       User?            @relation(fields: [authorId], references: [id], onDelete: SetNull)
   business     Business?        @relation(fields: [businessId], references: [id], onDelete: Cascade)
@@ -732,6 +737,11 @@ model FeatureFlag {
   key         String              @id @db.VarChar(80)
   description String?             @db.VarChar(500)
   rollout     FeatureRollout      @default(none)
+  // Percentage of tenants that see the flag when rollout=all. 0 = off,
+  // 100 = everyone (matches legacy behaviour). Deterministic distribution
+  // via sha256(flagKey + businessId) so a tenant either always sees the
+  // feature or never does — never flip-flops between requests.
+  rolloutPct  Int                 @default(100)
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
 

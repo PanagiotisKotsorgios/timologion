@@ -37,6 +37,7 @@ import {
   LifeBuoy,
   FileBarChart,
   BookOpen,
+  GitMerge,
   type LucideIcon,
 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
@@ -60,6 +61,7 @@ const PRIMARY: NavItem[] = [
   { href: "/admin/audit", label: "Audit log", icon: ScrollText },
   { href: "/admin/errors", label: "Σφάλματα εφαρμογής", icon: AlertOctagon },
   { href: "/admin/integrity", label: "Ακεραιότητα δεδομένων", icon: Brush },
+  { href: "/admin/merge", label: "Merge duplicates", icon: GitMerge },
   { href: "/admin/cron", label: "Cron runs", icon: Timer },
   { href: "/admin/deletions", label: "Διαγραφές λογαριασμών", icon: Trash2 },
 ];

@@ -12,26 +12,51 @@ export type Announcement = {
 };
 
 /**
- * Public feed — published announcements the caller should see. Global
- * announcements (businessId=null) go to everyone; targeted ones only
- * fire for their specific tenant. `businessId` filter is inclusive:
- * pass the caller's current business and they get both universes.
+ * Public feed. Precedence:
+ *   - businessId set on the row → only that business
+ *   - segment set on the row    → whoever the segment resolves to
+ *   - both null                 → global
+ * Segment membership is resolved in-app because it depends on the
+ * caller's userId; row count is bounded so this stays cheap.
  */
 export async function getPublishedAnnouncements(
   businessId?: string | null,
+  userId?: string | null,
 ): Promise<Announcement[]> {
   const now = new Date();
   const rows = await prisma.platformAnnouncement.findMany({
     where: {
       publishedAt: { lte: now },
       OR: businessId
-        ? [{ businessId: null }, { businessId }]
-        : [{ businessId: null }],
+        ? [
+            { businessId: null, segment: null },
+            { businessId },
+            { businessId: null, segment: { not: null } },
+          ]
+        : [
+            { businessId: null, segment: null },
+            { businessId: null, segment: { not: null } },
+          ],
     },
     orderBy: { publishedAt: "desc" },
     take: 200,
   });
-  return rows.map((r) => ({
+
+  const segmentsInPlay = new Set(
+    rows.map((r) => r.segment).filter((s): s is string => !!s),
+  );
+  const passes = new Map<string, boolean>();
+  for (const seg of segmentsInPlay) {
+    passes.set(seg, await callerInSegment(seg, businessId, userId));
+  }
+
+  const filtered = rows.filter((r) => {
+    if (r.businessId) return true;
+    if (r.segment) return passes.get(r.segment) === true;
+    return true;
+  });
+
+  return filtered.map((r) => ({
     id: r.id,
     tone: r.tone,
     title: r.title,
@@ -40,6 +65,55 @@ export async function getPublishedAnnouncements(
     cta: r.ctaLabel,
     publishedAt: r.publishedAt!.toISOString(),
   }));
+}
+
+async function callerInSegment(
+  segment: string,
+  businessId: string | null | undefined,
+  userId: string | null | undefined,
+): Promise<boolean> {
+  if (!userId) return false;
+  switch (segment) {
+    case "admins": {
+      const u = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { platformRole: true, suspendedAt: true },
+      });
+      return !!u?.platformRole && !u.suspendedAt;
+    }
+    case "owners":
+      return (
+        (await prisma.businessMember.count({
+          where: { userId, role: "owner" },
+        })) > 0
+      );
+    case "paying_owners":
+      return (
+        (await prisma.businessMember.count({
+          where: {
+            userId,
+            role: "owner",
+            business: {
+              subscriptions: {
+                some: { status: { in: ["active", "trialing"] } },
+              },
+            },
+          },
+        })) > 0
+      );
+    case "free_users":
+      if (!businessId) return false;
+      return (
+        (await prisma.businessSubscription.count({
+          where: {
+            businessId,
+            status: { in: ["active", "trialing"] },
+          },
+        })) === 0
+      );
+    default:
+      return false;
+  }
 }
 
 /**

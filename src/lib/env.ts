@@ -42,6 +42,9 @@ const envSchema = z.object({
   // When "true", any admin session without an active 2FA setup is
   // redirected to /app/settings/security to enable it before proceeding.
   ADMIN_REQUIRE_2FA: z.string().optional().default(""),
+  // Free-form label rendered as a strip at the top of /admin — e.g.
+  // "STAGING", "LOCAL DEV", "DR-REPLICA". Empty in production.
+  ENVIRONMENT_LABEL: z.string().optional().default(""),
   NODE_ENV: z
     .enum(["development", "test", "production"])
     .default("development"),
@@ -71,6 +74,7 @@ const parsed = envSchema.safeParse({
   BACKUP_RETENTION_DAYS: process.env.BACKUP_RETENTION_DAYS,
   ADMIN_IP_ALLOWLIST: process.env.ADMIN_IP_ALLOWLIST,
   ADMIN_REQUIRE_2FA: process.env.ADMIN_REQUIRE_2FA,
+  ENVIRONMENT_LABEL: process.env.ENVIRONMENT_LABEL,
   NODE_ENV: process.env.NODE_ENV,
 });
 
@@ -113,6 +117,7 @@ export const env = parsed.success
         : 0,
       ADMIN_IP_ALLOWLIST: process.env.ADMIN_IP_ALLOWLIST ?? "",
       ADMIN_REQUIRE_2FA: process.env.ADMIN_REQUIRE_2FA ?? "",
+      ENVIRONMENT_LABEL: process.env.ENVIRONMENT_LABEL ?? "",
       NODE_ENV: (process.env.NODE_ENV as
         | "development"
         | "test"

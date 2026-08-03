@@ -57,19 +57,25 @@ export async function setFlagRolloutAction(formData: FormData) {
   const ctx = await requireAdmin("super_admin");
   const key = String(formData.get("key") ?? "");
   const rollout = String(formData.get("rollout") ?? "");
+  const pctRaw = formData.get("rolloutPct");
   if (!["none", "beta", "all"].includes(rollout)) return;
 
-  await prisma.featureFlag.update({
-    where: { key },
-    data: { rollout: rollout as "none" | "beta" | "all" },
-  });
+  const data: { rollout: "none" | "beta" | "all"; rolloutPct?: number } = {
+    rollout: rollout as "none" | "beta" | "all",
+  };
+  if (pctRaw != null) {
+    const pct = Math.max(0, Math.min(100, Number(pctRaw)));
+    if (Number.isFinite(pct)) data.rolloutPct = pct;
+  }
+
+  await prisma.featureFlag.update({ where: { key }, data });
 
   await logAudit({
     userId: ctx.userId,
     action: "admin.feature_flag.set_rollout",
     entityType: "FeatureFlag",
     entityId: key,
-    meta: { rollout },
+    meta: { rollout, rolloutPct: data.rolloutPct ?? null },
   });
 
   revalidatePath("/admin/feature-flags");

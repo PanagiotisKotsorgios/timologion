@@ -17,6 +17,7 @@ type Initial = {
   ctaLabel?: string | null;
   publishedAt?: Date | null;
   businessId?: string | null;
+  segment?: string | null;
 };
 
 export function AnnouncementForm({ initial }: { initial?: Initial }) {
@@ -94,11 +95,11 @@ export function AnnouncementForm({ initial }: { initial?: Initial }) {
         </Field>
       </div>
 
-      <div>
+      <div className="grid gap-6 md:grid-cols-2">
         <Field
           label="Στόχευση επιχείρησης (προαιρετικά)"
           htmlFor="businessId"
-          hint="Άφησέ το κενό για global δημοσίευση. Δώσε business ID για να δει η ανακοίνωση μόνο η συγκεκριμένη επιχείρηση."
+          hint="Δώσε business ID για να δει η ανακοίνωση μόνο εκείνη η επιχείρηση. Άφησε κενό αν στοχεύεις segment ή global."
         >
           <Input
             id="businessId"
@@ -107,6 +108,23 @@ export function AnnouncementForm({ initial }: { initial?: Initial }) {
             maxLength={191}
             placeholder="cuid της επιχείρησης — από /admin/businesses/[id]"
           />
+        </Field>
+        <Field
+          label="Στόχευση segment (προαιρετικά)"
+          htmlFor="segment"
+          hint="Αν επιλέξεις segment, το businessId αγνοείται. Άφησε κενό για global. Precedence: businessId > segment > global."
+        >
+          <Select
+            id="segment"
+            name="segment"
+            defaultValue={initial?.segment ?? ""}
+          >
+            <option value="">— (global ή σύμφωνα με businessId)</option>
+            <option value="owners">Owners επιχειρήσεων</option>
+            <option value="paying_owners">Owners με ενεργή συνδρομή</option>
+            <option value="free_users">Users χωρίς συνδρομή</option>
+            <option value="admins">Platform admins</option>
+          </Select>
         </Field>
       </div>
 
