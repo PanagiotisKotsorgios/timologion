@@ -47,6 +47,7 @@ const COLUMNS = [
     links: [
       { href: "/terms", label: "Όροι χρήσης" },
       { href: "/privacy", label: "Πολιτική απορρήτου" },
+      { href: "/refunds", label: "Πολιτική επιστροφών" },
       { href: "/cookies", label: "Πολιτική Cookies" },
     ],
   },

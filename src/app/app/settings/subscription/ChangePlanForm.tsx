@@ -1,11 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { CheckCircle2, ArrowRightLeft, Calendar } from "lucide-react";
-import { Alert } from "@/components/ui/Alert";
-import { Button } from "@/components/ui/Button";
+import { CheckCircle2, ExternalLink, Calendar } from "lucide-react";
 import { Card, CardBody } from "@/components/ui/Card";
-import { changePlanAction } from "./actions";
 
 type Plan = {
   id: string;
@@ -21,6 +17,13 @@ const fmt = new Intl.NumberFormat("el-GR", {
   maximumFractionDigits: 2,
 });
 
+/**
+ * Read-only plan catalog. We used to run an in-app "change plan"
+ * action that mutated local subscription state — but the actual
+ * billing lives with the certified provider (Wrapp), and pretending
+ * to bill from here would be misleading and non-compliant. Users
+ * see their options and click through to Wrapp to actually change.
+ */
 export function ChangePlanForm({
   plans,
   currentPlanId,
@@ -29,52 +32,28 @@ export function ChangePlanForm({
   currentPlanId: string | null;
   currentCycle?: "monthly" | "yearly" | null;
 }) {
-  const [selected, setSelected] = useState<string | null>(currentPlanId);
-  const [state, setState] = useState<{
-    error?: string;
-    success?: string;
-  } | null>(null);
-  const [pending, start] = useTransition();
-
-  const submit = () => {
-    if (!selected) return;
-    const fd = new FormData();
-    fd.set("planId", selected);
-    fd.set("billingCycle", "yearly");
-    start(async () => {
-      const res = await changePlanAction(undefined, fd);
-      setState(res ?? {});
-    });
-  };
+  const wrappPlansUrl = "https://wrapp.ai/el/plans";
 
   return (
     <div className="space-y-6">
-      {state?.error && <Alert tone="danger">{state.error}</Alert>}
-      {state?.success && <Alert tone="success">{state.success}</Alert>}
-
-      {/* Annual-only note */}
       <div className="mx-auto flex max-w-md items-center justify-center gap-2 rounded-full border-2 border-brand-900/20 bg-brand-50 px-5 py-2.5 text-sm font-semibold text-brand-900">
         <Calendar size={14} aria-hidden />
         <span>Ετήσια χρέωση (συμπ. ΦΠΑ 24%)</span>
       </div>
 
-      {/* Plan cards */}
       <div className="grid gap-4 md:grid-cols-3">
         {plans.map((p) => {
-          const isSelected = selected === p.id;
           const isCurrent = currentPlanId === p.id;
           const yearlyPrice = Number(p.priceYearly);
           const monthlyEquiv = yearlyPrice / 12;
           return (
-            <button
+            <div
               key={p.id}
-              type="button"
-              onClick={() => setSelected(p.id)}
               className={
-                "flex flex-col rounded-2xl border-2 p-6 text-left transition-all " +
-                (isSelected
+                "flex flex-col rounded-2xl border-2 p-6 " +
+                (isCurrent
                   ? "border-brand-900 bg-brand-50 shadow-soft"
-                  : "border-ink-300 bg-white hover:border-brand-500")
+                  : "border-ink-300 bg-white")
               }
             >
               <div className="flex items-center justify-between">
@@ -100,7 +79,10 @@ export function ChangePlanForm({
               {p.features.length > 0 && (
                 <ul className="mt-4 space-y-2 text-sm">
                   {p.features.slice(0, 5).map((f, i) => (
-                    <li key={i} className="flex items-start gap-2 text-ink-900">
+                    <li
+                      key={i}
+                      className="flex items-start gap-2 text-ink-900"
+                    >
                       <CheckCircle2
                         size={14}
                         className="mt-0.5 shrink-0 text-emerald-600"
@@ -111,26 +93,27 @@ export function ChangePlanForm({
                   ))}
                 </ul>
               )}
-            </button>
+            </div>
           );
         })}
       </div>
 
       <Card>
         <CardBody className="flex flex-wrap items-center justify-between gap-4">
-          <p className="text-sm text-ink-700">
-            {selected
-              ? "Η αλλαγή εφαρμόζεται άμεσα και δημιουργεί νέα περίοδο χρέωσης."
-              : "Επίλεξε ένα πακέτο για να συνεχίσεις."}
+          <p className="max-w-xl text-sm text-ink-700">
+            Η χρέωση της συνδρομής γίνεται απευθείας από τον πάροχο (Wrapp).
+            Για αναβάθμιση, υποβάθμιση ή ακύρωση, χρησιμοποίησε τον
+            λογαριασμό σου στη Wrapp.
           </p>
-          <Button
-            type="button"
-            disabled={!selected || pending || selected === currentPlanId}
-            onClick={submit}
-            icon={ArrowRightLeft}
+          <a
+            href={wrappPlansUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex h-11 items-center gap-2 rounded-lg border-2 border-brand-800 bg-brand-700 px-4 text-sm font-bold text-white shadow-sm transition-colors hover:bg-brand-800"
           >
-            {pending ? "Αλλαγή..." : "Αλλαγή πακέτου"}
-          </Button>
+            <ExternalLink size={14} strokeWidth={2.5} aria-hidden />
+            Άλλαξε πακέτο στη Wrapp
+          </a>
         </CardBody>
       </Card>
     </div>

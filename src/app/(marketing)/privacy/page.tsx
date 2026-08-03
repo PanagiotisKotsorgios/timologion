@@ -9,7 +9,7 @@ export const metadata: Metadata = pageMetadata({
   path: "/privacy",
 });
 
-const LAST_UPDATED = "27/07/2026";
+const LAST_UPDATED = "03/08/2026";
 
 export default function PrivacyPage() {
   return (
@@ -61,8 +61,8 @@ export default function PrivacyPage() {
           <Section title="1. Υπεύθυνος επεξεργασίας">
             <p>
               Υπεύθυνος επεξεργασίας για τα δεδομένα λογαριασμού και
-              χρήσης της πλατφόρμας είναι το timologion. Στοιχεία
-              επικοινωνίας:
+              χρήσης της πλατφόρμας timologion είναι το timologion.
+              Στοιχεία επικοινωνίας:
             </p>
             <ul className="mt-2 list-disc space-y-1 pl-5">
               <li>Email: support@timologion.gr</li>
@@ -77,6 +77,22 @@ export default function PrivacyPage() {
               (πελατολόγιο, παραστατικά κ.λπ.), εσύ είσαι Υπεύθυνος
               Επεξεργασίας και εμείς Εκτελών την Επεξεργασία, με βάση
               την DPA που περιλαμβάνεται στους Όρους Χρήσης.
+            </p>
+            <p className="mt-3">
+              Για τα <strong>δεδομένα πληρωμής της συνδρομής</strong> και
+              τη <strong>φοροσήμανση των παραστατικών</strong>, Υπεύθυνος
+              Επεξεργασίας είναι η <strong>Wrapp Α.Ε.</strong> (Νέστορος
+              1, Χαλάνδρι, ΤΚ 15231) — όχι εμείς. Το timologion δεν λαμβάνει
+              και δεν αποθηκεύει στοιχεία κάρτας. Δες την{" "}
+              <a
+                href="https://wrapp.ai/el/data_protection"
+                target="_blank"
+                rel="noreferrer"
+                className="font-semibold text-brand-800 underline"
+              >
+                Πολιτική Απορρήτου της Wrapp
+              </a>{" "}
+              για τους δικούς της όρους.
             </p>
           </Section>
 
@@ -220,11 +236,23 @@ export default function PrivacyPage() {
                 </thead>
                 <tbody className="divide-y divide-black/[0.06]">
                   <SubProcessorRow
-                    name="Wrapp"
-                    role="Πάροχος ΥΠΑΗΕΣ (myDATA)"
-                    categories="Στοιχεία πελατών, ΑΦΜ, ποσά παραστατικών"
+                    name="Wrapp Α.Ε."
+                    role="Ανεξάρτητος πάροχος ΥΠΑΗΕΣ + χρέωση συνδρομής (δικός του Υπεύθυνος Επεξεργασίας)"
+                    categories="Στοιχεία πελατών, ΑΦΜ, ποσά παραστατικών, στοιχεία πληρωμής συνδρομής"
                     hq="Ελλάδα (ΕΕ)"
-                    links={[{ label: "Site", href: "https://wrapp.ai" }]}
+                    links={[
+                      { label: "Privacy", href: "https://wrapp.ai/el/data_protection" },
+                      { label: "Terms", href: "https://wrapp.ai/el/terms_of_use" },
+                    ]}
+                  />
+                  <SubProcessorRow
+                    name="Stripe (μέσω Wrapp)"
+                    role="Επεξεργασία πληρωμής συνδρομής"
+                    categories="Στοιχεία κάρτας — δεν διέρχονται από το timologion"
+                    hq="Ιρλανδία (ΕΕ)"
+                    links={[
+                      { label: "Privacy", href: "https://stripe.com/privacy" },
+                    ]}
                   />
                   <SubProcessorRow
                     name="Brevo (πρώην Sendinblue)"

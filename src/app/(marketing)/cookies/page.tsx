@@ -9,7 +9,7 @@ export const metadata: Metadata = pageMetadata({
   path: "/cookies",
 });
 
-const LAST_UPDATED = "27/07/2026";
+const LAST_UPDATED = "03/08/2026";
 
 type CookieRow = {
   name: string;
