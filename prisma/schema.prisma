@@ -645,6 +645,61 @@ model WrappWebhookLog {
   @@map("wrapp_webhook_logs")
 }
 
+// ─── In-app error log ───────────────────────────────────────────────────
+// Every logger.error() call persists here in production, so support can
+// see recent errors from the admin panel without SSHing into the box.
+// Grouped in the UI by `fingerprint` (hash of message + first stack line)
+// so recurring errors show once with a count instead of flooding the list.
+
+enum ErrorLevel {
+  warn
+  error
+}
+
+model ErrorLog {
+  id          String     @id @default(cuid())
+  level       ErrorLevel @default(error)
+  message     String     @db.VarChar(500)
+  fingerprint String     @db.VarChar(64)
+  stack       String?    @db.Text
+  path        String?    @db.VarChar(500)
+  userId      String?
+  businessId  String?
+  meta        String?    @db.Text
+  createdAt   DateTime   @default(now())
+
+  @@index([createdAt])
+  @@index([fingerprint, createdAt])
+  @@index([businessId, createdAt])
+  @@map("error_logs")
+}
+
+// ─── Backup runs ────────────────────────────────────────────────────────
+// Each execution of the /api/cron/backup endpoint appends a row here so
+// admins can see when the last dump succeeded, its size, and where it
+// was uploaded. Rows are kept forever — they're tiny and useful for
+// forensics if a restore is ever needed.
+
+enum BackupStatus {
+  running
+  success
+  failed
+}
+
+model BackupRun {
+  id          String       @id @default(cuid())
+  status      BackupStatus @default(running)
+  target      String       @db.VarChar(500)
+  bytes       BigInt       @default(0)
+  durationMs  Int          @default(0)
+  error       String?      @db.Text
+  startedAt   DateTime     @default(now())
+  finishedAt  DateTime?
+
+  @@index([startedAt])
+  @@map("backup_runs")
+}
+
 // ─── Account deletion snapshots ─────────────────────────────────────────
 // When a user deletes their account we take a snapshot of who they were
 // + what businesses they owned so the platform admin has a record even

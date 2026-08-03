@@ -23,6 +23,8 @@ import {
   Zap,
   Trash2,
   Webhook,
+  AlertOctagon,
+  HardDrive,
   type LucideIcon,
 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
@@ -39,6 +41,7 @@ const PRIMARY: NavItem[] = [
   { href: "/admin/users", label: "Χρήστες", icon: Users },
   { href: "/admin/documents", label: "Παραστατικά", icon: FileText },
   { href: "/admin/audit", label: "Audit log", icon: ScrollText },
+  { href: "/admin/errors", label: "Σφάλματα εφαρμογής", icon: AlertOctagon },
   { href: "/admin/deletions", label: "Διαγραφές λογαριασμών", icon: Trash2 },
 ];
 
@@ -47,6 +50,7 @@ const SECONDARY: NavItem[] = [
   { href: "/admin/email", label: "Ρυθμίσεις email", icon: Mail },
   { href: "/admin/wrapp", label: "Ρυθμίσεις Wrapp", icon: Zap },
   { href: "/admin/webhooks", label: "Webhooks Wrapp", icon: Webhook },
+  { href: "/admin/backups", label: "Backups βάσης", icon: HardDrive },
   { href: "/admin/system-settings", label: "Ρυθμίσεις πλατφόρμας", icon: Settings2 },
   { href: "/admin/admins", label: "Platform admins", icon: Shield },
 ];

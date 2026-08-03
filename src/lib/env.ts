@@ -26,6 +26,16 @@ const envSchema = z.object({
   FACEBOOK_APP_SECRET: z.string().optional().default(""),
   SENTRY_DSN: z.string().optional().default(""),
   CRON_SECRET: z.string().optional().default(""),
+  // Backup target — S3-compatible object storage (Backblaze B2, R2, Wasabi,
+  // AWS S3, MinIO). All five must be set for /api/cron/backup to run.
+  BACKUP_S3_ENDPOINT: z.string().optional().default(""),
+  BACKUP_S3_REGION: z.string().optional().default("auto"),
+  BACKUP_S3_BUCKET: z.string().optional().default(""),
+  BACKUP_S3_ACCESS_KEY_ID: z.string().optional().default(""),
+  BACKUP_S3_SECRET_ACCESS_KEY: z.string().optional().default(""),
+  // Retention window for BackupRun rows (default: forever). Prune runs
+  // older than N days from the /admin/backups page cron. 0 = keep all.
+  BACKUP_RETENTION_DAYS: z.coerce.number().optional().default(0),
   NODE_ENV: z
     .enum(["development", "test", "production"])
     .default("development"),
@@ -47,6 +57,12 @@ const parsed = envSchema.safeParse({
   FACEBOOK_APP_SECRET: process.env.FACEBOOK_APP_SECRET,
   SENTRY_DSN: process.env.SENTRY_DSN,
   CRON_SECRET: process.env.CRON_SECRET,
+  BACKUP_S3_ENDPOINT: process.env.BACKUP_S3_ENDPOINT,
+  BACKUP_S3_REGION: process.env.BACKUP_S3_REGION,
+  BACKUP_S3_BUCKET: process.env.BACKUP_S3_BUCKET,
+  BACKUP_S3_ACCESS_KEY_ID: process.env.BACKUP_S3_ACCESS_KEY_ID,
+  BACKUP_S3_SECRET_ACCESS_KEY: process.env.BACKUP_S3_SECRET_ACCESS_KEY,
+  BACKUP_RETENTION_DAYS: process.env.BACKUP_RETENTION_DAYS,
   NODE_ENV: process.env.NODE_ENV,
 });
 
@@ -78,6 +94,15 @@ export const env = parsed.success
       FACEBOOK_APP_SECRET: process.env.FACEBOOK_APP_SECRET ?? "",
       SENTRY_DSN: process.env.SENTRY_DSN ?? "",
       CRON_SECRET: process.env.CRON_SECRET ?? "",
+      BACKUP_S3_ENDPOINT: process.env.BACKUP_S3_ENDPOINT ?? "",
+      BACKUP_S3_REGION: process.env.BACKUP_S3_REGION ?? "auto",
+      BACKUP_S3_BUCKET: process.env.BACKUP_S3_BUCKET ?? "",
+      BACKUP_S3_ACCESS_KEY_ID: process.env.BACKUP_S3_ACCESS_KEY_ID ?? "",
+      BACKUP_S3_SECRET_ACCESS_KEY:
+        process.env.BACKUP_S3_SECRET_ACCESS_KEY ?? "",
+      BACKUP_RETENTION_DAYS: process.env.BACKUP_RETENTION_DAYS
+        ? Number(process.env.BACKUP_RETENTION_DAYS)
+        : 0,
       NODE_ENV: (process.env.NODE_ENV as
         | "development"
         | "test"
