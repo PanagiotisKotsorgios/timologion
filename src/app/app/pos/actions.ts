@@ -260,6 +260,23 @@ export async function closeTabAction(
     meta: { paymentMethod: parsed.data.paymentMethod, total: tab.total.toString() },
   });
 
+  // Best-effort auto-issue to Wrapp so the receipt page can immediately
+  // render the OFFICIAL thermal PDF from the provider instead of our
+  // local mock template. If Wrapp is unreachable / unconfigured we
+  // silently leave the doc as draft — the receipt page's fallback
+  // template still renders and the user can hit "Έκδοση" manually
+  // from the invoice detail later.
+  if (documentId) {
+    try {
+      const { attemptIssueAction } = await import(
+        "@/app/app/documents/actions"
+      );
+      await attemptIssueAction(documentId);
+    } catch {
+      // no-op — the doc stays draft, user can retry from the invoice page
+    }
+  }
+
   revalidatePath("/app/pos");
   return { ok: true, documentId };
 }

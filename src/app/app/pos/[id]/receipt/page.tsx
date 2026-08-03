@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { ExternalLink, FileText, Info } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { requireTenant } from "@/lib/tenant";
 import { assertCan } from "@/lib/rbac";
@@ -37,6 +38,31 @@ export default async function ThermalReceiptPage({
 
   if (!tab || !business) notFound();
 
+  // If this tab issued a Document to Wrapp, prefer showing the OFFICIAL
+  // thermal PDF from the provider instead of the local mock template.
+  // The local template stays visible below as a preview / backup.
+  const linkedDoc = tab.documentId
+    ? await prisma.document.findUnique({
+        where: { id: tab.documentId },
+        select: {
+          id: true,
+          status: true,
+          wrappInvoiceId: true,
+          wrappInvoiceUrl: true,
+          myDataMark: true,
+          series: true,
+          number: true,
+        },
+      })
+    : null;
+  const isWrappIssued =
+    !!linkedDoc &&
+    linkedDoc.status === "issued" &&
+    !!linkedDoc.wrappInvoiceId;
+  const wrappThermalUrl = isWrappIssued
+    ? `/app/documents/${linkedDoc.id}/thermal-pdf`
+    : null;
+
   return (
     <div className="min-h-screen bg-ink-100 p-4 print:bg-white print:p-0">
       <div className="mx-auto max-w-[80mm]">
@@ -49,6 +75,68 @@ export default async function ThermalReceiptPage({
           </a>
           <PrintButton />
         </div>
+
+        {/* Wrapp official PDF banner — shown when the document has been
+            issued upstream. This is the receipt the customer should get;
+            the thermal template below is a local preview / fallback. */}
+        {isWrappIssued && wrappThermalUrl && (
+          <div className="mb-4 rounded-lg border-2 border-emerald-500 bg-emerald-50 p-3 text-[12px] text-emerald-900 print:hidden">
+            <p className="flex items-center gap-1.5 font-black uppercase tracking-widest text-emerald-800">
+              <FileText size={13} strokeWidth={2.5} aria-hidden />
+              Επίσημη απόδειξη Wrapp
+            </p>
+            <p className="mt-1">
+              Η απόδειξη έχει σταλεί στην ΑΑΔΕ.
+              {linkedDoc?.myDataMark && (
+                <>
+                  {" "}MARK{" "}
+                  <span className="mono font-bold">{linkedDoc.myDataMark}</span>
+                </>
+              )}
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <a
+                href={wrappThermalUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex h-9 items-center gap-1.5 rounded-md border-2 border-emerald-700 bg-emerald-600 px-3 text-xs font-bold text-white hover:bg-emerald-700"
+              >
+                <FileText size={12} strokeWidth={2.5} aria-hidden />
+                Θερμικό PDF
+              </a>
+              {linkedDoc?.wrappInvoiceUrl && (
+                <a
+                  href={linkedDoc.wrappInvoiceUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex h-9 items-center gap-1.5 rounded-md border-2 border-brand-800 bg-brand-700 px-3 text-xs font-bold text-white hover:bg-brand-800"
+                >
+                  <ExternalLink size={12} strokeWidth={2.5} aria-hidden />
+                  Πλήρες παραστατικό
+                </a>
+              )}
+            </div>
+          </div>
+        )}
+        {!isWrappIssued && linkedDoc?.status === "draft" && (
+          <div className="mb-4 rounded-lg border-2 border-amber-400 bg-amber-50 p-3 text-[12px] text-amber-900 print:hidden">
+            <p className="flex items-center gap-1.5 font-black uppercase tracking-widest text-amber-800">
+              <Info size={13} strokeWidth={2.5} aria-hidden />
+              Πρόχειρη προεπισκόπηση
+            </p>
+            <p className="mt-1">
+              Η επίσημη απόδειξη δεν έχει διαβιβαστεί ακόμη στην ΑΑΔΕ.
+              Πήγαινε στο{" "}
+              <a
+                href={`/app/documents/${linkedDoc.id}`}
+                className="font-bold underline underline-offset-4"
+              >
+                παραστατικό
+              </a>{" "}
+              για να το εκδώσεις.
+            </p>
+          </div>
+        )}
 
         <div className="rounded-lg bg-white p-4 font-mono text-[11px] leading-tight text-black shadow print:rounded-none print:shadow-none">
           <div className="text-center">
