@@ -36,13 +36,13 @@ export default async function TenantSupportPage() {
     <>
       <PageHeader
         title="Υποστήριξη"
-        subtitle="Ζήτα βοήθεια ή δες τα τελευταία σου tickets."
+        subtitle="Ζήτα βοήθεια ή δες τα τελευταία σου αιτήματα."
       />
 
       <div className="grid gap-6 md:grid-cols-3">
         <Card className="md:col-span-2">
           <CardHeader
-            title="Νέο ticket"
+            title="Νέο αίτημα"
             subtitle="Θα σου απαντήσουμε στο email του λογαριασμού σου."
           />
           <CardBody>
@@ -55,13 +55,13 @@ export default async function TenantSupportPage() {
 
         <Card>
           <CardHeader
-            title="Τα ticket σου"
+            title="Τα αιτήματά σου"
             action={<LifeBuoy size={18} className="text-ink-500" aria-hidden />}
           />
           <CardBody className="p-0">
             {tickets.length === 0 ? (
               <p className="p-6 text-sm text-ink-500">
-                Δεν έχεις ανοικτό ticket ακόμη.
+                Δεν έχεις ανοικτό αίτημα ακόμη.
               </p>
             ) : (
               <ul className="divide-y divide-ink-200">

@@ -3,29 +3,75 @@ import { requireTenant } from "@/lib/tenant";
 import { assertCan } from "@/lib/rbac";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
+import { Button, LinkButton } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
 import { t } from "@/lib/i18n";
 import { NewBookButton } from "./NewBookButton";
 import { deleteBillingBookAction } from "./actions";
+import type { DocumentType } from "@prisma/client";
 
-export default async function BillingBooksPage() {
+export const dynamic = "force-dynamic";
+
+type SearchParams = { q?: string; page?: string };
+
+const PAGE_SIZE = 20;
+
+export default async function BillingBooksPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
   const ctx = await requireTenant();
   assertCan(ctx.role, "business:update");
 
-  const [books, branches] = await Promise.all([
+  const { q, page } = await searchParams;
+  const search = q?.trim() ?? "";
+  const currentPage = Math.max(1, Number(page ?? "1") || 1);
+
+  // Search matches on series code, label, or the Greek document-type
+  // label. Since the type label lives in the i18n dict (not the DB),
+  // we pre-compute which enum values match the query and OR them into
+  // the where clause alongside the DB text fields.
+  const matchingTypes: DocumentType[] = search
+    ? (Object.entries(t.documents.types) as [DocumentType, string][])
+        .filter(([, label]) =>
+          label.toLowerCase().includes(search.toLowerCase()),
+        )
+        .map(([type]) => type)
+    : [];
+
+  const where = search
+    ? {
+        businessId: ctx.businessId,
+        OR: [
+          { series: { contains: search } },
+          { label: { contains: search } },
+          ...(matchingTypes.length > 0
+            ? [{ documentType: { in: matchingTypes } }]
+            : []),
+        ],
+      }
+    : { businessId: ctx.businessId };
+
+  const [books, total, branches] = await Promise.all([
     prisma.billingBook.findMany({
-      where: { businessId: ctx.businessId },
+      where,
       orderBy: [{ documentType: "asc" }, { series: "asc" }],
       include: { branch: { select: { label: true } } },
+      take: PAGE_SIZE,
+      skip: (currentPage - 1) * PAGE_SIZE,
     }),
+    prisma.billingBook.count({ where }),
     prisma.branch.findMany({
       where: { businessId: ctx.businessId },
       orderBy: { label: "asc" },
       select: { id: true, label: true },
     }),
   ]);
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
     <>
@@ -35,17 +81,37 @@ export default async function BillingBooksPage() {
         actions={<NewBookButton branches={branches} />}
       />
 
+      <form className="mb-4 max-w-md">
+        <Input
+          name="q"
+          defaultValue={search}
+          placeholder="Αναζήτηση σε τύπο, σειρά ή ετικέτα..."
+        />
+      </form>
+
       <Card>
         <CardHeader
-          title={`Σειρές (${books.length})`}
-          subtitle="Μία προεπιλεγμένη ανά τύπο παραστατικού."
+          title={`Σειρές (${total.toLocaleString("el-GR")})`}
+          subtitle={
+            search
+              ? `Αποτελέσματα για «${search}»`
+              : "Μία προεπιλεγμένη ανά τύπο παραστατικού."
+          }
         />
         <CardBody className="p-0">
           {books.length === 0 ? (
             <div className="p-8">
               <EmptyState
-                title="Δεν έχεις σειρές ακόμα."
-                description="Δημιούργησε μία από το κουμπί «Νέα σειρά» πάνω δεξιά."
+                title={
+                  search
+                    ? `Καμία σειρά για «${search}»`
+                    : "Δεν έχεις σειρές ακόμα."
+                }
+                description={
+                  search
+                    ? "Δοκίμασε άλλον όρο αναζήτησης."
+                    : "Δημιούργησε μία από το κουμπί «Νέα σειρά» πάνω δεξιά."
+                }
               />
             </div>
           ) : (
@@ -62,7 +128,10 @@ export default async function BillingBooksPage() {
                 </thead>
                 <tbody className="divide-y-2 divide-ink-200/70 text-base">
                   {books.map((b) => (
-                    <tr key={b.id} className="transition-colors hover:bg-brand-50/40">
+                    <tr
+                      key={b.id}
+                      className="transition-colors hover:bg-brand-50/40"
+                    >
                       <td className="px-6 py-4 font-semibold text-ink-900">
                         {t.documents.types[b.documentType]}
                       </td>
@@ -107,6 +176,40 @@ export default async function BillingBooksPage() {
           )}
         </CardBody>
       </Card>
+
+      {totalPages > 1 && (
+        <nav className="mt-4 flex items-center justify-between text-sm">
+          <span className="text-ink-500">
+            Σελίδα {currentPage} από {totalPages}
+          </span>
+          <div className="flex gap-2">
+            {currentPage > 1 && (
+              <LinkButton
+                href={`/app/settings/billing-books?${new URLSearchParams({
+                  ...(search ? { q: search } : {}),
+                  page: String(currentPage - 1),
+                }).toString()}`}
+                variant="secondary"
+                size="sm"
+              >
+                Προηγούμενη
+              </LinkButton>
+            )}
+            {currentPage < totalPages && (
+              <LinkButton
+                href={`/app/settings/billing-books?${new URLSearchParams({
+                  ...(search ? { q: search } : {}),
+                  page: String(currentPage + 1),
+                }).toString()}`}
+                variant="secondary"
+                size="sm"
+              >
+                Επόμενη
+              </LinkButton>
+            )}
+          </div>
+        </nav>
+      )}
     </>
   );
 }

@@ -109,7 +109,7 @@ export default async function TenantTicketDetailPage({
         <Card>
           <CardBody className="text-center">
             <p className="text-sm text-ink-500">
-              Αυτό το ticket έχει κλείσει. Άνοιξε νέο από τη{" "}
+              Αυτό το αίτημα έχει κλείσει. Άνοιξε νέο από τη{" "}
               <Link href="/app/support" className="text-brand-800 hover:text-brand-900">
                 σελίδα υποστήριξης
               </Link>

@@ -99,7 +99,7 @@ export function NewTicketForm({
             });
           }}
         >
-          {pending ? "Αποστολή..." : "Άνοιγμα ticket"}
+          {pending ? "Αποστολή..." : "Άνοιγμα αιτήματος"}
         </Button>
       </div>
     </div>
