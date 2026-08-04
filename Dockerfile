@@ -4,7 +4,11 @@
 FROM node:20-alpine AS base
 WORKDIR /app
 # Alpine ships libc-only; Prisma needs OpenSSL to talk to MySQL.
-RUN apk add --no-cache openssl
+# mysql-client (mariadb-client on Alpine) + gzip are required at runtime
+# by /api/cron/backup — it spawns `mysqldump | gzip -c` and streams to
+# S3-compatible storage. Both packages are tiny; keeping them in the
+# base image avoids a separate runner-only apk install.
+RUN apk add --no-cache openssl mariadb-client gzip
 
 # ─── Deps stage: install prod + dev deps (needed for build) ─────
 FROM base AS deps

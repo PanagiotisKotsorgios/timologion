@@ -65,6 +65,29 @@ services:
       # ─── Observability ─────────────────────────────────────────────
       - "SENTRY_DSN=${SENTRY_DSN:-}"
 
+      # ─── Backup pipeline (mysqldump → gzip → S3-compatible) ────────
+      # All five BACKUP_S3_* vars must be set for /api/cron/backup to
+      # run. Endpoint examples: Backblaze B2, Cloudflare R2, Wasabi,
+      # MinIO. See docs/BACKUP.md for scheduling + restore drill.
+      - "BACKUP_S3_ENDPOINT=${BACKUP_S3_ENDPOINT:-}"
+      - "BACKUP_S3_REGION=${BACKUP_S3_REGION:-auto}"
+      - "BACKUP_S3_BUCKET=${BACKUP_S3_BUCKET:-}"
+      - "BACKUP_S3_ACCESS_KEY_ID=${BACKUP_S3_ACCESS_KEY_ID:-}"
+      - "BACKUP_S3_SECRET_ACCESS_KEY=${BACKUP_S3_SECRET_ACCESS_KEY:-}"
+      - "BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-0}"
+
+      # ─── Admin panel security ──────────────────────────────────────
+      # Comma-separated CIDRs allowed to reach /admin. Empty = no IP
+      # restriction. Example: "203.0.113.5/32,10.0.0.0/8".
+      - "ADMIN_IP_ALLOWLIST=${ADMIN_IP_ALLOWLIST:-}"
+      # When "true", any admin session without 2FA is redirected to
+      # enable it before the panel loads.
+      - "ADMIN_REQUIRE_2FA=${ADMIN_REQUIRE_2FA:-}"
+      # Free-form label rendered as a fixed banner on every /admin
+      # page — e.g. "STAGING", "LOCAL DEV". Empty in production so
+      # any accidental value stands out immediately.
+      - "ENVIRONMENT_LABEL=${ENVIRONMENT_LABEL:-}"
+
     depends_on:
       mysql:
         condition: service_healthy
