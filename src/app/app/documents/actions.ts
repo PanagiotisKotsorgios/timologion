@@ -25,6 +25,46 @@ import {
 } from "@/lib/billing-books";
 import type { DocumentType } from "@prisma/client";
 
+// Greek cash-payment threshold (Ν. 4172/2013 άρθρο 23 παρ. 4 + Ν.
+// 4446/2016). Transactions above 500€ paid in cash are non-deductible
+// and expose the tenant to fines. Enforced on save AND issue so a
+// devtools bypass of the client-side modal can't succeed.
+const CASH_LIMIT_EUR = 500;
+const CASH_PAYMENT_KEYWORDS = [
+  "μετρητά",
+  "μετρητοίς",
+  "cash",
+];
+
+function isCashPayment(method: string | null | undefined): boolean {
+  if (!method) return false;
+  const lower = method.trim().toLowerCase();
+  return CASH_PAYMENT_KEYWORDS.some((kw) => lower.includes(kw));
+}
+
+/**
+ * Returns an error message if the (paymentMethod, total) combo violates
+ * the Greek cash-payment ceiling. null when compliant.
+ */
+function cashLimitViolation(
+  paymentMethod: string | null | undefined,
+  total: number,
+): string | null {
+  if (!isCashPayment(paymentMethod)) return null;
+  if (total <= CASH_LIMIT_EUR) return null;
+  const nf = new Intl.NumberFormat("el-GR", {
+    style: "currency",
+    currency: "EUR",
+  });
+  return (
+    `Δεν επιτρέπονται μετρητά άνω των ${CASH_LIMIT_EUR}€ ` +
+    `(σύνολο ${nf.format(total)}). ` +
+    `Άλλαξε τρόπο πληρωμής (κάρτα, τραπεζική μεταφορά, POS ή IRIS) ή ` +
+    `σπάσε τη συναλλαγή σε παραστατικά κάτω των ${CASH_LIMIT_EUR}€. ` +
+    `Ν. 4172/2013 άρθρο 23 παρ. 4.`
+  );
+}
+
 const DOCUMENT_TYPES = [
   "invoice",
   "service_invoice",
@@ -188,6 +228,12 @@ export async function createDraftAction(
 
   const totals = computeDocument(parsed.data.lines);
 
+  const cashError = cashLimitViolation(
+    parsed.data.paymentMethod,
+    Number(totals.total),
+  );
+  if (cashError) return { ok: false, error: cashError };
+
   const doc = await prisma.$transaction(async (tx) => {
     // If a billing book is chosen, prefer its series over any free-typed value.
     let series = parsed.data.series || null;
@@ -335,6 +381,12 @@ export async function updateDraftAction(
   }
 
   const totals = computeDocument(parsed.data.lines);
+
+  const cashError = cashLimitViolation(
+    parsed.data.paymentMethod,
+    Number(totals.total),
+  );
+  if (cashError) return { ok: false, error: cashError };
 
   await prisma.$transaction(async (tx) => {
     let series = parsed.data.series || null;
@@ -651,6 +703,12 @@ export async function attemptIssueAction(documentId: string) {
   if (!doc) return { ok: false as const, error: "Το παραστατικό δεν βρέθηκε." };
   if (doc.status !== "draft")
     return { ok: false as const, error: "Μόνο πρόχειρα μπορούν να εκδοθούν." };
+
+  const cashError = cashLimitViolation(
+    doc.paymentMethod,
+    Number(doc.totalAmount),
+  );
+  if (cashError) return { ok: false as const, error: cashError };
 
   const wrapp = await prisma.wrappConnection.findUnique({
     where: { businessId: ctx.businessId },

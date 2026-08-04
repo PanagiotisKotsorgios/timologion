@@ -389,9 +389,10 @@ export function DraftEditor({
   const [showMore, setShowMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  // Modal shown when the user tries to issue an invoice with cash payment
-  // over the Greek €500 legal limit (Ν. 4172/2013 άρθρο 23 παρ. 4). Non-
-  // blocking — user can proceed after acknowledging the risk.
+  // Hard-blocking modal shown when the user tries to save OR issue an
+  // invoice with cash payment over the Greek €500 legal limit
+  // (Ν. 4172/2013 άρθρο 23 παρ. 4). Server actions also enforce this
+  // so a bypass via devtools can't work.
   const [cashLimitModal, setCashLimitModal] = useState(false);
 
   const totals = useMemo(() => computeTotals(lines), [lines]);
@@ -437,6 +438,13 @@ export function DraftEditor({
 
   function submit(mode: "save" | "issue" = "save") {
     setError(null);
+    // Hard block for both save and issue when the payment is cash and
+    // the total exceeds the Greek 500€ legal limit. No bypass button
+    // on the modal — the user must switch payment method to continue.
+    if (cashLimitBreached) {
+      setCashLimitModal(true);
+      return;
+    }
     const payload: DraftInput = {
       type,
       clientId: clientId || undefined,
@@ -516,16 +524,11 @@ export function DraftEditor({
   }
 
   /**
-   * Wraps the issue action so we can intercept it when the payment is
-   * cash and the total is over the Greek €500 legal limit. Shows a
-   * confirmation modal instead of blocking — the user knows their
-   * business and may still want to proceed.
+   * Wraps the issue action so the cash-limit check is enforced at the
+   * top of `submit` — this stays as a compat shim for the button
+   * handler.
    */
   function attemptIssue() {
-    if (cashLimitBreached) {
-      setCashLimitModal(true);
-      return;
-    }
     submit("issue");
   }
 
@@ -1155,11 +1158,7 @@ export function DraftEditor({
       {cashLimitModal && (
         <CashLimitModal
           total={totals.total}
-          onCancel={() => setCashLimitModal(false)}
-          onProceed={() => {
-            setCashLimitModal(false);
-            submit("issue");
-          }}
+          onClose={() => setCashLimitModal(false)}
         />
       )}
 
@@ -1301,12 +1300,10 @@ function StayTaxCard({
 
 function CashLimitModal({
   total,
-  onCancel,
-  onProceed,
+  onClose,
 }: {
   total: number;
-  onCancel: () => void;
-  onProceed: () => void;
+  onClose: () => void;
 }) {
   return (
     <div
@@ -1318,14 +1315,14 @@ function CashLimitModal({
       <button
         type="button"
         aria-label="Ακύρωση"
-        onClick={onCancel}
+        onClick={onClose}
         className="fixed inset-0 bg-black/60 backdrop-blur-sm"
       />
-      <div className="relative w-full max-w-lg rounded-3xl border-2 border-amber-400 bg-white p-8 shadow-2xl">
+      <div className="relative w-full max-w-lg rounded-3xl border-2 border-red-500 bg-white p-8 shadow-2xl">
         <div className="flex items-start gap-3">
           <div
             aria-hidden
-            className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-amber-100 text-amber-700"
+            className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-red-100 text-red-700"
           >
             <svg viewBox="0 0 24 24" width="26" height="26" fill="none">
               <path
@@ -1340,37 +1337,38 @@ function CashLimitModal({
           <div>
             <h2
               id="cash-limit-title"
-              className="text-2xl font-extrabold text-brand-900 md:text-3xl"
+              className="text-2xl font-extrabold text-red-900 md:text-3xl"
             >
-              Πληρωμή σε μετρητά άνω των {CASH_LIMIT_EUR}€
+              Δεν επιτρέπονται μετρητά άνω των {CASH_LIMIT_EUR}€
             </h2>
             <p className="mt-2 text-sm text-ink-700">
               Το τελικό σύνολο είναι{" "}
-              <strong>{formatMoney(total)}</strong>. Στην Ελλάδα, οι
-              συναλλαγές B2B σε μετρητά άνω των{" "}
-              <strong>{CASH_LIMIT_EUR}€</strong> δεν αναγνωρίζονται ως
-              εκπεστέες δαπάνες (Ν. 4172/2013 άρθρο 23 παρ. 4). Παρόμοιοι
-              περιορισμοί ισχύουν και για B2C λιανικές συναλλαγές.
+              <strong>{formatMoney(total)}</strong>. Ο νόμος{" "}
+              <strong>Ν. 4172/2013 άρθρο 23 παρ. 4</strong> (και συμπληρωματικά
+              ο Ν. 4446/2016) απαγορεύει τις συναλλαγές B2B σε μετρητά άνω των{" "}
+              <strong>{CASH_LIMIT_EUR}€</strong> — τέτοιες δαπάνες δεν
+              εκπίπτουν φορολογικά. Παρόμοιοι περιορισμοί ισχύουν και σε
+              λιανικές συναλλαγές B2C.
+            </p>
+            <p className="mt-3 text-sm font-semibold text-ink-900">
+              Δεν μπορούμε να αποθηκεύσουμε ή να εκδώσουμε το παραστατικό
+              μέχρι να αλλάξεις τρόπο πληρωμής.
             </p>
             <p className="mt-3 text-sm text-ink-700">
-              Προτείνουμε τραπεζική μεταφορά, POS ή IRIS.
+              Επίλεξε <strong>Κάρτα</strong>, <strong>Τραπεζική μεταφορά</strong>
+              , <strong>POS</strong> ή <strong>IRIS</strong>. Αν πρέπει μέρος να
+              καταβληθεί σε μετρητά, σπάσε τη συναλλαγή σε παραστατικά κάτω των{" "}
+              {CASH_LIMIT_EUR}€.
             </p>
           </div>
         </div>
-        <div className="mt-6 flex flex-wrap justify-end gap-2">
+        <div className="mt-6 flex justify-end">
           <button
             type="button"
-            onClick={onCancel}
-            className="inline-flex h-11 items-center rounded-full border-2 border-ink-300 bg-white px-5 text-sm font-bold text-ink-900 hover:border-brand-900"
+            onClick={onClose}
+            className="inline-flex h-11 items-center rounded-full border-2 border-red-700 bg-red-600 px-6 text-sm font-bold text-white shadow-sm hover:bg-red-700"
           >
-            Αλλαγή μεθόδου πληρωμής
-          </button>
-          <button
-            type="button"
-            onClick={onProceed}
-            className="inline-flex h-11 items-center rounded-full bg-amber-600 px-5 text-sm font-bold text-white hover:bg-amber-700"
-          >
-            Έκδοση παρόλα αυτά
+            Αλλαγή τρόπου πληρωμής
           </button>
         </div>
       </div>

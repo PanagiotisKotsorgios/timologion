@@ -250,6 +250,25 @@ export async function closeTabAction(
   if (tab.items.length === 0)
     return { ok: false, error: "Δεν υπάρχουν είδη στον λογαριασμό." };
 
+  // Greek cash-payment ceiling — Ν. 4172/2013 άρθρο 23 παρ. 4. Even
+  // POS tabs must respect it, otherwise the receipt we transmit to
+  // myDATA becomes a non-deductible expense for the customer.
+  if (parsed.data.paymentMethod === "cash" && Number(tab.total) > 500) {
+    const nf = new Intl.NumberFormat("el-GR", {
+      style: "currency",
+      currency: "EUR",
+    });
+    return {
+      ok: false,
+      error:
+        `Δεν επιτρέπονται μετρητά άνω των 500€ ` +
+        `(σύνολο ${nf.format(Number(tab.total))}). ` +
+        `Άλλαξε τρόπο πληρωμής (κάρτα, τραπεζική μεταφορά, POS ή IRIS) ` +
+        `ή σπάσε τη συναλλαγή σε ξεχωριστούς λογαριασμούς κάτω των 500€. ` +
+        `Ν. 4172/2013 άρθρο 23 παρ. 4.`,
+    };
+  }
+
   let documentId: string | undefined;
 
   await prisma.$transaction(async (tx) => {
