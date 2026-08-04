@@ -24,23 +24,45 @@ export async function getPublishedAnnouncements(
   userId?: string | null,
 ): Promise<Announcement[]> {
   const now = new Date();
-  const rows = await prisma.platformAnnouncement.findMany({
-    where: {
-      publishedAt: { lte: now },
-      OR: businessId
-        ? [
-            { businessId: null, segment: null },
-            { businessId },
-            { businessId: null, segment: { not: null } },
-          ]
-        : [
-            { businessId: null, segment: null },
-            { businessId: null, segment: { not: null } },
-          ],
-    },
-    orderBy: { publishedAt: "desc" },
-    take: 200,
-  });
+  // Defensive: if a migration hasn't been applied (e.g. `segment` column
+  // missing) or the DB is temporarily unavailable, degrade gracefully to
+  // an empty feed instead of 500-ing every logged-in page.
+  const rows = await prisma.platformAnnouncement
+    .findMany({
+      where: {
+        publishedAt: { lte: now },
+        OR: businessId
+          ? [
+              { businessId: null, segment: null },
+              { businessId },
+              { businessId: null, segment: { not: null } },
+            ]
+          : [
+              { businessId: null, segment: null },
+              { businessId: null, segment: { not: null } },
+            ],
+      },
+      orderBy: { publishedAt: "desc" },
+      take: 200,
+    })
+    .catch(async () => {
+      // Fallback query for pre-wave-3 DBs (no segment column). If even
+      // this fails, return no announcements at all.
+      return prisma.platformAnnouncement
+        .findMany({
+          where: {
+            publishedAt: { lte: now },
+            OR: businessId
+              ? [{ businessId: null }, { businessId }]
+              : [{ businessId: null }],
+          },
+          orderBy: { publishedAt: "desc" },
+          take: 200,
+        })
+        .catch(() => [] as Awaited<
+          ReturnType<typeof prisma.platformAnnouncement.findMany>
+        >);
+    });
 
   const segmentsInPlay = new Set(
     rows.map((r) => r.segment).filter((s): s is string => !!s),
@@ -73,6 +95,20 @@ async function callerInSegment(
   userId: string | null | undefined,
 ): Promise<boolean> {
   if (!userId) return false;
+  try {
+    return await callerInSegmentInner(segment, businessId, userId);
+  } catch {
+    // Segment check is best-effort — never break the notifications bell
+    // just because we couldn't decide if the user is in a segment.
+    return false;
+  }
+}
+
+async function callerInSegmentInner(
+  segment: string,
+  businessId: string | null | undefined,
+  userId: string,
+): Promise<boolean> {
   switch (segment) {
     case "admins": {
       const u = await prisma.user.findUnique({
