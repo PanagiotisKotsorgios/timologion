@@ -2,21 +2,23 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/admin";
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { Card, CardBody } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { Input } from "@/components/ui/Input";
-import { LinkButton } from "@/components/ui/Button";
+import { AdminListToolbar } from "@/components/admin/AdminListToolbar";
+import { AdminPagination } from "@/components/admin/AdminPagination";
+import { SortableTh } from "@/components/admin/SortableTh";
+import {
+  parsePagination,
+  parseSearch,
+  parseSort,
+  parseDateRange,
+  whereDate,
+} from "@/lib/admin-list";
+import type { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
-const PAGE_SIZE = 40;
-
-type SearchParams = {
-  q?: string;
-  status?: string;
-  assigned?: "me" | "unassigned";
-  page?: string;
-};
+const SORT_FIELDS = ["updatedAt", "createdAt", "priority", "status"] as const;
 
 const STATUS_TONE: Record<
   string,
@@ -40,17 +42,29 @@ const PRIORITY_LABEL: Record<number, string> = {
 export default async function AdminTicketsPage({
   searchParams,
 }: {
-  searchParams: Promise<SearchParams>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const ctx = await requireAdmin("super_admin", "support");
-  const { q, status, assigned, page } = await searchParams;
-  const search = q?.trim() ?? "";
-  const currentPage = Math.max(1, Number(page ?? "1") || 1);
+  const sp = new URLSearchParams();
+  for (const [k, v] of Object.entries(await searchParams)) {
+    if (typeof v === "string") sp.set(k, v);
+  }
 
-  const where = {
+  const pag = parsePagination(sp, 40);
+  const search = parseSearch(sp);
+  const range = parseDateRange(sp);
+  const sort = parseSort(sp, SORT_FIELDS, {
+    field: "updatedAt",
+    dir: "desc",
+  });
+  const status = sp.get("status") ?? "";
+  const assigned = sp.get("assigned") ?? "";
+
+  const where: Prisma.SupportTicketWhereInput = {
     ...(status ? { status: status as "open" } : {}),
     ...(assigned === "me" ? { assignedToId: ctx.userId } : {}),
     ...(assigned === "unassigned" ? { assignedToId: null } : {}),
+    ...(whereDate("createdAt", range) as Prisma.SupportTicketWhereInput),
     ...(search
       ? {
           OR: [
@@ -62,12 +76,16 @@ export default async function AdminTicketsPage({
       : {}),
   };
 
+  const orderBy: Prisma.SupportTicketOrderByWithRelationInput[] = sort.field
+    ? [{ [sort.field]: sort.dir }]
+    : [{ priority: "asc" }, { updatedAt: "desc" }];
+
   const [rows, total, openCount, waitingCount, mine] = await Promise.all([
     prisma.supportTicket.findMany({
       where,
-      orderBy: [{ priority: "asc" }, { updatedAt: "desc" }],
-      take: PAGE_SIZE,
-      skip: (currentPage - 1) * PAGE_SIZE,
+      orderBy,
+      take: pag.take,
+      skip: pag.skip,
       include: {
         business: { select: { legalName: true, vatNumber: true } },
         _count: { select: { messages: true } },
@@ -77,9 +95,7 @@ export default async function AdminTicketsPage({
     prisma.supportTicket.count({
       where: { status: { in: ["open", "waiting_support"] } },
     }),
-    prisma.supportTicket.count({
-      where: { status: "waiting_support" },
-    }),
+    prisma.supportTicket.count({ where: { status: "waiting_support" } }),
     prisma.supportTicket.count({
       where: {
         assignedToId: ctx.userId,
@@ -88,8 +104,6 @@ export default async function AdminTicketsPage({
     }),
   ]);
 
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-
   return (
     <>
       <PageHeader
@@ -97,15 +111,13 @@ export default async function AdminTicketsPage({
         subtitle={`${openCount} ανοικτά · ${waitingCount} περιμένουν εμάς · ${mine} μου έχουν ανατεθεί`}
       />
 
-      <form className="mb-4 grid gap-3 md:grid-cols-3">
-        <Input
-          name="q"
-          defaultValue={search}
-          placeholder="Αναζήτηση σε θέμα ή email..."
-        />
-        {status && <input type="hidden" name="status" value={status} />}
-        {assigned && <input type="hidden" name="assigned" value={assigned} />}
-      </form>
+      <AdminListToolbar
+        action="/admin/tickets"
+        search={search}
+        from={sp.get("from") ?? ""}
+        to={sp.get("to") ?? ""}
+        hidden={{ status, assigned }}
+      />
 
       <div className="mb-4 flex flex-wrap gap-2">
         <Chip href="/admin/tickets" label="Όλα" active={!status && !assigned} />
@@ -150,15 +162,36 @@ export default async function AdminTicketsPage({
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px] text-sm">
-            <thead className="bg-ink-100 text-xs uppercase tracking-wide text-ink-500">
+            <thead className="bg-ink-100 text-xs uppercase tracking-wide">
               <tr>
-                <th className="px-4 py-2 text-left">Ενημερώθηκε</th>
-                <th className="px-4 py-2 text-left">Θέμα</th>
-                <th className="px-4 py-2 text-left">Από</th>
-                <th className="px-4 py-2 text-left">Επιχείρηση</th>
-                <th className="px-4 py-2 text-left">Prio</th>
-                <th className="px-4 py-2 text-left">Κατάσταση</th>
-                <th className="px-4 py-2 text-right">Μηνύματα</th>
+                <SortableTh
+                  field="updatedAt"
+                  label="Ενημερώθηκε"
+                  current={sort}
+                  basePath="/admin/tickets"
+                  params={sp}
+                  className="px-4 py-2 text-left"
+                />
+                <th className="px-4 py-2 text-left text-ink-500">Θέμα</th>
+                <th className="px-4 py-2 text-left text-ink-500">Από</th>
+                <th className="px-4 py-2 text-left text-ink-500">Επιχείρηση</th>
+                <SortableTh
+                  field="priority"
+                  label="Prio"
+                  current={sort}
+                  basePath="/admin/tickets"
+                  params={sp}
+                  className="px-4 py-2 text-left"
+                />
+                <SortableTh
+                  field="status"
+                  label="Κατάσταση"
+                  current={sort}
+                  basePath="/admin/tickets"
+                  params={sp}
+                  className="px-4 py-2 text-left"
+                />
+                <th className="px-4 py-2 text-right text-ink-500">Μηνύματα</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-ink-300/60">
@@ -217,43 +250,14 @@ export default async function AdminTicketsPage({
         </div>
       </Card>
 
-      {totalPages > 1 && (
-        <nav className="mt-4 flex items-center justify-between text-sm">
-          <span className="text-ink-500">
-            Σελίδα {currentPage} / {totalPages}
-          </span>
-          <div className="flex gap-2">
-            {currentPage > 1 && (
-              <LinkButton
-                href={`/admin/tickets?${new URLSearchParams({
-                  q: search,
-                  ...(status ? { status } : {}),
-                  ...(assigned ? { assigned } : {}),
-                  page: String(currentPage - 1),
-                })}`}
-                variant="secondary"
-                size="sm"
-              >
-                Προηγούμενη
-              </LinkButton>
-            )}
-            {currentPage < totalPages && (
-              <LinkButton
-                href={`/admin/tickets?${new URLSearchParams({
-                  q: search,
-                  ...(status ? { status } : {}),
-                  ...(assigned ? { assigned } : {}),
-                  page: String(currentPage + 1),
-                })}`}
-                variant="secondary"
-                size="sm"
-              >
-                Επόμενη
-              </LinkButton>
-            )}
-          </div>
-        </nav>
-      )}
+      <AdminPagination
+        basePath="/admin/tickets"
+        params={sp}
+        page={pag.page}
+        pageSize={pag.pageSize}
+        total={total}
+        pageSizes={[20, 50, 100]}
+      />
     </>
   );
 }
@@ -274,7 +278,7 @@ function Chip({
         "rounded-full border-2 px-3 py-1 text-xs font-bold " +
         (active
           ? "border-brand-800 bg-brand-700 text-white"
-          : "border-ink-300 bg-white text-ink-800 hover:border-ink-500")
+          : "border-ink-300 bg-white text-ink-700 hover:border-ink-500")
       }
     >
       {label}

@@ -3,58 +3,76 @@ import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
-import { Input } from "@/components/ui/Input";
-import { LinkButton } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { AdminExportButton } from "@/components/admin/AdminExportButton";
+import { AdminListToolbar } from "@/components/admin/AdminListToolbar";
+import { AdminPagination } from "@/components/admin/AdminPagination";
+import { SortableTh } from "@/components/admin/SortableTh";
+import {
+  parsePagination,
+  parseSearch,
+  parseSort,
+  parseDateRange,
+  whereDate,
+} from "@/lib/admin-list";
 import { money, date } from "@/lib/format";
 import { t } from "@/lib/i18n";
-import type { DocumentStatus, DocumentType } from "@prisma/client";
-
-const PAGE_SIZE = 30;
-
-type SearchParams = {
-  q?: string;
-  status?: DocumentStatus;
-  type?: DocumentType;
-  page?: string;
-};
+import type { DocumentStatus, DocumentType, Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
+
+const SORT_FIELDS = ["issueDate", "totalAmount", "type", "status", "createdAt"] as const;
 
 export default async function AdminDocumentsPage({
   searchParams,
 }: {
-  searchParams: Promise<SearchParams>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   await requireAdmin();
-  const { q, status, type, page } = await searchParams;
-  const search = q?.trim() ?? "";
-  const currentPage = Math.max(1, Number(page ?? "1") || 1);
+  const sp = new URLSearchParams();
+  for (const [k, v] of Object.entries(await searchParams)) {
+    if (typeof v === "string") sp.set(k, v);
+  }
 
-  const where = {
+  const pag = parsePagination(sp);
+  const search = parseSearch(sp);
+  const range = parseDateRange(sp);
+  const sort = parseSort(sp, SORT_FIELDS, {
+    field: "createdAt",
+    dir: "desc",
+  });
+  const status = (sp.get("status") ?? "") as DocumentStatus | "";
+  const type = (sp.get("type") ?? "") as DocumentType | "";
+
+  const where: Prisma.DocumentWhereInput = {
     ...(status ? { status } : {}),
     ...(type ? { type } : {}),
+    ...(whereDate("issueDate", range) as Prisma.DocumentWhereInput),
     ...(search
       ? {
           OR: [
             { business: { legalName: { contains: search } } },
             { business: { vatNumber: { contains: search } } },
             { client: { legalName: { contains: search } } },
+            { series: { contains: search } },
           ],
         }
       : {}),
   };
 
+  const orderBy: Prisma.DocumentOrderByWithRelationInput = sort.field
+    ? { [sort.field]: sort.dir }
+    : { createdAt: "desc" };
+
   const [rows, total] = await Promise.all([
     prisma.document.findMany({
       where,
-      orderBy: { createdAt: "desc" },
-      take: PAGE_SIZE,
-      skip: (currentPage - 1) * PAGE_SIZE,
+      orderBy,
+      take: pag.take,
+      skip: pag.skip,
       include: {
         business: {
-          select: { id: true, legalName: true, tradeName: true },
+          select: { id: true, legalName: true, tradeName: true, vatNumber: true },
         },
         client: { select: { legalName: true } },
       },
@@ -62,13 +80,11 @@ export default async function AdminDocumentsPage({
     prisma.document.count({ where }),
   ]);
 
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-
   return (
     <>
       <PageHeader
         title="Παραστατικά (όλες οι επιχειρήσεις)"
-        subtitle={`${total} παραστατικά με τα τρέχοντα φίλτρα`}
+        subtitle={`${total.toLocaleString("el-GR")} παραστατικά με τα τρέχοντα φίλτρα`}
         actions={
           <AdminExportButton
             entity="documents"
@@ -77,18 +93,20 @@ export default async function AdminDocumentsPage({
         }
       />
 
-      <form className="mb-4 grid gap-3 md:grid-cols-3">
-        <Input
-          name="q"
-          defaultValue={search}
-          placeholder="Επιχείρηση, ΑΦΜ ή πελάτης..."
-        />
-        {status && <input type="hidden" name="status" value={status} />}
-        {type && <input type="hidden" name="type" value={type} />}
-      </form>
+      <AdminListToolbar
+        action="/admin/documents"
+        search={search}
+        from={sp.get("from") ?? ""}
+        to={sp.get("to") ?? ""}
+        hidden={{ status, type }}
+      />
 
       <div className="mb-4 flex flex-wrap gap-2">
-        <Chip href="/admin/documents" label="Όλα" active={!status && !type} />
+        <Chip
+          href="/admin/documents"
+          label="Όλα"
+          active={!status && !type}
+        />
         <Chip
           href="/admin/documents?status=draft"
           label={t.status.draft}
@@ -107,82 +125,122 @@ export default async function AdminDocumentsPage({
       </div>
 
       <Card className="overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-ink-100 text-xs uppercase tracking-wide text-ink-500">
-            <tr>
-              <th className="px-4 py-2 text-left">Ημ/νία</th>
-              <th className="px-4 py-2 text-left">Επιχείρηση</th>
-              <th className="px-4 py-2 text-left">Τύπος</th>
-              <th className="px-4 py-2 text-left">Πελάτης</th>
-              <th className="px-4 py-2 text-right">Σύνολο</th>
-              <th className="px-4 py-2 text-left">Κατάσταση</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-ink-300/60">
-            {rows.map((d) => (
-              <tr key={d.id} className="hover:bg-ink-100/60">
-                <td className="px-4 py-2 text-ink-500">{date(d.issueDate)}</td>
-                <td className="px-4 py-2">
-                  <Link
-                    href={`/admin/businesses/${d.business.id}`}
-                    className="font-medium text-brand-700 hover:text-brand-800"
-                  >
-                    {d.business.tradeName ?? d.business.legalName}
-                  </Link>
-                </td>
-                <td className="px-4 py-2">{t.documents.types[d.type]}</td>
-                <td className="px-4 py-2 text-ink-700">
-                  {d.client?.legalName ?? "—"}
-                </td>
-                <td className="px-4 py-2 text-right font-medium">
-                  {money(d.totalAmount)}
-                </td>
-                <td className="px-4 py-2">
-                  <Badge
-                    tone={
-                      d.status === "issued"
-                        ? "success"
-                        : d.status === "failed"
-                          ? "danger"
-                          : "neutral"
-                    }
-                  >
-                    {t.status[d.status as keyof typeof t.status] ?? d.status}
-                  </Badge>
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-ink-100 text-xs uppercase tracking-wide">
+              <tr>
+                <SortableTh
+                  field="issueDate"
+                  label="Ημ/νία"
+                  current={sort}
+                  basePath="/admin/documents"
+                  params={sp}
+                  className="px-4 py-2 text-left"
+                />
+                <th className="px-4 py-2 text-left text-ink-500">Επιχείρηση</th>
+                <SortableTh
+                  field="type"
+                  label="Τύπος"
+                  current={sort}
+                  basePath="/admin/documents"
+                  params={sp}
+                  className="px-4 py-2 text-left"
+                />
+                <th className="px-4 py-2 text-left text-ink-500">Πελάτης</th>
+                <SortableTh
+                  field="totalAmount"
+                  label="Σύνολο"
+                  current={sort}
+                  basePath="/admin/documents"
+                  params={sp}
+                  className="px-4 py-2 text-right"
+                />
+                <SortableTh
+                  field="status"
+                  label="Κατάσταση"
+                  current={sort}
+                  basePath="/admin/documents"
+                  params={sp}
+                  className="px-4 py-2 text-left"
+                />
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-ink-300/60">
+              {rows.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="p-8 text-center text-ink-500">
+                    Δεν βρέθηκαν παραστατικά με τα τρέχοντα φίλτρα.
+                  </td>
+                </tr>
+              )}
+              {rows.map((d) => (
+                <tr
+                  key={d.id}
+                  className="transition-colors hover:bg-brand-50/60"
+                >
+                  <td className="px-4 py-2 text-ink-500">
+                    <Link
+                      href={`/admin/documents/${d.id}`}
+                      className="block"
+                    >
+                      {date(d.issueDate)}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-2">
+                    <Link
+                      href={`/admin/businesses/${d.business.id}`}
+                      className="font-medium text-brand-700 hover:text-brand-800"
+                    >
+                      {d.business.tradeName ?? d.business.legalName}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-2">
+                    <Link
+                      href={`/admin/documents/${d.id}`}
+                      className="block"
+                    >
+                      {t.documents.types[d.type]}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-2 text-ink-700">
+                    {d.client?.legalName ?? "—"}
+                  </td>
+                  <td className="px-4 py-2 text-right font-medium">
+                    <Link
+                      href={`/admin/documents/${d.id}`}
+                      className="block"
+                    >
+                      {money(d.totalAmount)}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-2">
+                    <Badge
+                      tone={
+                        d.status === "issued"
+                          ? "success"
+                          : d.status === "failed"
+                            ? "danger"
+                            : "neutral"
+                      }
+                    >
+                      {t.status[d.status as keyof typeof t.status] ?? d.status}
+                    </Badge>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </Card>
 
-      {totalPages > 1 && (
-        <nav className="mt-4 flex items-center justify-between text-sm">
-          <span className="text-ink-500">
-            Σελίδα {currentPage} / {totalPages}
-          </span>
-          <div className="flex gap-2">
-            {currentPage > 1 && (
-              <LinkButton
-                href={buildUrl({ q: search, status, type, page: currentPage - 1 })}
-                variant="secondary"
-                size="sm"
-              >
-                Προηγούμενη
-              </LinkButton>
-            )}
-            {currentPage < totalPages && (
-              <LinkButton
-                href={buildUrl({ q: search, status, type, page: currentPage + 1 })}
-                variant="secondary"
-                size="sm"
-              >
-                Επόμενη
-              </LinkButton>
-            )}
-          </div>
-        </nav>
-      )}
+      <AdminPagination
+        basePath="/admin/documents"
+        params={sp}
+        page={pag.page}
+        pageSize={pag.pageSize}
+        total={total}
+        pageSizes={[20, 50, 100]}
+      />
     </>
   );
 }
@@ -200,27 +258,13 @@ function Chip({
     <Link
       href={href}
       className={
-        "rounded-full border px-3 py-1 text-xs font-medium " +
+        "rounded-full border-2 px-3 py-1 text-xs font-bold " +
         (active
-          ? "border-brand-300 bg-brand-50 text-brand-700"
-          : "border-ink-300 bg-white text-ink-700 hover:bg-ink-100")
+          ? "border-brand-800 bg-brand-700 text-white"
+          : "border-ink-300 bg-white text-ink-700 hover:border-ink-500")
       }
     >
       {label}
     </Link>
   );
-}
-
-function buildUrl(params: {
-  q: string;
-  status?: string;
-  type?: string;
-  page: number;
-}) {
-  const s = new URLSearchParams();
-  if (params.q) s.set("q", params.q);
-  if (params.status) s.set("status", params.status);
-  if (params.type) s.set("type", params.type);
-  s.set("page", String(params.page));
-  return `/admin/documents?${s.toString()}`;
 }
