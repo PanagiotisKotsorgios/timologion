@@ -76,18 +76,26 @@ export default async function AdminAdminsPage() {
                         {date(a.createdAt)}
                       </td>
                       <td className="px-4 py-2 text-right">
-                        {!isSelf && (
-                          <form action={demoteAdminAction}>
-                            <input type="hidden" name="userId" value={a.id} />
-                            <Button
-                              type="submit"
-                              variant="ghost"
-                              size="sm"
-                            >
-                              Αφαίρεση
-                            </Button>
-                          </form>
-                        )}
+                        <div className="flex items-center justify-end gap-1">
+                          <Link
+                            href={`/admin/admins/${a.id}`}
+                            className="text-xs font-bold text-brand-800 hover:text-brand-900"
+                          >
+                            Δραστηριότητα →
+                          </Link>
+                          {!isSelf && (
+                            <form action={demoteAdminAction}>
+                              <input type="hidden" name="userId" value={a.id} />
+                              <Button
+                                type="submit"
+                                variant="ghost"
+                                size="sm"
+                              >
+                                Αφαίρεση
+                              </Button>
+                            </form>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );

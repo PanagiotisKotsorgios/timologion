@@ -120,6 +120,52 @@ export default async function AdminMetricsPage() {
       ? 0
       : (cancelledLastMonth / (activeSubs.length + cancelledLastMonth)) * 100;
 
+  // Prev-period comparison: same aggregates but shifted back one month.
+  const twoMonthsAgo = new Date(now);
+  twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
+  const [newPrevMonth, cancelledPrevMonth, revenuePrevMonth, revenueThisMonth] =
+    await Promise.all([
+      prisma.businessSubscription.count({
+        where: {
+          createdAt: { gte: twoMonthsAgo, lt: monthAgo },
+          status: { in: ["active", "trialing"] },
+        },
+      }),
+      prisma.businessSubscription.count({
+        where: {
+          cancelledAt: { gte: twoMonthsAgo, lt: monthAgo },
+        },
+      }),
+      prisma.platformInvoice.aggregate({
+        where: {
+          issueDate: { gte: twoMonthsAgo, lt: monthAgo },
+          status: "issued",
+        },
+        _sum: { totalAmount: true },
+      }),
+      prisma.platformInvoice.aggregate({
+        where: {
+          issueDate: { gte: monthAgo, lte: now },
+          status: "issued",
+        },
+        _sum: { totalAmount: true },
+      }),
+    ]);
+
+  const prevRev = Number(revenuePrevMonth._sum.totalAmount ?? 0);
+  const thisRev = Number(revenueThisMonth._sum.totalAmount ?? 0);
+  const revDelta =
+    prevRev > 0 ? ((thisRev - prevRev) / prevRev) * 100 : null;
+
+  const newDelta =
+    newPrevMonth > 0
+      ? ((newLastMonth - newPrevMonth) / newPrevMonth) * 100
+      : null;
+  const cancelledDelta =
+    cancelledPrevMonth > 0
+      ? ((cancelledLastMonth - cancelledPrevMonth) / cancelledPrevMonth) * 100
+      : null;
+
   return (
     <>
       <PageHeader
@@ -172,6 +218,49 @@ export default async function AdminMetricsPage() {
           tone="muted"
         />
       </div>
+
+      <Card className="mt-6">
+        <CardHeader
+          title="Σύγκριση μήνα με προηγούμενο"
+          subtitle="Τρέχων μήνας vs ίδιο διάστημα του προηγούμενου."
+        />
+        <CardBody className="p-0">
+          <table className="w-full text-sm">
+            <thead className="bg-ink-100 text-xs uppercase tracking-wide text-ink-500">
+              <tr>
+                <th className="px-4 py-2 text-left">Μετρική</th>
+                <th className="px-4 py-2 text-right">Προηγούμενος μήνας</th>
+                <th className="px-4 py-2 text-right">Τρέχων μήνας</th>
+                <th className="px-4 py-2 text-right">Δ</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-ink-300/60">
+              <ComparisonRow
+                label="Νέες συνδρομές"
+                prev={newPrevMonth}
+                curr={newLastMonth}
+                delta={newDelta}
+                inverted={false}
+              />
+              <ComparisonRow
+                label="Ακυρώσεις"
+                prev={cancelledPrevMonth}
+                curr={cancelledLastMonth}
+                delta={cancelledDelta}
+                inverted={true}
+              />
+              <ComparisonRow
+                label="Έσοδα (€)"
+                prev={prevRev}
+                curr={thisRev}
+                delta={revDelta}
+                inverted={false}
+                money
+              />
+            </tbody>
+          </table>
+        </CardBody>
+      </Card>
 
       <Card className="mt-6">
         <CardHeader
@@ -235,6 +324,48 @@ export default async function AdminMetricsPage() {
         </CardBody>
       </Card>
     </>
+  );
+}
+
+function ComparisonRow({
+  label,
+  prev,
+  curr,
+  delta,
+  inverted,
+  money: isMoney,
+}: {
+  label: string;
+  prev: number;
+  curr: number;
+  delta: number | null;
+  inverted: boolean;
+  money?: boolean;
+}) {
+  const fmt = (n: number) =>
+    isMoney ? money(n) : n.toLocaleString("el-GR");
+  const positive = delta != null && delta > 0;
+  const tone =
+    delta == null
+      ? "text-ink-500"
+      : (positive && !inverted) || (!positive && inverted)
+        ? "text-emerald-700"
+        : "text-red-700";
+  return (
+    <tr>
+      <td className="px-4 py-2 font-medium text-ink-900">{label}</td>
+      <td className="px-4 py-2 text-right tabular-nums text-ink-700">
+        {fmt(prev)}
+      </td>
+      <td className="px-4 py-2 text-right tabular-nums font-bold text-ink-900">
+        {fmt(curr)}
+      </td>
+      <td className={`px-4 py-2 text-right tabular-nums font-bold ${tone}`}>
+        {delta == null
+          ? "—"
+          : `${delta > 0 ? "+" : ""}${delta.toFixed(1)}%`}
+      </td>
+    </tr>
   );
 }
 

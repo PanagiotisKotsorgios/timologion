@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { LinkButton } from "@/components/ui/Button";
+import { EntityNotes } from "@/components/admin/EntityNotes";
 import { ReplyForm } from "./ReplyForm";
 import { TicketControls } from "./TicketControls";
 
@@ -198,6 +199,14 @@ export default async function AdminTicketDetailPage({
           />
         </CardBody>
       </Card>
+
+      <div className="mt-6">
+        <EntityNotes
+          entityType="SupportTicket"
+          entityId={ticket.id}
+          title="Εσωτερικές σημειώσεις ticket"
+        />
+      </div>
     </>
   );
 }

@@ -38,6 +38,9 @@ import {
   FileBarChart,
   BookOpen,
   GitMerge,
+  FlaskConical,
+  Sprout,
+  Bell,
   type LucideIcon,
 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
@@ -60,6 +63,7 @@ const PRIMARY: NavItem[] = [
   { href: "/admin/documents", label: "Παραστατικά", icon: FileText },
   { href: "/admin/audit", label: "Audit log", icon: ScrollText },
   { href: "/admin/errors", label: "Σφάλματα εφαρμογής", icon: AlertOctagon },
+  { href: "/admin/alerts", label: "Alert rules", icon: Bell },
   { href: "/admin/integrity", label: "Ακεραιότητα δεδομένων", icon: Brush },
   { href: "/admin/merge", label: "Merge duplicates", icon: GitMerge },
   { href: "/admin/cron", label: "Cron runs", icon: Timer },
@@ -77,6 +81,8 @@ const SECONDARY: NavItem[] = [
   { href: "/admin/webhooks", label: "Webhooks Wrapp", icon: Webhook },
   { href: "/admin/backups", label: "Backups βάσης", icon: HardDrive },
   { href: "/admin/feature-flags", label: "Feature flags", icon: ToggleLeft },
+  { href: "/admin/experiments", label: "A/B experiments", icon: FlaskConical },
+  { href: "/admin/seeder", label: "Test data seeder", icon: Sprout },
   { href: "/admin/system-settings", label: "Ρυθμίσεις πλατφόρμας", icon: Settings2 },
   { href: "/admin/admins", label: "Platform admins", icon: Shield },
 ];

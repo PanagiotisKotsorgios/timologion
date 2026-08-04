@@ -6,6 +6,7 @@ import {
   Hash,
   Send,
   UserCog,
+  KeyRound,
   ArrowRight,
   type LucideIcon,
 } from "lucide-react";
@@ -69,6 +70,13 @@ const CARDS: SettingCard[] = [
     icon: UserCog,
     title: "Χρήστες & ρόλοι",
     description: "Πρόσθεσε συνεργάτες με τα δικαιώματα που τους αντιστοιχούν.",
+  },
+  {
+    href: "/app/settings/api-keys",
+    icon: KeyRound,
+    title: "API keys",
+    description:
+      "Bearer tokens για integrations και προγραμματιστική πρόσβαση.",
   },
 ];
 

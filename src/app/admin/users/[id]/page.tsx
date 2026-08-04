@@ -11,6 +11,7 @@ import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
+import { EntityNotes } from "@/components/admin/EntityNotes";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -298,6 +299,8 @@ export default async function AdminUserDetailPage({
               )}
             </CardBody>
           </Card>
+
+          <EntityNotes entityType="User" entityId={user.id} title="Σημειώσεις χρήστη" />
 
           <Card>
             <CardHeader title={`Audit (${audit.length})`} />

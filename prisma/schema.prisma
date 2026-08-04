@@ -555,6 +555,7 @@ model Business {
   announcements     PlatformAnnouncement[]
   rateLimitOverrides RateLimitOverride[]
   supportTickets    SupportTicket[]
+  apiKeys           ApiKey[]
 
   @@index([vatNumber])
   @@map("businesses")
@@ -901,6 +902,150 @@ model SupportMessage {
 
   @@index([ticketId, createdAt])
   @@map("support_messages")
+}
+
+// ─── Polymorphic entity notes ───────────────────────────────────────────
+// Admin-only annotations attachable to ANY entity (business already has
+// its own supportNotes; this is for users, documents, tickets, etc.).
+// entityType is a free-form string keyed by Prisma model name.
+
+model EntityNote {
+  id          String   @id @default(cuid())
+  entityType  String   @db.VarChar(60)
+  entityId    String   @db.VarChar(191)
+  authorId    String
+  body        String   @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([entityType, entityId, createdAt])
+  @@map("entity_notes")
+}
+
+// ─── A/B experiments ────────────────────────────────────────────────────
+// Deterministic variant assignment via sha256(experimentKey + businessId).
+// Events pile up as raw rows; the admin view aggregates.
+
+enum ExperimentStatus {
+  draft
+  running
+  paused
+  completed
+}
+
+model Experiment {
+  key          String            @id @db.VarChar(80)
+  description  String?           @db.VarChar(500)
+  status       ExperimentStatus  @default(draft)
+  // Percentage of tenants that see variant A. 50 = even split. The rest
+  // get variant B. Non-assigned buckets (traffic sampling) not modeled
+  // for now; expand to a `sampledPct` if you need it later.
+  variantAPct  Int               @default(50)
+  hypothesis   String?           @db.Text
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  events       ExperimentEvent[]
+
+  @@map("experiments")
+}
+
+model ExperimentEvent {
+  id             String   @id @default(cuid())
+  experimentKey  String   @db.VarChar(80)
+  businessId     String?  @db.VarChar(191)
+  variant        String   @db.VarChar(1)   // "A" | "B"
+  event          String   @db.VarChar(60)  // "assigned" | "clicked" | "converted" | ...
+  value          Decimal? @db.Decimal(12, 2)
+  createdAt      DateTime @default(now())
+
+  experiment     Experiment @relation(fields: [experimentKey], references: [key], onDelete: Cascade)
+
+  @@index([experimentKey, event, createdAt])
+  @@index([businessId, experimentKey])
+  @@map("experiment_events")
+}
+
+// ─── API keys (per tenant, machine access) ──────────────────────────────
+// Bearer tokens for programmatic access to a business's own data.
+// Hashed at rest, prefix stored plaintext so we can show "sk_live_ab…"
+// hints in the admin without leaking the actual secret.
+
+model ApiKey {
+  id          String   @id @default(cuid())
+  businessId  String
+  name        String   @db.VarChar(120)
+  prefix      String   @db.VarChar(12)
+  keyHash     String   @db.VarChar(128)
+  scopes      String?  @db.VarChar(500) // comma-separated
+  createdById String?
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([keyHash])
+  @@map("api_keys")
+}
+
+// ─── Alert rules ────────────────────────────────────────────────────────
+// Simple threshold-based rules: pick a metric, set a threshold, get an
+// email when the eval cron sees the metric cross it.
+
+enum AlertMetric {
+  errors_1h
+  errors_24h
+  webhook_gap_hours
+  past_due_subs
+  backup_age_hours
+  active_sessions
+  new_signups_24h
+  broken_documents
+}
+
+enum AlertComparator {
+  gt
+  gte
+  lt
+  lte
+  eq
+}
+
+model AlertRule {
+  id            String          @id @default(cuid())
+  name          String          @db.VarChar(160)
+  metric        AlertMetric
+  comparator    AlertComparator @default(gt)
+  threshold     Decimal         @db.Decimal(14, 4)
+  emailTo       String          @db.VarChar(191)
+  enabled       Boolean         @default(true)
+  cooldownMin   Int             @default(60)
+  lastFiredAt   DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  firings       AlertFiring[]
+
+  @@map("alert_rules")
+}
+
+model AlertFiring {
+  id         String    @id @default(cuid())
+  ruleId     String
+  metric     AlertMetric
+  observed   Decimal   @db.Decimal(14, 4)
+  threshold  Decimal   @db.Decimal(14, 4)
+  emailTo    String    @db.VarChar(191)
+  sent       Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+
+  rule       AlertRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@index([ruleId, createdAt])
+  @@map("alert_firings")
 }
 
 // ─── Account deletion snapshots ─────────────────────────────────────────
