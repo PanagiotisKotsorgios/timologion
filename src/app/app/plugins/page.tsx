@@ -91,43 +91,76 @@ export default async function PluginsPage({
         />
       )}
 
-      <div className="space-y-10">
-        {CATEGORY_ORDER.map((cat) => {
-          const inCat = PLUGIN_CATALOG.filter((p) => p.category === cat);
-          if (inCat.length === 0) return null;
-          const anyComing = inCat.every(
-            (p) => p.availability === "coming_soon",
-          );
-          return (
-            <section key={cat}>
-              <header className="mb-4 flex items-center gap-3">
-                <h2 className="text-lg font-black uppercase tracking-widest text-brand-900">
-                  {CATEGORY_LABEL[cat]}
-                </h2>
-                {anyComing && (
-                  <span className="rounded-full bg-ink-200 px-3 py-0.5 text-[10px] font-black uppercase tracking-widest text-ink-700">
-                    Coming soon
-                  </span>
-                )}
-                <div className="h-px flex-1 bg-ink-200" aria-hidden />
-              </header>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {inCat.map((p) => {
-                  const rt = runtime.get(p.code);
-                  return (
-                    <PluginCard
-                      key={p.code}
-                      plugin={p}
-                      runtime={rt ?? fallbackRuntime(p)}
-                    />
-                  );
-                })}
-              </div>
-            </section>
-          );
-        })}
-      </div>
+      {/* Core plugins first — those are actually available today. */}
+      {(() => {
+        const core = PLUGIN_CATALOG.filter((p) => p.category === "core");
+        if (core.length === 0) return null;
+        return (
+          <section className="mb-10">
+            <SectionHeader label={CATEGORY_LABEL.core} />
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {core.map((p) => (
+                <PluginCard
+                  key={p.code}
+                  plugin={p}
+                  runtime={runtime.get(p.code) ?? fallbackRuntime(p)}
+                />
+              ))}
+            </div>
+          </section>
+        );
+      })()}
+
+      {/* Industry packs — merged into one grid so 3 cards fit per row.
+          Category tag is shown on each card so the industry grouping
+          isn't lost. */}
+      {(() => {
+        const industry = PLUGIN_CATALOG.filter(
+          (p) => p.category !== "core",
+        );
+        if (industry.length === 0) return null;
+        return (
+          <section>
+            <SectionHeader
+              label="Πακέτα ανά επάγγελμα"
+              chip="Coming soon"
+            />
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {industry.map((p) => (
+                <PluginCard
+                  key={p.code}
+                  plugin={p}
+                  runtime={runtime.get(p.code) ?? fallbackRuntime(p)}
+                  showCategoryChip
+                />
+              ))}
+            </div>
+          </section>
+        );
+      })()}
     </>
+  );
+}
+
+function SectionHeader({
+  label,
+  chip,
+}: {
+  label: string;
+  chip?: string;
+}) {
+  return (
+    <header className="mb-4 flex items-center gap-3">
+      <h2 className="text-lg font-black uppercase tracking-widest text-brand-900">
+        {label}
+      </h2>
+      {chip && (
+        <span className="rounded-full bg-ink-200 px-3 py-0.5 text-[10px] font-black uppercase tracking-widest text-ink-700">
+          {chip}
+        </span>
+      )}
+      <div className="h-px flex-1 bg-ink-200" aria-hidden />
+    </header>
   );
 }
 
@@ -151,9 +184,11 @@ function fallbackRuntime(def: PluginDefinition): PluginRuntimeStatus {
 function PluginCard({
   plugin,
   runtime,
+  showCategoryChip,
 }: {
   plugin: PluginDefinition;
   runtime: PluginRuntimeStatus;
+  showCategoryChip?: boolean;
 }) {
   const Icon = ICONS[plugin.iconName] ?? Sparkles;
   const disabled = plugin.availability === "coming_soon";
@@ -179,6 +214,11 @@ function PluginCard({
         />
       </div>
       <CardBody className="flex flex-1 flex-col">
+        {showCategoryChip && (
+          <span className="mb-2 inline-flex w-fit items-center rounded-full border border-brand-200 bg-brand-50 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-brand-800">
+            {CATEGORY_LABEL[plugin.category]}
+          </span>
+        )}
         <h3 className="text-xl font-extrabold text-brand-900">{plugin.name}</h3>
         <p className="mt-2 text-sm text-ink-700">{plugin.tagline}</p>
 
