@@ -1,9 +1,11 @@
 import { notFound } from "next/navigation";
-import { ExternalLink, FileText, ShieldAlert } from "lucide-react";
+import { ArrowLeft, ExternalLink, RefreshCw, ShieldAlert } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { requireTenant } from "@/lib/tenant";
 import { assertCan } from "@/lib/rbac";
 import { money, date } from "@/lib/format";
+import { getWrappClient } from "@/lib/wrapp/client";
+import { logger } from "@/lib/logger";
 import { PrintButton } from "./PrintButton";
 
 export const dynamic = "force-dynamic";
@@ -38,9 +40,6 @@ export default async function ThermalReceiptPage({
 
   if (!tab || !business) notFound();
 
-  // If this tab issued a Document to Wrapp, prefer showing the OFFICIAL
-  // thermal PDF from the provider instead of the local mock template.
-  // The local template stays visible below as a preview / backup.
   const linkedDoc = tab.documentId
     ? await prisma.document.findUnique({
         where: { id: tab.documentId },
@@ -59,67 +58,51 @@ export default async function ThermalReceiptPage({
     !!linkedDoc &&
     linkedDoc.status === "issued" &&
     !!linkedDoc.wrappInvoiceId;
-  const wrappThermalUrl = isWrappIssued
-    ? `/app/documents/${linkedDoc.id}/thermal-pdf`
-    : null;
+
+  // Resolve the direct Wrapp URL server-side so we can embed the actual
+  // PDF instead of routing through a redirector (which iframes handle
+  // poorly). If Wrapp responds "queued" we render a friendly retry
+  // message with meta-refresh instead of an empty frame.
+  let directPdfUrl: string | null = null;
+  let pdfPending = false;
+  if (isWrappIssued && linkedDoc?.wrappInvoiceId) {
+    try {
+      const res = await getWrappClient().generateThermalPdf(
+        ctx.businessId,
+        linkedDoc.wrappInvoiceId,
+      );
+      if (res.download_url) directPdfUrl = res.download_url;
+      else pdfPending = true;
+    } catch (err) {
+      logger.error("pos.receipt.thermal_pdf_fetch_failed", err, {
+        businessId: ctx.businessId,
+        documentId: linkedDoc.id,
+      });
+    }
+  }
 
   return (
     <div className="min-h-screen bg-ink-100 p-4 print:bg-white print:p-0">
-      <div className="mx-auto max-w-[80mm]">
-        <div className="mb-4 flex justify-between print:hidden">
+      {/* Meta-refresh only when the PDF is still being generated upstream.
+          10s is Wrapp's typical async window for thermal_pdf. */}
+      {pdfPending && (
+        <meta httpEquiv="refresh" content="10" />
+      )}
+
+      <div className="mx-auto max-w-3xl">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 print:hidden">
           <a
             href={`/app/pos/${tab.id}`}
-            className="text-sm font-semibold text-brand-800 hover:text-brand-900"
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-800 hover:text-brand-900"
           >
-            ← Πίσω
+            <ArrowLeft size={14} strokeWidth={2.5} aria-hidden />
+            Πίσω
           </a>
-          {isWrappIssued && wrappThermalUrl && (
-            <PrintButton thermalPdfUrl={wrappThermalUrl} />
-          )}
+          {directPdfUrl && <PrintButton thermalPdfUrl={directPdfUrl} />}
         </div>
 
-        {/* Wrapp official PDF banner — shown when the document has been
-            issued upstream. This is the receipt the customer should get;
-            we never render a local template for a customer-facing print. */}
-        {isWrappIssued && wrappThermalUrl && (
-          <div className="mb-4 rounded-lg border-2 border-emerald-500 bg-emerald-50 p-3 text-[12px] text-emerald-900 print:hidden">
-            <p className="flex items-center gap-1.5 font-black uppercase tracking-widest text-emerald-800">
-              <FileText size={13} strokeWidth={2.5} aria-hidden />
-              Επίσημη απόδειξη Wrapp
-            </p>
-            <p className="mt-1">
-              Η απόδειξη έχει σταλεί στην ΑΑΔΕ.
-              {linkedDoc?.myDataMark && (
-                <>
-                  {" "}MARK{" "}
-                  <span className="mono font-bold">{linkedDoc.myDataMark}</span>
-                </>
-              )}
-            </p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <a
-                href={wrappThermalUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex h-9 items-center gap-1.5 rounded-md border-2 border-emerald-700 bg-emerald-600 px-3 text-xs font-bold text-white hover:bg-emerald-700"
-              >
-                <FileText size={12} strokeWidth={2.5} aria-hidden />
-                Θερμικό PDF
-              </a>
-              {linkedDoc?.wrappInvoiceUrl && (
-                <a
-                  href={linkedDoc.wrappInvoiceUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex h-9 items-center gap-1.5 rounded-md border-2 border-brand-800 bg-brand-700 px-3 text-xs font-bold text-white hover:bg-brand-800"
-                >
-                  <ExternalLink size={12} strokeWidth={2.5} aria-hidden />
-                  Πλήρες παραστατικό
-                </a>
-              )}
-            </div>
-          </div>
-        )}
+        {/* NOT issued — no compliance-relevant receipt exists yet, don't
+            pretend one does. Show a clear warning + a link to issue it. */}
         {!isWrappIssued && (
           <div className="rounded-2xl border-2 border-amber-400 bg-white p-6 shadow-card print:hidden">
             <div className="flex items-start gap-3">
@@ -133,11 +116,10 @@ export default async function ThermalReceiptPage({
                 <p className="mt-1 text-sm text-ink-800">
                   Για συμμόρφωση με τη νομοθεσία, η απόδειξη πρέπει να
                   διαβιβαστεί στο myDATA μέσω του παρόχου (Wrapp) και μόνο
-                  τότε τυπώνεται. Δεν δείχνουμε πρόχειρη έκδοση εδώ για
-                  να μη δοθεί κατά λάθος στον πελάτη.
+                  τότε τυπώνεται.
                 </p>
-                {linkedDoc ? (
-                  <div className="mt-4 flex flex-wrap gap-2">
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {linkedDoc && (
                     <a
                       href={`/app/documents/${linkedDoc.id}`}
                       className="inline-flex h-10 items-center gap-2 rounded-lg border-2 border-brand-800 bg-brand-700 px-4 text-sm font-bold text-white shadow-sm hover:bg-brand-800"
@@ -145,28 +127,17 @@ export default async function ThermalReceiptPage({
                       <ExternalLink size={14} strokeWidth={2.5} aria-hidden />
                       Άνοιγμα παραστατικού
                     </a>
-                    <a
-                      href={`/app/pos/${tab.id}`}
-                      className="inline-flex h-10 items-center gap-2 rounded-lg border-2 border-ink-300 bg-white px-4 text-sm font-bold text-ink-900 hover:bg-ink-100"
-                    >
-                      Πίσω στο ταμείο
-                    </a>
-                  </div>
-                ) : (
-                  <div className="mt-4">
-                    <a
-                      href={`/app/pos/${tab.id}`}
-                      className="inline-flex h-10 items-center gap-2 rounded-lg border-2 border-ink-300 bg-white px-4 text-sm font-bold text-ink-900 hover:bg-ink-100"
-                    >
-                      Πίσω στο ταμείο
-                    </a>
-                  </div>
-                )}
+                  )}
+                  <a
+                    href={`/app/pos/${tab.id}`}
+                    className="inline-flex h-10 items-center gap-2 rounded-lg border-2 border-ink-300 bg-white px-4 text-sm font-bold text-ink-900 hover:bg-ink-100"
+                  >
+                    Πίσω στο ταμείο
+                  </a>
+                </div>
               </div>
             </div>
 
-            {/* Compact internal-only summary. Clearly labeled and styled so
-                it can't be mistaken for the customer receipt. */}
             <div className="mt-6 rounded-lg border border-dashed border-ink-300 bg-ink-50 p-3">
               <p className="text-[10px] font-black uppercase tracking-widest text-ink-500">
                 Εσωτερική περίληψη λογαριασμού
@@ -201,109 +172,73 @@ export default async function ThermalReceiptPage({
           </div>
         )}
 
-        {isWrappIssued && (
-          <div className="rounded-lg bg-white p-4 font-mono text-[11px] leading-tight text-black shadow print:rounded-none print:shadow-none">
-            <div className="text-center">
-              <p className="text-sm font-bold uppercase">
-                {business.legalName}
-              </p>
-              {business.tradeName && (
-                <p className="text-[10px]">{business.tradeName}</p>
+        {/* Issued but PDF still cooking — meta-refresh will re-run this
+            server component every 10s until Wrapp hands back a URL. */}
+        {isWrappIssued && pdfPending && (
+          <div className="rounded-2xl border-2 border-brand-300 bg-white p-8 text-center shadow-card print:hidden">
+            <RefreshCw
+              size={28}
+              className="mx-auto animate-spin text-brand-700"
+              aria-hidden
+            />
+            <p className="mt-3 text-base font-black text-brand-900">
+              Ετοιμάζεται η επίσημη απόδειξη...
+            </p>
+            <p className="mt-1 text-sm text-ink-700">
+              Η Wrapp τη δημιουργεί αυτή τη στιγμή. Η σελίδα θα ανανεωθεί
+              μόνη της σε λίγα δευτερόλεπτα.
+              {linkedDoc?.myDataMark && (
+                <>
+                  {" "}MARK <span className="mono font-bold">{linkedDoc.myDataMark}</span>
+                </>
               )}
-              <p className="text-[10px]">
-                ΑΦΜ {business.vatNumber}
-                {business.taxOffice ? ` · ${business.taxOffice}` : ""}
-              </p>
-              {business.addressLine && (
-                <p className="text-[10px]">
-                  {business.addressLine}
-                  {business.city ? `, ${business.city}` : ""}
-                </p>
-              )}
-              {business.phone && (
-                <p className="text-[10px]">Τηλ {business.phone}</p>
-              )}
-            </div>
-
-            <div className="my-2 border-t border-dashed border-black" />
-
-            <div className="flex justify-between">
-              <span>Λογαριασμός:</span>
-              <span>{tab.table?.label ?? tab.label ?? tab.id.slice(-6)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Ημ/νία:</span>
-              <span>{date(tab.closedAt ?? tab.openedAt)}</span>
-            </div>
-            {tab.paymentMethod && (
-              <div className="flex justify-between">
-                <span>Πληρωμή:</span>
-                <span>
-                  {METHOD_LABEL[tab.paymentMethod] ?? tab.paymentMethod}
-                </span>
-              </div>
-            )}
-            {linkedDoc?.myDataMark && (
-              <div className="flex justify-between">
-                <span>MARK:</span>
-                <span className="mono">{linkedDoc.myDataMark}</span>
-              </div>
-            )}
-
-            <div className="my-2 border-t border-dashed border-black" />
-
-            {tab.items.map((it) => {
-              const rowTotal =
-                Number(it.quantity) *
-                Number(it.unitPrice) *
-                (1 + Number(it.vatRate) / 100);
-              return (
-                <div key={it.id} className="mb-1">
-                  <p className="font-bold">{it.name}</p>
-                  <div className="flex justify-between">
-                    <span>
-                      {Number(it.quantity)} × {money(it.unitPrice)}
-                    </span>
-                    <span>{money(rowTotal)}</span>
-                  </div>
-                </div>
-              );
-            })}
-
-            <div className="my-2 border-t border-dashed border-black" />
-
-            <div className="flex justify-between">
-              <span>Καθαρή:</span>
-              <span>{money(tab.netTotal)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>ΦΠΑ:</span>
-              <span>{money(tab.vatTotal)}</span>
-            </div>
-            <div className="my-1 border-t border-black" />
-            <div className="flex justify-between text-sm font-bold">
-              <span>ΣΥΝΟΛΟ:</span>
-              <span>{money(tab.total)}</span>
-            </div>
-
-            <div className="my-2 border-t border-dashed border-black" />
-
-            {linkedDoc?.series && linkedDoc?.number && (
-              <p className="text-center text-[10px]">
-                Παραστατικό: {linkedDoc.series} #{linkedDoc.number}
-              </p>
-            )}
-            <p className="mt-2 text-center text-[10px] text-black/70">
-              Ευχαριστούμε — Πάροχος myDATA: Wrapp
             </p>
           </div>
+        )}
+
+        {/* Issued + PDF ready — embed the actual Wrapp PDF directly.
+            iframe > object because iframes handle third-party PDFs
+            consistently across browsers, including on iPad. */}
+        {isWrappIssued && directPdfUrl && (
+          <>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border-2 border-emerald-500 bg-emerald-50 px-3 py-2 text-xs text-emerald-900 print:hidden">
+              <p className="font-black uppercase tracking-widest">
+                Επίσημη απόδειξη Wrapp
+                {linkedDoc?.myDataMark && (
+                  <>
+                    {" · "}MARK{" "}
+                    <span className="mono">{linkedDoc.myDataMark}</span>
+                  </>
+                )}
+              </p>
+              {linkedDoc?.wrappInvoiceUrl && (
+                <a
+                  href={linkedDoc.wrappInvoiceUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex h-7 items-center gap-1.5 rounded-md border-2 border-brand-800 bg-brand-700 px-2 text-[11px] font-bold text-white hover:bg-brand-800"
+                >
+                  <ExternalLink size={11} strokeWidth={2.5} aria-hidden />
+                  Πλήρες παραστατικό
+                </a>
+              )}
+            </div>
+            <div className="overflow-hidden rounded-lg border-2 border-ink-300 bg-white shadow-card print:rounded-none print:border-0 print:shadow-none">
+              <iframe
+                src={directPdfUrl}
+                title="Επίσημη απόδειξη Wrapp"
+                className="block h-[80vh] w-full print:h-auto print:min-h-screen"
+                allow="fullscreen"
+              />
+            </div>
+          </>
         )}
       </div>
 
       <style>{`
         @media print {
-          @page { size: 80mm auto; margin: 0; }
           body { margin: 0; }
+          iframe { border: 0; }
         }
       `}</style>
     </div>
