@@ -58,6 +58,14 @@ RUN mkdir -p .next/cache/images .next/cache/fetch-cache \
 USER nextjs
 EXPOSE 3000
 
+# Liveness + readiness probe used by Coolify's Traefik and by any
+# external uptime monitor. /api/health does a cheap SELECT 1 on the
+# DB — 200 = ready to serve, 503 = boot in progress or DB unreachable.
+# 40s start-period covers `prisma migrate deploy && first-boot.ts`
+# on a cold container so the first probe doesn't fire during boot.
+HEALTHCHECK --interval=15s --timeout=5s --start-period=180s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/api/health || exit 1
+
 # On startup:
 #   1. Run any pending Prisma migrations (idempotent — tracked in
 #      _prisma_migrations table).

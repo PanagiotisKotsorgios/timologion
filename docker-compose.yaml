@@ -91,10 +91,17 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+    # Hit the dedicated /api/health endpoint (src/app/api/health/route.ts)
+    # instead of "/" — the health route round-trips to the DB (SELECT 1)
+    # so a broken DB connection returns 503 and Coolify's Traefik stops
+    # sending traffic to this instance. The Dockerfile also declares a
+    # HEALTHCHECK (which takes precedence at runtime); this compose
+    # attribute is here so Coolify's UI shows a configured healthcheck
+    # even when reading only the compose file.
     healthcheck:
       test:
         - "CMD-SHELL"
-        - "wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1"
+        - "wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1"
       interval: 15s
       timeout: 10s
       retries: 20
@@ -143,6 +150,15 @@ services:
         echo "cron sidecar ready — schedule:"
         cat /etc/crontabs/root
         exec crond -f -L /dev/stdout -l 8
+    # Healthy = crond is running as PID 1. Nothing more sophisticated
+    # needed — the /api/cron/* endpoints themselves record every fire
+    # in the CronRun table so /admin/cron shows real health.
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -x crond >/dev/null || exit 1"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   mysql:
     image: mysql:8.0
