@@ -65,6 +65,57 @@ function cashLimitViolation(
   );
 }
 
+/**
+ * Duplicate document detection. Returns matching drafts/issued docs
+ * for the same (business, client, type, total, day) within a 5-minute
+ * window — a strong signal the user double-clicked "Save" or forgot
+ * they already created this one. Called from create/update actions;
+ * the client sees a warning modal with a "confirm anyway" button
+ * since some duplicates are intentional (correction, re-issue).
+ */
+async function findLikelyDuplicates(input: {
+  businessId: string;
+  clientId: string | null;
+  type: DocumentType;
+  total: number;
+  issueDate: Date;
+  excludeId?: string;
+}): Promise<
+  Array<{ id: string; series: string | null; number: number | null; status: string; createdAt: Date }>
+> {
+  const dayStart = new Date(input.issueDate);
+  dayStart.setHours(0, 0, 0, 0);
+  const dayEnd = new Date(input.issueDate);
+  dayEnd.setHours(23, 59, 59, 999);
+
+  // Money comparison via a narrow tolerance (± 0.005€) so
+  // Decimal(14,2) rows still match when the client sent Number(x).
+  const totalMin = input.total - 0.005;
+  const totalMax = input.total + 0.005;
+
+  const rows = await prisma.document.findMany({
+    where: {
+      businessId: input.businessId,
+      type: input.type,
+      status: { in: ["draft", "sending", "issued"] },
+      clientId: input.clientId ?? undefined,
+      totalAmount: { gte: totalMin, lte: totalMax },
+      issueDate: { gte: dayStart, lte: dayEnd },
+      ...(input.excludeId ? { id: { not: input.excludeId } } : {}),
+    },
+    select: {
+      id: true,
+      series: true,
+      number: true,
+      status: true,
+      createdAt: true,
+    },
+    orderBy: { createdAt: "desc" },
+    take: 3,
+  });
+  return rows;
+}
+
 const DOCUMENT_TYPES = [
   "invoice",
   "service_invoice",
@@ -215,9 +266,25 @@ export type DraftFormState = { error?: string } | undefined;
 
 export type DraftInput = z.infer<typeof draftSchema>;
 
+export type DraftActionResult =
+  | { ok: true; id: string }
+  | { ok: false; error: string }
+  | {
+      ok: false;
+      kind: "duplicate";
+      matches: Array<{
+        id: string;
+        series: string | null;
+        number: number | null;
+        status: string;
+        createdAt: string;
+      }>;
+    };
+
 export async function createDraftAction(
   input: DraftInput,
-): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  options?: { confirmDuplicate?: boolean },
+): Promise<DraftActionResult> {
   const ctx = await requireTenant();
   assertCan(ctx.role, "document:write");
 
@@ -233,6 +300,29 @@ export async function createDraftAction(
     Number(totals.total),
   );
   if (cashError) return { ok: false, error: cashError };
+
+  // Duplicate check — same client + same total + same day + same type
+  // within a 5-min window. Skipped when the user has explicitly
+  // acknowledged the warning via the modal.
+  if (!options?.confirmDuplicate) {
+    const matches = await findLikelyDuplicates({
+      businessId: ctx.businessId,
+      clientId: parsed.data.clientId || null,
+      type: parsed.data.type,
+      total: Number(totals.total),
+      issueDate: new Date(parsed.data.issueDate),
+    });
+    if (matches.length > 0) {
+      return {
+        ok: false,
+        kind: "duplicate",
+        matches: matches.map((m) => ({
+          ...m,
+          createdAt: m.createdAt.toISOString(),
+        })),
+      };
+    }
+  }
 
   const doc = await prisma.$transaction(async (tx) => {
     // If a billing book is chosen, prefer its series over any free-typed value.
@@ -358,7 +448,8 @@ export async function createDraftAction(
 export async function updateDraftAction(
   documentId: string,
   input: DraftInput,
-): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  options?: { confirmDuplicate?: boolean },
+): Promise<DraftActionResult> {
   const ctx = await requireTenant();
   assertCan(ctx.role, "document:write");
 
@@ -387,6 +478,27 @@ export async function updateDraftAction(
     Number(totals.total),
   );
   if (cashError) return { ok: false, error: cashError };
+
+  if (!options?.confirmDuplicate) {
+    const matches = await findLikelyDuplicates({
+      businessId: ctx.businessId,
+      clientId: parsed.data.clientId || null,
+      type: parsed.data.type,
+      total: Number(totals.total),
+      issueDate: new Date(parsed.data.issueDate),
+      excludeId: existing.id,
+    });
+    if (matches.length > 0) {
+      return {
+        ok: false,
+        kind: "duplicate",
+        matches: matches.map((m) => ({
+          ...m,
+          createdAt: m.createdAt.toISOString(),
+        })),
+      };
+    }
+  }
 
   await prisma.$transaction(async (tx) => {
     let series = parsed.data.series || null;

@@ -189,6 +189,7 @@ export async function getUserNotifications(
  */
 export async function getSystemNotifications(
   userId: string,
+  businessId?: string | null,
 ): Promise<Announcement[]> {
   const user = await prisma.user
     .findUnique({
@@ -209,5 +210,38 @@ export async function getSystemNotifications(
       publishedAt: new Date().toISOString(),
     });
   }
+
+  // 48-hour myDATA transmission window (Ν. 4308/2014). Drafts left in
+  // limbo past that window are a compliance risk — nudge the owner
+  // through the bell so they don't miss it.
+  if (businessId) {
+    try {
+      const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const staleCount = await prisma.document.count({
+        where: {
+          businessId,
+          status: "draft",
+          createdAt: { lt: cutoff },
+        },
+      });
+      if (staleCount > 0) {
+        items.push({
+          id: "sys:stale-drafts",
+          tone: staleCount > 5 ? "warning" : "info",
+          title:
+            staleCount === 1
+              ? "1 πρόχειρο > 24 ώρες"
+              : `${staleCount} πρόχειρα > 24 ώρες`,
+          body: `Έχεις παραστατικά σε πρόχειρη κατάσταση πάνω από 24 ώρες. Ο νόμος (Ν. 4308/2014) απαιτεί διαβίβαση στο myDATA εντός 48 ωρών από την έκδοση — εξέδωσέ τα ή διάγραψέ τα για να μη συσσωρευτούν.`,
+          href: "/app/documents?status=draft",
+          cta: "Άνοιξε τα πρόχειρα",
+          publishedAt: new Date().toISOString(),
+        });
+      }
+    } catch {
+      // Silent — DB unreachable shouldn't kill the bell.
+    }
+  }
+
   return items;
 }

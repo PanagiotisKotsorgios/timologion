@@ -16,7 +16,9 @@ export default async function NotificationsPage() {
   const [announcements, userNotifs, systemNotifs] = await Promise.all([
     getPublishedAnnouncements(ctx.businessId, session?.userId),
     session ? getUserNotifications(session.userId) : Promise.resolve([]),
-    session ? getSystemNotifications(session.userId) : Promise.resolve([]),
+    session
+      ? getSystemNotifications(session.userId, ctx.businessId)
+      : Promise.resolve([]),
   ]);
   // Same ordering as the Topbar bell so the two views stay consistent.
   const items = [...systemNotifs, ...userNotifs, ...announcements];

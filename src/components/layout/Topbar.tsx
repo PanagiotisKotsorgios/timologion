@@ -35,7 +35,9 @@ export async function Topbar({
   const [announcements, userNotifs, systemNotifs] = await Promise.all([
     getPublishedAnnouncements(activeBusinessId, session?.userId),
     session ? getUserNotifications(session.userId) : Promise.resolve([]),
-    session ? getSystemNotifications(session.userId) : Promise.resolve([]),
+    session
+      ? getSystemNotifications(session.userId, activeBusinessId)
+      : Promise.resolve([]),
   ]);
   // System pins first (verify email, etc.), then user notifications, then
   // platform announcements. Same ordering as /app/notifications page so the

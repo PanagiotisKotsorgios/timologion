@@ -22,6 +22,7 @@ import { Alert } from "@/components/ui/Alert";
 import { useToast } from "@/components/ui/Toast";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { t } from "@/lib/i18n";
+import { computeWithholding, classifyClient } from "@/lib/withholding";
 import {
   createDraftAction,
   updateDraftAction,
@@ -395,12 +396,46 @@ export function DraftEditor({
   // so a bypass via devtools can't work.
   const [cashLimitModal, setCashLimitModal] = useState(false);
 
+  // Duplicate detection soft-warning — server returns `kind: duplicate`
+  // when we would create a same-client / same-total / same-day doc
+  // within a 5-minute window. Modal offers "Continue anyway" which
+  // resubmits with confirmDuplicate=true.
+  const [duplicateWarning, setDuplicateWarning] = useState<{
+    mode: "save" | "issue";
+    matches: {
+      id: string;
+      series: string | null;
+      number: number | null;
+      status: string;
+      createdAt: string;
+    }[];
+  } | null>(null);
+  const [dupeConfirmed, setDupeConfirmed] = useState(false);
+
   const totals = useMemo(() => computeTotals(lines), [lines]);
   const cashLimitBreached =
     paymentMethod === "Μετρητά" && totals.total > CASH_LIMIT_EUR;
   const selectedClient = useMemo(
     () => clientOptions.find((c) => c.id === clientId) ?? null,
     [clientId, clientOptions],
+  );
+
+  // Withholding tax preview (Ν. 4172/2013 άρθρο 64) — service invoices
+  // to legal entities get 20% withheld by the payer. We show this as
+  // an informational card next to the totals so the freelancer sees
+  // the actual receivable amount up front instead of being surprised
+  // on payment day.
+  const withholding = useMemo(
+    () =>
+      computeWithholding(
+        totals.net,
+        type,
+        classifyClient({
+          vatNumber: selectedClient?.vatNumber ?? null,
+          legalName: selectedClient?.label ?? null,
+        }),
+      ),
+    [totals.net, type, selectedClient],
   );
   const selectedBook = useMemo(
     () => availableBooks.find((b) => b.id === billingBookId) ?? null,
@@ -500,13 +535,27 @@ export function DraftEditor({
 
     startTransition(async () => {
       const saveRes = editing
-        ? await updateDraftAction(editing.id, payload)
-        : await createDraftAction(payload);
+        ? await updateDraftAction(editing.id, payload, {
+            confirmDuplicate: dupeConfirmed,
+          })
+        : await createDraftAction(payload, {
+            confirmDuplicate: dupeConfirmed,
+          });
       if (!saveRes.ok) {
-        setError(saveRes.error);
-        toast.error(saveRes.error);
+        // Soft-warning path — duplicate detected, ask the user to confirm
+        // instead of hard-failing.
+        if ("kind" in saveRes && saveRes.kind === "duplicate") {
+          setDuplicateWarning({ mode, matches: saveRes.matches });
+          return;
+        }
+        const errMsg = "error" in saveRes ? saveRes.error : "Άγνωστο σφάλμα.";
+        setError(errMsg);
+        toast.error(errMsg);
         return;
       }
+      // Reset the confirmation flag once a save actually goes through
+      // so a subsequent save without changes doesn't inherit it.
+      setDupeConfirmed(false);
       if (mode === "issue") {
         const issueRes = await attemptIssueAction(saveRes.id);
         if (!issueRes.ok) {
@@ -777,6 +826,48 @@ export function DraftEditor({
             />
           </CardBody>
         </Card>
+
+        {withholding.applies && (
+          <Card className="border-2 border-amber-300 bg-amber-50/60">
+            <CardHeader title="Παρακράτηση φόρου" />
+            <CardBody className="space-y-2 text-sm">
+              <p className="text-xs text-ink-700">{withholding.reason}</p>
+              <div className="my-2 border-t border-amber-300/60" />
+              <div className="flex justify-between">
+                <span className="text-ink-700">
+                  Καθαρή αξία υπηρεσίας
+                </span>
+                <span className="mono font-semibold text-ink-900">
+                  {formatMoney(totals.net)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-red-800">
+                  Παρακράτηση{" "}
+                  {(withholding.rate * 100).toFixed(0)}%
+                </span>
+                <span className="mono font-semibold text-red-800">
+                  − {formatMoney(withholding.amount)}
+                </span>
+              </div>
+              <div className="my-1 border-t-2 border-amber-400" />
+              <div className="flex justify-between">
+                <span className="font-bold text-emerald-900">
+                  Εισπρακτέο από πελάτη
+                </span>
+                <span className="mono font-black text-emerald-900">
+                  {formatMoney(
+                    withholding.receivable + Number(totals.vat),
+                  )}
+                </span>
+              </div>
+              <p className="mt-2 text-[11px] text-ink-500">
+                Ο πελάτης καταβάλλει την καθαρή αξία μείον την παρακράτηση,
+                συν το ΦΠΑ. Την παρακράτηση την αποδίδει ο ίδιος στην ΑΑΔΕ.
+              </p>
+            </CardBody>
+          </Card>
+        )}
 
         {CORRELATED_TYPES.has(type) && (
           <CorrelatedInvoicePicker
@@ -1162,6 +1253,21 @@ export function DraftEditor({
         />
       )}
 
+      {duplicateWarning && (
+        <DuplicateModal
+          matches={duplicateWarning.matches}
+          onCancel={() => setDuplicateWarning(null)}
+          onConfirm={() => {
+            const nextMode = duplicateWarning.mode;
+            setDupeConfirmed(true);
+            setDuplicateWarning(null);
+            // Re-fire submit; the flag will pass through the payload.
+            // Use a microtask so setState commits first.
+            setTimeout(() => submit(nextMode), 0);
+          }}
+        />
+      )}
+
       {pickerOpen && (
         <DocTypePickerModal
           allOptions={DOC_TYPE_OPTIONS}
@@ -1369,6 +1475,109 @@ function CashLimitModal({
             className="inline-flex h-11 items-center rounded-full border-2 border-red-700 bg-red-600 px-6 text-sm font-bold text-white shadow-sm hover:bg-red-700"
           >
             Αλλαγή τρόπου πληρωμής
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Soft-warning modal shown when the server detects a same-day / same-
+ * total / same-client duplicate. Duplicates are sometimes intentional
+ * (re-issue after edit, correction), so the "Continue anyway" button
+ * is the primary action — just makes the user acknowledge first.
+ */
+function DuplicateModal({
+  matches,
+  onCancel,
+  onConfirm,
+}: {
+  matches: {
+    id: string;
+    series: string | null;
+    number: number | null;
+    status: string;
+    createdAt: string;
+  }[];
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="dupe-title"
+      className="fixed inset-0 z-[120] flex items-center justify-center p-4"
+    >
+      <button
+        type="button"
+        aria-label="Ακύρωση"
+        onClick={onCancel}
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+      />
+      <div className="relative w-full max-w-lg rounded-3xl border-2 border-amber-400 bg-white p-8 shadow-2xl">
+        <div className="flex items-start gap-3">
+          <div
+            aria-hidden
+            className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-amber-100 text-amber-700"
+          >
+            <svg viewBox="0 0 24 24" width="26" height="26" fill="none">
+              <path
+                d="M12 3l10 18H2L12 3zm0 6v5m0 3v.5"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
+          <div className="min-w-0">
+            <h2
+              id="dupe-title"
+              className="text-2xl font-extrabold text-brand-900 md:text-3xl"
+            >
+              Πιθανή διπλοεγγραφή
+            </h2>
+            <p className="mt-2 text-sm text-ink-700">
+              Βρήκαμε {matches.length}{" "}
+              {matches.length === 1 ? "παραστατικό" : "παραστατικά"} στον
+              ίδιο πελάτη με το ίδιο ποσό την ίδια μέρα. Αν αυτό είναι
+              αντίγραφο κατά λάθος, ακύρωσε — αλλιώς προχώρα.
+            </p>
+            <ul className="mt-3 space-y-1.5">
+              {matches.map((m) => (
+                <li
+                  key={m.id}
+                  className="flex items-center justify-between rounded-lg border-2 border-amber-200 bg-amber-50/60 px-3 py-2 text-xs"
+                >
+                  <span className="mono font-bold text-brand-900">
+                    {m.series && m.number
+                      ? `${m.series} #${m.number}`
+                      : m.id.slice(-8)}
+                  </span>
+                  <span className="text-ink-500">
+                    {new Date(m.createdAt).toLocaleString("el-GR")} · {m.status}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+        <div className="mt-6 flex flex-wrap justify-end gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="inline-flex h-11 items-center rounded-full border-2 border-ink-300 bg-white px-5 text-sm font-bold text-ink-900 hover:border-brand-900"
+          >
+            Ακύρωση
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="inline-flex h-11 items-center rounded-full bg-brand-700 px-5 text-sm font-bold text-white hover:bg-brand-800"
+          >
+            Δημιουργία παρόλα αυτά
           </button>
         </div>
       </div>
