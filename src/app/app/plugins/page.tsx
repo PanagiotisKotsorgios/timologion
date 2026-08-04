@@ -8,6 +8,14 @@ import {
   Check,
   ArrowRight,
   Clock,
+  UtensilsCrossed,
+  Stethoscope,
+  Tractor,
+  ShoppingBag,
+  Briefcase,
+  Scale,
+  Car,
+  Scissors,
   type LucideIcon,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -15,7 +23,10 @@ import { Card, CardBody } from "@/components/ui/Card";
 import { requireTenant } from "@/lib/tenant";
 import {
   PLUGIN_CATALOG,
+  CATEGORY_LABEL,
+  CATEGORY_ORDER,
   getPluginRuntime,
+  type PluginCategory,
   type PluginDefinition,
   type PluginRuntimeStatus,
 } from "@/lib/plugins";
@@ -31,6 +42,14 @@ const ICONS: Record<string, LucideIcon> = {
   FileSpreadsheet,
   CalendarClock,
   Sparkles,
+  UtensilsCrossed,
+  Stethoscope,
+  Tractor,
+  ShoppingBag,
+  Briefcase,
+  Scale,
+  Car,
+  Scissors,
 };
 
 export default async function PluginsPage({
@@ -72,14 +91,61 @@ export default async function PluginsPage({
         />
       )}
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {PLUGIN_CATALOG.map((p) => {
-          const rt = runtime.get(p.code)!;
-          return <PluginCard key={p.code} plugin={p} runtime={rt} />;
+      <div className="space-y-10">
+        {CATEGORY_ORDER.map((cat) => {
+          const inCat = PLUGIN_CATALOG.filter((p) => p.category === cat);
+          if (inCat.length === 0) return null;
+          const anyComing = inCat.every(
+            (p) => p.availability === "coming_soon",
+          );
+          return (
+            <section key={cat}>
+              <header className="mb-4 flex items-center gap-3">
+                <h2 className="text-lg font-black uppercase tracking-widest text-brand-900">
+                  {CATEGORY_LABEL[cat]}
+                </h2>
+                {anyComing && (
+                  <span className="rounded-full bg-ink-200 px-3 py-0.5 text-[10px] font-black uppercase tracking-widest text-ink-700">
+                    Coming soon
+                  </span>
+                )}
+                <div className="h-px flex-1 bg-ink-200" aria-hidden />
+              </header>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {inCat.map((p) => {
+                  const rt = runtime.get(p.code);
+                  return (
+                    <PluginCard
+                      key={p.code}
+                      plugin={p}
+                      runtime={rt ?? fallbackRuntime(p)}
+                    />
+                  );
+                })}
+              </div>
+            </section>
+          );
         })}
       </div>
     </>
   );
+}
+
+/**
+ * Placeholder runtime for coming_soon industry packs — the DB has no
+ * PluginActivation row for them, so we build the "not activated" state
+ * inline so the card still renders.
+ */
+function fallbackRuntime(def: PluginDefinition): PluginRuntimeStatus {
+  return {
+    code: def.code,
+    definition: def,
+    activation: null,
+    status: "not_activated",
+    trialEndsAt: null,
+    daysLeftInTrial: null,
+    usable: false,
+  };
 }
 
 function PluginCard({

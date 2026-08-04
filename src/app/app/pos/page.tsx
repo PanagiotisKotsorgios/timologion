@@ -89,6 +89,31 @@ export default async function PosPage() {
         actions={<NewTabButton />}
       />
 
+      {/* Explicit beta banner — the POS module is functionally complete
+          for issuing/printing but we haven't yet wired direct card
+          terminals, ΦΤΜ integration or Tap-to-Pay. Manage expectations
+          up front instead of waiting for a support ticket. */}
+      <div className="mb-6 flex items-start gap-3 rounded-2xl border-2 border-amber-400 bg-amber-50 p-4">
+        <span
+          aria-hidden
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-amber-200 text-amber-900 text-xs font-black"
+        >
+          BETA
+        </span>
+        <div className="min-w-0">
+          <p className="text-sm font-black text-amber-900">
+            Το POS βρίσκεται ακόμα σε ενεργή ανάπτυξη
+          </p>
+          <p className="mt-0.5 text-xs text-amber-900/80">
+            Λειτουργεί για γρήγορη πώληση, τραπέζια και διαβίβαση στο myDATA.
+            Δεν έχει ολοκληρωθεί ακόμη η άμεση σύνδεση με card terminals,
+            ταμειακές μηχανές (ΦΤΜ) ή Tap-to-Pay — προς το παρόν καταγράφουμε
+            τον τρόπο πληρωμής και ο συνάδελφος περνάει την κάρτα από ξεχωριστή
+            συσκευή. Στείλε feedback από την Υποστήριξη.
+          </p>
+        </div>
+      </div>
+
       {/* KPI strip — matches the aesthetic used on Πληρωμές / Dashboard. */}
       <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <KpiTile

@@ -102,6 +102,48 @@ services:
       # before Next.js starts listening. Give it plenty of runway.
       start_period: 180s
 
+  # ─── Cron sidecar ────────────────────────────────────────────────
+  # Alpine + busybox crond hits each of the app's /api/cron/* endpoints
+  # on schedule with the shared CRON_SECRET as Bearer. No new UI setup
+  # required on Coolify — everything is declared here and starts with
+  # the compose stack. crond writes each fire to stdout so Coolify's
+  # container logs show what ran and when.
+  #
+  # Schedule (UTC):
+  #   backup         03:15 daily        (mysqldump → S3)
+  #   alerts         every 5 min        (evaluate AlertRule table)
+  #   recurring      04:00 daily        (fire due recurring documents)
+  #   low-stock      07:00 daily        (notify low-stock items)
+  #   reminders      08:00 daily        (CRM task reminders)
+  #   unpaid-digest  09:00 every Mon    (weekly unpaid AR digest)
+  cron:
+    image: alpine:3.20
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      - "CRON_SECRET=${SERVICE_PASSWORD_CRON}"
+      - "APP_URL=http://app:3000"
+    entrypoint:
+      - "sh"
+      - "-c"
+      - |
+        set -eu
+        apk add --no-cache curl >/dev/null
+        cat > /etc/crontabs/root <<EOF
+        15 3 * * *   curl -fsS -X POST -H "Authorization: Bearer $$CRON_SECRET" $$APP_URL/api/cron/backup           && echo "[backup] ok"           || echo "[backup] FAILED"
+        */5 * * * *  curl -fsS -X POST -H "Authorization: Bearer $$CRON_SECRET" $$APP_URL/api/cron/alerts           && echo "[alerts] ok"           || echo "[alerts] FAILED"
+        0 4 * * *    curl -fsS       -H "Authorization: Bearer $$CRON_SECRET" $$APP_URL/api/cron/recurring         && echo "[recurring] ok"        || echo "[recurring] FAILED"
+        0 7 * * *    curl -fsS       -H "Authorization: Bearer $$CRON_SECRET" $$APP_URL/api/cron/low-stock         && echo "[low-stock] ok"        || echo "[low-stock] FAILED"
+        0 8 * * *    curl -fsS       -H "Authorization: Bearer $$CRON_SECRET" $$APP_URL/api/cron/reminders         && echo "[reminders] ok"        || echo "[reminders] FAILED"
+        0 9 * * 1    curl -fsS       -H "Authorization: Bearer $$CRON_SECRET" $$APP_URL/api/cron/unpaid-digest     && echo "[unpaid-digest] ok"    || echo "[unpaid-digest] FAILED"
+        EOF
+        chmod 600 /etc/crontabs/root
+        echo "cron sidecar ready — schedule:"
+        cat /etc/crontabs/root
+        exec crond -f -L /dev/stdout -l 8
+
   mysql:
     image: mysql:8.0
     restart: unless-stopped

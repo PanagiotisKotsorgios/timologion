@@ -20,10 +20,54 @@ import type { PluginActivation, PluginStatus } from "@prisma/client";
  * `PluginActivation.priceMonthly` — so a later price change never
  * retro-bills an existing tenant.
  */
-export type PluginCode = "pos" | "crm" | "reports";
+// PluginCode is intentionally a wide string alias — the DB column is a
+// plain VARCHAR so adding a new industry pack in the catalog doesn't
+// require a schema migration. The known-good short codes stay
+// documented in PLUGIN_CATALOG below.
+export type PluginCode = string;
+
+/**
+ * Groups on the plugins page. Core plugins ship first, industry packs
+ * (coming_soon placeholders) sit under their own headers.
+ */
+export type PluginCategory =
+  | "core"
+  | "industry_hospitality"
+  | "industry_medical"
+  | "industry_agri"
+  | "industry_retail"
+  | "industry_services"
+  | "industry_legal"
+  | "industry_automotive"
+  | "industry_beauty";
+
+export const CATEGORY_LABEL: Record<PluginCategory, string> = {
+  core: "Γενικά πρόσθετα",
+  industry_hospitality: "Εστίαση & καφέ",
+  industry_medical: "Ιατρεία & υγεία",
+  industry_agri: "Αγρότες & πρωτογενής παραγωγή",
+  industry_retail: "Λιανικό εμπόριο",
+  industry_services: "Ελεύθεροι επαγγελματίες",
+  industry_legal: "Δικηγόροι & νομικές υπηρεσίες",
+  industry_automotive: "Οχήματα & συνεργεία",
+  industry_beauty: "Κομμωτήρια, spa & personal care",
+};
+
+export const CATEGORY_ORDER: PluginCategory[] = [
+  "core",
+  "industry_hospitality",
+  "industry_medical",
+  "industry_agri",
+  "industry_retail",
+  "industry_services",
+  "industry_legal",
+  "industry_automotive",
+  "industry_beauty",
+];
 
 export type PluginDefinition = {
   code: PluginCode;
+  category: PluginCategory;
   name: string;
   tagline: string;
   perks: string[];
@@ -40,6 +84,7 @@ export type PluginDefinition = {
 export const PLUGIN_CATALOG: PluginDefinition[] = [
   {
     code: "pos",
+    category: "core",
     name: "POS & Ταμείο",
     tagline: "Γρήγορη πώληση, τραπέζια, θερμική εκτύπωση 80mm.",
     perks: [
@@ -56,6 +101,7 @@ export const PLUGIN_CATALOG: PluginDefinition[] = [
   },
   {
     code: "crm",
+    category: "core",
     name: "CRM",
     tagline: "Leads, ευκαιρίες με 5 στάδια pipeline, tasks με υπενθυμίσεις.",
     perks: [
@@ -72,6 +118,7 @@ export const PLUGIN_CATALOG: PluginDefinition[] = [
   },
   {
     code: "reports",
+    category: "core",
     name: "Αναφορές λογιστή",
     tagline: "Έσοδα, ΦΠΑ, ανεξόφλητα, εξαγωγή σε Excel/CSV.",
     perks: [
@@ -85,6 +132,166 @@ export const PLUGIN_CATALOG: PluginDefinition[] = [
     href: "/app/reports",
     iconName: "FileSpreadsheet",
     availability: "available",
+  },
+
+  // ─── Εστίαση & καφέ ────────────────────────────────────────────────
+  {
+    code: "hospitality_pack",
+    category: "industry_hospitality",
+    name: "Πακέτο εστίασης",
+    tagline: "Ολοκληρωμένο UI για εστιατόρια, καφέ και bars.",
+    perks: [
+      "Οπτικό διάγραμμα τραπεζιών & αίθουσας",
+      "Menu με modifiers (χωρίς κρεμμύδι, well-done κ.λπ.)",
+      "Split bill ανά καθιστικό ή είδος",
+      "Kitchen display system (KDS) στη κουζίνα",
+    ],
+    priceMonthly: 14.9,
+    trialDays: 365,
+    sidebarLabel: "Εστίαση",
+    href: "/app/plugins",
+    iconName: "UtensilsCrossed",
+    availability: "coming_soon",
+  },
+
+  // ─── Ιατρεία & υγεία ───────────────────────────────────────────────
+  {
+    code: "medical_pack",
+    category: "industry_medical",
+    name: "Πακέτο ιατρείου",
+    tagline: "Ραντεβού ασθενών, ηλεκτρονικός φάκελος, αποδείξεις παροχής.",
+    perks: [
+      "Ραντεβού ασθενών με SMS υπενθύμιση",
+      "Ηλεκτρονικός φάκελος & ιστορικό επισκέψεων",
+      "Έντυπα ΕΟΠΥΥ & αποδείξεις παροχής υπηρεσιών",
+      "Ασφαλής αποθήκευση GDPR-compliant",
+    ],
+    priceMonthly: 12.9,
+    trialDays: 365,
+    sidebarLabel: "Ιατρείο",
+    href: "/app/plugins",
+    iconName: "Stethoscope",
+    availability: "coming_soon",
+  },
+
+  // ─── Αγρότες & πρωτογενής παραγωγή ─────────────────────────────────
+  {
+    code: "agri_pack",
+    category: "industry_agri",
+    name: "Πακέτο αγρότη",
+    tagline: "Τιμολόγηση χονδρικής, ΟΣΔΕ helpers, καλλιέργειες.",
+    perks: [
+      "Τιμολόγηση εμπόρων & συνεταιρισμών με ζυγολόγια",
+      "Παρακολούθηση αγροτεμαχίων & καλλιεργειών",
+      "Δελτία αποστολής προϊόντων",
+      "Έκδοση ειδικών παραστατικών ΟΣΔΕ",
+    ],
+    priceMonthly: 9.9,
+    trialDays: 365,
+    sidebarLabel: "Αγρότες",
+    href: "/app/plugins",
+    iconName: "Tractor",
+    availability: "coming_soon",
+  },
+
+  // ─── Λιανικό εμπόριο ───────────────────────────────────────────────
+  {
+    code: "retail_pack",
+    category: "industry_retail",
+    name: "Πακέτο λιανικής",
+    tagline: "Barcode scanning, μεγέθη/χρώματα, inventory σε πραγματικό χρόνο.",
+    perks: [
+      "Ανάγνωση barcode από κάμερα ή σκάνερ",
+      "Διαχείριση μεγεθών & χρωμάτων ανά είδος",
+      "Πραγματικά αποθέματα ανά υποκατάστημα",
+      "Loyalty & εκπτωτικά κουπόνια",
+    ],
+    priceMonthly: 11.9,
+    trialDays: 365,
+    sidebarLabel: "Λιανική",
+    href: "/app/plugins",
+    iconName: "ShoppingBag",
+    availability: "coming_soon",
+  },
+
+  // ─── Ελεύθεροι επαγγελματίες ──────────────────────────────────────
+  {
+    code: "services_pack",
+    category: "industry_services",
+    name: "Πακέτο ελ. επαγγελματία",
+    tagline: "Time tracking, retainer contracts, project-based billing.",
+    perks: [
+      "Καταγραφή ωρών ανά έργο & πελάτη",
+      "Retainer contracts με αυτόματη μηνιαία τιμολόγηση",
+      "Milestone-based invoicing",
+      "Έντυπα ΔΟΥ για blockers/επιδοτήσεις",
+    ],
+    priceMonthly: 7.9,
+    trialDays: 365,
+    sidebarLabel: "Freelance",
+    href: "/app/plugins",
+    iconName: "Briefcase",
+    availability: "coming_soon",
+  },
+
+  // ─── Δικηγόροι & νομικές υπηρεσίες ─────────────────────────────────
+  {
+    code: "legal_pack",
+    category: "industry_legal",
+    name: "Πακέτο δικηγόρου",
+    tagline: "Υποθέσεις, matter management, γραμμάτια προκαταβολής.",
+    perks: [
+      "Υποθέσεις με ημερολόγιο δικασίμων",
+      "Γραμμάτια προκαταβολής & timesheets",
+      "Έντυπα ΔΣΑ & ΕΤΑΑ",
+      "Ασφαλής χώρος για έγγραφα πελάτη",
+    ],
+    priceMonthly: 11.9,
+    trialDays: 365,
+    sidebarLabel: "Δικηγόρος",
+    href: "/app/plugins",
+    iconName: "Scale",
+    availability: "coming_soon",
+  },
+
+  // ─── Οχήματα & συνεργεία ──────────────────────────────────────────
+  {
+    code: "auto_pack",
+    category: "industry_automotive",
+    name: "Πακέτο συνεργείου",
+    tagline: "Καρτέλα οχήματος, service history, ανταλλακτικά με barcode.",
+    perks: [
+      "Καρτέλα οχήματος με πινακίδα, ΑΦΜ, service history",
+      "Εργασίες & ανταλλακτικά ανά επισκευή",
+      "Ειδοποίηση επόμενου service με SMS",
+      "Δελτία ΚΤΕΟ & πιστοποιητικά",
+    ],
+    priceMonthly: 12.9,
+    trialDays: 365,
+    sidebarLabel: "Συνεργείο",
+    href: "/app/plugins",
+    iconName: "Car",
+    availability: "coming_soon",
+  },
+
+  // ─── Κομμωτήρια, spa & personal care ──────────────────────────────
+  {
+    code: "beauty_pack",
+    category: "industry_beauty",
+    name: "Πακέτο κομμωτηρίου / spa",
+    tagline: "Online booking, χρονοπρόγραμμα υπαλλήλων, treatment history.",
+    perks: [
+      "Online booking κατευθείαν από site",
+      "Χρονοπρόγραμμα ανά κομμωτή/θεραπευτή",
+      "Ιστορικό υπηρεσιών ανά πελάτη",
+      "Ενδεικτικές τιμές πακέτων (μπαμπά της νύφης, γάμος κ.λπ.)",
+    ],
+    priceMonthly: 9.9,
+    trialDays: 365,
+    sidebarLabel: "Κομμωτήριο",
+    href: "/app/plugins",
+    iconName: "Scissors",
+    availability: "coming_soon",
   },
 ];
 
