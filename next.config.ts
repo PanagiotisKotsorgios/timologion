@@ -8,7 +8,12 @@ const isProd = process.env.NODE_ENV === "production";
 const csp = [
   "default-src 'self'",
   "base-uri 'self'",
-  "frame-ancestors 'none'",
+  // Allow our own pages to embed our own pages (e.g. the POS receipt
+  // page hosts an <iframe> pointing at /app/documents/:id/thermal-pdf
+  // to preview the official Wrapp PDF). 'self' still blocks any other
+  // origin from framing us, which is the clickjacking protection this
+  // clause is really meant for.
+  "frame-ancestors 'self'",
   "form-action 'self'",
   // Fonts we self-host + system fonts.
   "font-src 'self' data:",
@@ -31,7 +36,11 @@ const csp = [
 const securityHeaders = [
   { key: "Content-Security-Policy", value: csp },
   { key: "X-Content-Type-Options", value: "nosniff" },
-  { key: "X-Frame-Options", value: "DENY" },
+  // SAMEORIGIN, not DENY — the POS receipt page embeds the
+  // /app/documents/:id/thermal-pdf proxy in an <iframe> to preview
+  // the Wrapp-signed PDF. SAMEORIGIN keeps clickjacking protection
+  // (no third-party framing) while allowing our own pages.
+  { key: "X-Frame-Options", value: "SAMEORIGIN" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   {
     key: "Permissions-Policy",

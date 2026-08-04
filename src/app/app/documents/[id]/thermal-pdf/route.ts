@@ -10,14 +10,22 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * Serve the OFFICIAL 80mm thermal PDF for an issued document by
- * proxying Wrapp's `/invoices/:id/generate_thermal_pdf` endpoint.
- * Same contract as the A4 `/pdf` sibling route — we never render the
- * receipt locally so the customer always gets the exact document
- * that was diavivastei to myDATA.
+ * Serve the OFFICIAL 80mm thermal PDF for an issued document. We ask
+ * Wrapp for a short-lived S3 download URL, then STREAM the bytes back
+ * to the caller ourselves. Two reasons:
+ *
+ *   1. AWS S3 presigned URLs set `Content-Disposition: attachment` and
+ *      `x-frame-options` headers that stop browsers from embedding the
+ *      PDF in an <iframe>. Proxying rewrites both so the receipt page
+ *      can preview the doc inline.
+ *   2. Everything the customer sees stays under our origin, no third-
+ *      party network calls leaking from the browser.
+ *
+ * `?redirect=1` keeps the legacy 302 behavior for CLI / API callers
+ * that would rather follow the redirect than stream 100kB of PDF.
  */
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const ctx = await requireTenant();
@@ -30,6 +38,8 @@ export async function GET(
       id: true,
       status: true,
       wrappInvoiceId: true,
+      series: true,
+      number: true,
     },
   });
   if (!doc) return NextResponse.json({ error: "not_found" }, { status: 404 });
@@ -60,25 +70,57 @@ export async function GET(
       doc.wrappInvoiceId,
     );
 
-    if (res.download_url) {
-      await logAudit({
-        userId: ctx.userId,
-        businessId: ctx.businessId,
-        action: "document.thermal_pdf.fetched",
-        entityType: "Document",
-        entityId: doc.id,
-      });
+    if (!res.download_url) {
+      return NextResponse.json(
+        {
+          status: "pending",
+          error:
+            "Η θερμική απόδειξη βρίσκεται σε επεξεργασία. Δοκίμασε ξανά σε λίγα δευτερόλεπτα.",
+        },
+        { status: 202 },
+      );
+    }
+
+    await logAudit({
+      userId: ctx.userId,
+      businessId: ctx.businessId,
+      action: "document.thermal_pdf.fetched",
+      entityType: "Document",
+      entityId: doc.id,
+    });
+
+    const wantsRedirect = new URL(req.url).searchParams.get("redirect") === "1";
+    if (wantsRedirect) {
       return NextResponse.redirect(res.download_url, 302);
     }
 
-    return NextResponse.json(
-      {
-        status: "pending",
-        error:
-          "Η θερμική απόδειξη βρίσκεται σε επεξεργασία. Δοκίμασε ξανά σε λίγα δευτερόλεπτα.",
+    // Stream the S3 payload through our origin. AbortController wires
+    // the client disconnect to the upstream fetch so we don't waste a
+    // connection when the user navigates away mid-download.
+    const controller = new AbortController();
+    req.signal.addEventListener("abort", () => controller.abort());
+
+    const upstream = await fetch(res.download_url, {
+      signal: controller.signal,
+    });
+    if (!upstream.ok || !upstream.body) {
+      throw new Error(`upstream ${upstream.status}`);
+    }
+
+    const filename = filenameFor(doc);
+    return new Response(upstream.body, {
+      status: 200,
+      headers: {
+        "content-type": "application/pdf",
+        "content-disposition": `inline; filename="${filename}"`,
+        // Aggressively short — the S3 URL itself only lives ~7 days.
+        "cache-control": "private, max-age=60",
+        // Explicit "yes you can embed me" so browsers don't apply
+        // conservative defaults on the response.
+        "x-frame-options": "SAMEORIGIN",
+        "content-security-policy": "frame-ancestors 'self'",
       },
-      { status: 202 },
-    );
+    });
   } catch (err) {
     logger.error("document.thermal_pdf.fetch_failed", err, {
       businessId: ctx.businessId,
@@ -92,4 +134,18 @@ export async function GET(
       { status: 502 },
     );
   }
+}
+
+function filenameFor(doc: {
+  id: string;
+  series: string | null;
+  number: number | null;
+}): string {
+  const stem =
+    doc.series && doc.number != null
+      ? `${doc.series}-${doc.number}`
+      : doc.id.slice(-8);
+  // Basic sanitizer — S3 sometimes returns exotic UTF-8 filenames the
+  // Content-Disposition header can't carry without RFC 5987 encoding.
+  return `apodeixi-${stem.replace(/[^a-zA-Z0-9._-]/g, "_")}.pdf`;
 }

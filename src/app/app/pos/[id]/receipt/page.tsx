@@ -59,11 +59,13 @@ export default async function ThermalReceiptPage({
     linkedDoc.status === "issued" &&
     !!linkedDoc.wrappInvoiceId;
 
-  // Resolve the direct Wrapp URL server-side so we can embed the actual
-  // PDF instead of routing through a redirector (which iframes handle
-  // poorly). If Wrapp responds "queued" we render a friendly retry
-  // message with meta-refresh instead of an empty frame.
-  let directPdfUrl: string | null = null;
+  // Check whether Wrapp has the PDF ready. If yes, point the iframe at
+  // our own /thermal-pdf proxy — that route re-streams the bytes from
+  // S3 with headers that browsers accept for embedding. AWS presigned
+  // URLs otherwise ship with Content-Disposition:attachment and no
+  // frame-ancestors, which Chrome and Safari refuse to render. If Wrapp
+  // says "queued" we render a spinner + meta-refresh instead.
+  let embedUrl: string | null = null;
   let pdfPending = false;
   if (isWrappIssued && linkedDoc?.wrappInvoiceId) {
     try {
@@ -71,8 +73,11 @@ export default async function ThermalReceiptPage({
         ctx.businessId,
         linkedDoc.wrappInvoiceId,
       );
-      if (res.download_url) directPdfUrl = res.download_url;
-      else pdfPending = true;
+      if (res.download_url) {
+        embedUrl = `/app/documents/${linkedDoc.id}/thermal-pdf`;
+      } else {
+        pdfPending = true;
+      }
     } catch (err) {
       logger.error("pos.receipt.thermal_pdf_fetch_failed", err, {
         businessId: ctx.businessId,
@@ -98,7 +103,7 @@ export default async function ThermalReceiptPage({
             <ArrowLeft size={14} strokeWidth={2.5} aria-hidden />
             Πίσω
           </a>
-          {directPdfUrl && <PrintButton thermalPdfUrl={directPdfUrl} />}
+          {embedUrl && <PrintButton thermalPdfUrl={embedUrl} />}
         </div>
 
         {/* NOT issued — no compliance-relevant receipt exists yet, don't
@@ -199,7 +204,7 @@ export default async function ThermalReceiptPage({
         {/* Issued + PDF ready — embed the actual Wrapp PDF directly.
             iframe > object because iframes handle third-party PDFs
             consistently across browsers, including on iPad. */}
-        {isWrappIssued && directPdfUrl && (
+        {isWrappIssued && embedUrl && (
           <>
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border-2 border-emerald-500 bg-emerald-50 px-3 py-2 text-xs text-emerald-900 print:hidden">
               <p className="font-black uppercase tracking-widest">
@@ -225,7 +230,7 @@ export default async function ThermalReceiptPage({
             </div>
             <div className="overflow-hidden rounded-lg border-2 border-ink-300 bg-white shadow-card print:rounded-none print:border-0 print:shadow-none">
               <iframe
-                src={directPdfUrl}
+                src={embedUrl}
                 title="Επίσημη απόδειξη Wrapp"
                 className="block h-[80vh] w-full print:h-auto print:min-h-screen"
                 allow="fullscreen"
