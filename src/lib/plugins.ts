@@ -77,6 +77,15 @@ export type PluginDefinition = {
   href: string;
   /** Icon name from lucide-react. Sidebar/plugins page look it up. */
   iconName: string;
+  /**
+   * Optional hero image URL rendered as a banner at the top of the
+   * plugin card in place of the icon tile. Used for industry packs
+   * where a real photo conveys the target audience faster than an
+   * abstract icon. External HTTPS URLs are allowed by the app's
+   * img-src CSP; loaded with a plain <img> tag so we don't have to
+   * whitelist domains in next.config.ts remotePatterns.
+   */
+  imageUrl?: string;
   /** Card status when not activated. */
   availability: "available" | "coming_soon";
 };
@@ -151,6 +160,8 @@ export const PLUGIN_CATALOG: PluginDefinition[] = [
     sidebarLabel: "Εστίαση",
     href: "/app/plugins",
     iconName: "UtensilsCrossed",
+    imageUrl:
+      "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&auto=format&fit=crop&q=70",
     availability: "coming_soon",
   },
 
@@ -171,6 +182,8 @@ export const PLUGIN_CATALOG: PluginDefinition[] = [
     sidebarLabel: "Ιατρείο",
     href: "/app/plugins",
     iconName: "Stethoscope",
+    imageUrl:
+      "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800&auto=format&fit=crop&q=70",
     availability: "coming_soon",
   },
 
@@ -191,6 +204,8 @@ export const PLUGIN_CATALOG: PluginDefinition[] = [
     sidebarLabel: "Αγρότες",
     href: "/app/plugins",
     iconName: "Tractor",
+    imageUrl:
+      "https://images.unsplash.com/photo-1500595046743-cd271d694d30?w=800&auto=format&fit=crop&q=70",
     availability: "coming_soon",
   },
 
@@ -211,6 +226,8 @@ export const PLUGIN_CATALOG: PluginDefinition[] = [
     sidebarLabel: "Λιανική",
     href: "/app/plugins",
     iconName: "ShoppingBag",
+    imageUrl:
+      "https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?w=800&auto=format&fit=crop&q=70",
     availability: "coming_soon",
   },
 
@@ -231,6 +248,8 @@ export const PLUGIN_CATALOG: PluginDefinition[] = [
     sidebarLabel: "Freelance",
     href: "/app/plugins",
     iconName: "Briefcase",
+    imageUrl:
+      "https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=800&auto=format&fit=crop&q=70",
     availability: "coming_soon",
   },
 
@@ -251,6 +270,8 @@ export const PLUGIN_CATALOG: PluginDefinition[] = [
     sidebarLabel: "Δικηγόρος",
     href: "/app/plugins",
     iconName: "Scale",
+    imageUrl:
+      "https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=800&auto=format&fit=crop&q=70",
     availability: "coming_soon",
   },
 
@@ -271,6 +292,8 @@ export const PLUGIN_CATALOG: PluginDefinition[] = [
     sidebarLabel: "Συνεργείο",
     href: "/app/plugins",
     iconName: "Car",
+    imageUrl:
+      "https://images.unsplash.com/photo-1487754180451-c456f719a1fc?w=800&auto=format&fit=crop&q=70",
     availability: "coming_soon",
   },
 
@@ -291,6 +314,8 @@ export const PLUGIN_CATALOG: PluginDefinition[] = [
     sidebarLabel: "Κομμωτήριο",
     href: "/app/plugins",
     iconName: "Scissors",
+    imageUrl:
+      "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800&auto=format&fit=crop&q=70",
     availability: "coming_soon",
   },
 ];

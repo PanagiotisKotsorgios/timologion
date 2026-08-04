@@ -197,22 +197,53 @@ function PluginCard({
   const isExpired = runtime.status === "expired";
   const isActivated = isTrialing || isActive;
 
+  const hasImage = !!plugin.imageUrl;
+
   return (
     <Card
       className={
         "flex h-full flex-col overflow-hidden transition-shadow hover:shadow-soft " +
-        (disabled ? "opacity-70" : "")
+        (disabled ? "opacity-80" : "")
       }
     >
-      <div className="flex items-start justify-between px-6 pt-6">
-        <div className="grid h-12 w-12 place-items-center rounded-2xl bg-brand-50 text-brand-800">
-          <Icon size={22} aria-hidden />
+      {/* Hero image for industry packs; falls back to the icon tile
+          when the definition doesn't ship an imageUrl (core plugins). */}
+      {hasImage ? (
+        <div className="relative h-36 w-full overflow-hidden bg-ink-100">
+          {/* Plain <img> instead of next/image so we don't have to
+              whitelist Unsplash in remotePatterns; the CSP already
+              allows img-src: https:. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={plugin.imageUrl}
+            alt=""
+            loading="lazy"
+            className="h-full w-full object-cover"
+          />
+          {/* Subtle gradient over the bottom so the image doesn't clash
+              visually with the white card body underneath. */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-b from-transparent to-white"
+          />
+          <div className="absolute right-3 top-3">
+            <StatusPill
+              runtime={runtime}
+              availability={plugin.availability}
+            />
+          </div>
         </div>
-        <StatusPill
-          runtime={runtime}
-          availability={plugin.availability}
-        />
-      </div>
+      ) : (
+        <div className="flex items-start justify-between px-6 pt-6">
+          <div className="grid h-12 w-12 place-items-center rounded-2xl bg-brand-50 text-brand-800">
+            <Icon size={22} aria-hidden />
+          </div>
+          <StatusPill
+            runtime={runtime}
+            availability={plugin.availability}
+          />
+        </div>
+      )}
       <CardBody className="flex flex-1 flex-col">
         {showCategoryChip && (
           <span className="mb-2 inline-flex w-fit items-center rounded-full border border-brand-200 bg-brand-50 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-brand-800">
