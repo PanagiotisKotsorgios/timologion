@@ -412,6 +412,11 @@ export function DraftEditor({
   } | null>(null);
   const [dupeConfirmed, setDupeConfirmed] = useState(false);
 
+  // Tracks which line's QuickAddItemButton is currently open. Null when
+  // no modal is showing; a line.key when the user chose the "Νέο..."
+  // sentinel option in that row's item dropdown.
+  const [quickAddOpenFor, setQuickAddOpenFor] = useState<number | null>(null);
+
   const totals = useMemo(() => computeTotals(lines), [lines]);
   const cashLimitBreached =
     paymentMethod === "Μετρητά" && totals.total > CASH_LIMIT_EUR;
@@ -1071,13 +1076,26 @@ export function DraftEditor({
                     return (
                       <tr key={l.key}>
                         <td className="px-3 py-2.5">
-                          <div className="flex items-center gap-1.5">
+                          {/* Stacked so neither the select nor the "Νέο"
+                              button steal horizontal space from each
+                              other on narrow widths. */}
+                          <div className="flex flex-col gap-1.5">
                             <select
                               value={l.itemId}
-                              onChange={(e) => pickItem(l.key, e.target.value)}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                if (v === "__new__") {
+                                  setQuickAddOpenFor(l.key);
+                                  return;
+                                }
+                                pickItem(l.key, v);
+                              }}
                               className="row-select"
                             >
                               <option value="">— Επιλογή —</option>
+                              <option value="__new__">
+                                ➕ Νέο είδος / υπηρεσία...
+                              </option>
                               {itemOptions.map((it) => (
                                 <option key={it.id} value={it.id}>
                                   {it.name}
@@ -1086,7 +1104,12 @@ export function DraftEditor({
                             </select>
                             <QuickAddItemButton
                               compact
-                              label="Νέο"
+                              label="Νέο είδος"
+                              openState={[
+                                quickAddOpenFor === l.key,
+                                (o) =>
+                                  setQuickAddOpenFor(o ? l.key : null),
+                              ]}
                               onCreated={(it) => {
                                 setItemOptions((prev) => [...prev, it]);
                                 pickItem(l.key, it.id);

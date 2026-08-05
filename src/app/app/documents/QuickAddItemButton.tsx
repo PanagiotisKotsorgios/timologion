@@ -15,6 +15,21 @@ export type CreatedItemPayload = {
   vatRate: string;
 };
 
+type QuickAddItemButtonProps = {
+  onCreated: (item: CreatedItemPayload) => void;
+  label?: string;
+  compact?: boolean;
+  /**
+   * Optional controlled-open mode. When `openState` is provided the
+   * parent owns the modal's open state; the visible button becomes a
+   * secondary trigger. Used when a select-option sentinel elsewhere
+   * in the parent also needs to fire the same modal.
+   */
+  openState?: [boolean, (open: boolean) => void];
+  /** Hide the trigger button entirely; only the modal renders. */
+  hideTrigger?: boolean;
+};
+
 /**
  * "Νέο είδος" shortcut for the line editor inside the DraftEditor.
  * Opens a minimal item form, calls the quick-create action, then
@@ -25,12 +40,12 @@ export function QuickAddItemButton({
   onCreated,
   label = "Νέο είδος",
   compact,
-}: {
-  onCreated: (item: CreatedItemPayload) => void;
-  label?: string;
-  compact?: boolean;
-}) {
-  const [open, setOpen] = useState(false);
+  openState,
+  hideTrigger,
+}: QuickAddItemButtonProps) {
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = openState ? openState[0] : uncontrolledOpen;
+  const setOpen = openState ? openState[1] : setUncontrolledOpen;
   const [pending, startTx] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [values, setValues] = useState({
@@ -103,18 +118,20 @@ export function QuickAddItemButton({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className={
-          compact
-            ? "inline-flex items-center gap-1 rounded-md border-2 border-ink-900 bg-white px-2 py-0.5 text-xs font-bold text-ink-900 transition-colors hover:bg-ink-900 hover:text-white"
-            : "inline-flex items-center gap-1.5 rounded-full border-2 border-ink-900 bg-white px-3 py-1.5 text-sm font-bold text-ink-900 transition-colors hover:bg-ink-900 hover:text-white"
-        }
-      >
-        <Plus size={compact ? 12 : 14} strokeWidth={2.5} aria-hidden />
-        {label}
-      </button>
+      {!hideTrigger && (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className={
+            compact
+              ? "inline-flex items-center gap-1 rounded-md border-2 border-ink-900 bg-white px-2 py-0.5 text-xs font-bold text-ink-900 transition-colors hover:bg-ink-900 hover:text-white"
+              : "inline-flex items-center gap-1.5 rounded-full border-2 border-ink-900 bg-white px-3 py-1.5 text-sm font-bold text-ink-900 transition-colors hover:bg-ink-900 hover:text-white"
+          }
+        >
+          <Plus size={compact ? 12 : 14} strokeWidth={2.5} aria-hidden />
+          {label}
+        </button>
+      )}
 
       {open && (
         <div
