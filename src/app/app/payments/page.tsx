@@ -23,6 +23,7 @@ import { NewPaymentButton } from "./NewPaymentButton";
 import { deletePaymentAction } from "./actions";
 import { RecordPaymentForDocButton } from "./RecordPaymentForDocButton";
 import { MarkAsPaidButton } from "./MarkAsPaidButton";
+import { OpenDocsTable, type OpenDocRow } from "./OpenDocsTable";
 import { Pagination, resolvePageSize } from "@/components/ui/Pagination";
 import type { DocumentType, Prisma } from "@prisma/client";
 
@@ -160,7 +161,7 @@ export default async function PaymentsPage({
       take: openSize,
       skip: (openPage - 1) * openSize,
       include: {
-        client: { select: { id: true, legalName: true } },
+        client: { select: { id: true, legalName: true, vatNumber: true } },
       },
     }),
     prisma.document.count({ where: openWhere }),
@@ -375,8 +376,8 @@ export default async function PaymentsPage({
                     <th className="text-right" />
                   </tr>
                 </thead>
-                <tbody>
-                  {openDocs.map((d) => {
+                <OpenDocsTable
+                  rows={openDocs.map((d): OpenDocRow => {
                     const totalOwed = Number(d.totalAmount);
                     const paid = paidPerDoc.get(d.id) ?? 0;
                     const outstanding = Math.max(0, totalOwed - paid);
@@ -384,66 +385,25 @@ export default async function PaymentsPage({
                       (now.getTime() - d.issueDate.getTime()) / 86_400_000,
                     );
                     const clientLabel = d.client?.legalName ?? "—";
-                    const docLabel = `${d.series ?? ""}${d.number ? " #" + d.number : ""}`.trim() ||
+                    const docLabel =
+                      `${d.series ?? ""}${d.number ? " #" + d.number : ""}`.trim() ||
                       t.documents.types[d.type];
-                    return (
-                      <tr key={d.id}>
-                        <td className="mono">
-                          <Link
-                            href={`/app/documents/${d.id}`}
-                            className="font-semibold text-brand-800 hover:text-brand-900"
-                          >
-                            {date(d.issueDate)}
-                          </Link>
-                        </td>
-                        <td
-                          className="truncate-cell text-sm text-ink-900"
-                          title={clientLabel}
-                          style={{ maxWidth: "240px" }}
-                        >
-                          {clientLabel}
-                        </td>
-                        <td className="mono text-sm">
-                          {docLabel}
-                        </td>
-                        <td>
-                          <Badge tone="neutral">
-                            {t.documents.types[d.type]}
-                          </Badge>
-                        </td>
-                        <td className="text-right font-semibold">
-                          {money(totalOwed)}
-                        </td>
-                        <td className="text-right text-sm text-ink-700">
-                          {paid > 0 ? money(paid) : "—"}
-                        </td>
-                        <td className="text-right font-extrabold text-red-700">
-                          {money(outstanding)}
-                        </td>
-                        <td>
-                          <AgingBadge days={daysOpen} />
-                        </td>
-                        <td className="text-right">
-                          <div className="inline-flex flex-wrap items-center justify-end gap-2">
-                            <RecordPaymentForDocButton
-                              documentId={d.id}
-                              clientId={d.clientId}
-                              outstanding={outstanding}
-                              clientLabel={clientLabel}
-                              docLabel={docLabel}
-                            />
-                            <MarkAsPaidButton
-                              documentId={d.id}
-                              docLabel={docLabel}
-                              clientLabel={clientLabel}
-                              outstanding={outstanding}
-                            />
-                          </div>
-                        </td>
-                      </tr>
-                    );
+                    return {
+                      id: d.id,
+                      clientId: d.clientId,
+                      clientLabel,
+                      clientVat: d.client?.vatNumber ?? null,
+                      docLabel,
+                      typeLabel: t.documents.types[d.type],
+                      totalOwed,
+                      paid,
+                      outstanding,
+                      daysOpen,
+                      issueDateIso: d.issueDate.toISOString(),
+                      issueDateDisplay: date(d.issueDate),
+                    };
                   })}
-                </tbody>
+                />
               </table>
             </div>
           )}
