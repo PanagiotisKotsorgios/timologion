@@ -635,6 +635,12 @@ model WrappConnection {
   lastVerifiedAt     DateTime?
   lastError          String?     @db.Text
   webhookEndpoint    String?     @db.VarChar(500)
+  // Cached upstream counters + reconciliation timestamps. Populated by
+  // /api/cron/wrapp-reconcile so we can show "You've issued X invoices
+  // this year" from Wrapp's authoritative counter without an API call
+  // on every dashboard render.
+  issuedCountUpstream Int?
+  issuedCountAt       DateTime?
   createdAt          DateTime    @default(now())
   updatedAt          DateTime    @updatedAt
 

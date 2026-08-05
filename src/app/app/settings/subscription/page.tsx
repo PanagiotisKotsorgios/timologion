@@ -18,7 +18,7 @@ export default async function SubscriptionSettingsPage() {
   const ctx = await requireTenant();
   assertCan(ctx.role, "business:update");
 
-  const [subscription, plans] = await Promise.all([
+  const [subscription, plans, wrapp] = await Promise.all([
     prisma.businessSubscription.findFirst({
       where: {
         businessId: ctx.businessId,
@@ -30,6 +30,18 @@ export default async function SubscriptionSettingsPage() {
     prisma.platformPlan.findMany({
       where: { active: true },
       orderBy: [{ sortOrder: "asc" }, { priceMonthly: "asc" }],
+    }),
+    // Read the reconciler-populated fields so we can show authoritative
+    // usage from Wrapp instead of the local approximation.
+    prisma.wrappConnection.findUnique({
+      where: { businessId: ctx.businessId },
+      select: {
+        hasPlan: true,
+        canIssueInvoice: true,
+        issuedCountUpstream: true,
+        issuedCountAt: true,
+        lastVerifiedAt: true,
+      },
     }),
   ]);
 
@@ -54,6 +66,53 @@ export default async function SubscriptionSettingsPage() {
         title="Συνδρομή"
         subtitle="Δες το πακέτο σου, αλλαγή πακέτου ή κατάργηση συνδρομής."
       />
+
+      {/* Set expectations up-front: the source of truth for billing is
+          the provider (Wrapp), not us. If the two ever disagree, the
+          Wrapp invoice wins — this note stops support tickets before
+          they open. */}
+      <Alert tone="info" title="Ο πάροχος είναι πηγή αλήθειας">
+        Οι λεπτομέρειες της συνδρομής (τιμή, ημερομηνία χρέωσης, μέθοδος
+        πληρωμής) διαχειρίζονται από τον πάροχο Wrapp. Αν οι πληροφορίες
+        εδώ διαφέρουν από αυτά που βλέπεις στον λογαριασμό σου στη Wrapp,
+        <strong> το τιμολόγιο της Wrapp υπερισχύει</strong>. Άνοιξε τον
+        λογαριασμό σου{" "}
+        <a
+          href="https://wrapp.ai/el/users/sign_in"
+          target="_blank"
+          rel="noreferrer"
+          className="font-semibold underline underline-offset-4"
+        >
+          εδώ
+        </a>
+        .
+      </Alert>
+
+      {/* Wrapp-authoritative counter — refreshed by the nightly
+          reconciler. Only shown when we actually have data. */}
+      {wrapp?.issuedCountUpstream != null && (
+        <div className="mt-4 rounded-2xl border-2 border-brand-200 bg-brand-50/50 p-5">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-ink-500">
+                Παραστατικά που έχεις εκδώσει · κατά τη Wrapp
+              </p>
+              <p className="mt-1 text-3xl font-black text-brand-900 tabular-nums">
+                {wrapp.issuedCountUpstream.toLocaleString("el-GR")}
+              </p>
+            </div>
+            {wrapp.issuedCountAt && (
+              <p className="text-xs text-ink-500">
+                Ενημερώθηκε {wrapp.issuedCountAt.toLocaleString("el-GR")}
+              </p>
+            )}
+          </div>
+          <p className="mt-2 text-xs text-ink-600">
+            Ο επίσημος μετρητής από τον πάροχο. Ανανεώνεται αυτόματα κάθε
+            βράδυ.
+          </p>
+        </div>
+      )}
 
       {!subscription ? (
         <Alert tone="warning" title="Δεν υπάρχει ενεργή συνδρομή">

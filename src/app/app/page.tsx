@@ -41,7 +41,12 @@ export default async function DashboardPage() {
   ] = await Promise.all([
     prisma.wrappConnection.findUnique({
       where: { businessId: ctx.businessId },
-      select: { status: true, canIssueInvoice: true },
+      select: {
+        status: true,
+        canIssueInvoice: true,
+        issuedCountUpstream: true,
+        issuedCountAt: true,
+      },
     }),
     prisma.document.count({
       where: {
@@ -199,6 +204,27 @@ export default async function DashboardPage() {
           accent="amber"
         />
       </div>
+
+      {/* Wrapp-authoritative counter — nightly reconciler populates it,
+          so we can show the number the provider actually has on file. */}
+      {wrapp?.issuedCountUpstream != null && (
+        <div className="mt-4 flex flex-wrap items-baseline justify-between gap-2 rounded-xl border border-brand-200 bg-brand-50/50 px-4 py-3 text-sm">
+          <div>
+            <span className="text-[10px] font-black uppercase tracking-widest text-ink-500">
+              Σύνολο κατά Wrapp
+            </span>
+            <span className="ml-2 text-lg font-black text-brand-900 tabular-nums">
+              {wrapp.issuedCountUpstream.toLocaleString("el-GR")}
+            </span>
+            <span className="ml-1 text-xs text-ink-600">παραστατικά</span>
+          </div>
+          {wrapp.issuedCountAt && (
+            <span className="text-[11px] text-ink-500">
+              Ενημερώθηκε {wrapp.issuedCountAt.toLocaleString("el-GR")}
+            </span>
+          )}
+        </div>
+      )}
 
       <PlanUsageStrip
         planName={activeSub?.plan.name ?? null}

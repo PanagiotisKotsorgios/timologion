@@ -524,6 +524,22 @@ export default async function AdminBusinessDetailPage({
                     : "—"
                 }
               />
+              <Detail
+                label="Σύνολο κατά Wrapp"
+                value={
+                  business.wrappConnection?.issuedCountUpstream != null
+                    ? `${business.wrappConnection.issuedCountUpstream.toLocaleString("el-GR")} παραστατικά`
+                    : "—"
+                }
+              />
+              <Detail
+                label="Ενημέρωση counter"
+                value={
+                  business.wrappConnection?.issuedCountAt
+                    ? date(business.wrappConnection.issuedCountAt)
+                    : "—"
+                }
+              />
             </CardBody>
           </Card>
 

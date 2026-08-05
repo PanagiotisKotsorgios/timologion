@@ -7,6 +7,7 @@ import { assertCan } from "@/lib/rbac";
 import { logAudit } from "@/lib/audit";
 import { getWrappClient, WrappApiError } from "@/lib/wrapp/client";
 import { getWrappSettings } from "@/lib/wrapp/settings";
+import { reconcileWrappForBusiness } from "@/lib/wrapp/reconcile";
 
 /**
  * Phase 1: this action triggers a "verification" against the stubbed Wrapp
@@ -18,48 +19,18 @@ export async function refreshWrappStatusAction() {
   const ctx = await requireTenant();
   assertCan(ctx.role, "wrapp:manage");
 
-  try {
-    const details = await getWrappClient().getTenantDetails(ctx.businessId);
+  // Make sure a row exists so the reconciler's update-only call doesn't
+  // fall over on tenants who never got past onboarding.
+  await prisma.wrappConnection.upsert({
+    where: { businessId: ctx.businessId },
+    create: { businessId: ctx.businessId, status: "inactive" },
+    update: {},
+  });
 
-    await prisma.wrappConnection.upsert({
-      where: { businessId: ctx.businessId },
-      create: {
-        businessId: ctx.businessId,
-        status: details.issue_invoice_status ? "active" : "inactive",
-        hasPlan: details.has_plan,
-        canIssueInvoice: details.issue_invoice_status,
-        wrappUserId: details.wrapp_user_id,
-        lastVerifiedAt: new Date(),
-      },
-      update: {
-        status: details.issue_invoice_status ? "active" : "inactive",
-        hasPlan: details.has_plan,
-        canIssueInvoice: details.issue_invoice_status,
-        wrappUserId: details.wrapp_user_id,
-        lastVerifiedAt: new Date(),
-        lastError: null,
-      },
-    });
-  } catch (err) {
-    // Don't crash the settings page if Wrapp isn't reachable / not
-    // configured yet — record the error so the user sees what went wrong
-    // and can act (activate, add staging fallback, etc.).
-    const message = err instanceof Error ? err.message : String(err);
-    await prisma.wrappConnection.upsert({
-      where: { businessId: ctx.businessId },
-      create: {
-        businessId: ctx.businessId,
-        status: "error",
-        lastVerifiedAt: new Date(),
-        lastError: message.slice(0, 500),
-      },
-      update: {
-        status: "error",
-        lastVerifiedAt: new Date(),
-        lastError: message.slice(0, 500),
-      },
-    });
-  }
+  // Reuse the shared reconciler so the manual refresh + the nightly
+  // cron write identical fields (hasPlan, canIssueInvoice,
+  // issuedCountUpstream, wrappUserId, wrappEmail, lastVerifiedAt).
+  await reconcileWrappForBusiness(ctx.businessId);
 
   await logAudit({
     userId: ctx.userId,
@@ -68,6 +39,8 @@ export async function refreshWrappStatusAction() {
   });
 
   revalidatePath("/app/settings/wrapp");
+  revalidatePath("/app/settings/subscription");
+  revalidatePath("/app");
 }
 
 // ─── Health check: run every read-only Wrapp endpoint we depend on and
