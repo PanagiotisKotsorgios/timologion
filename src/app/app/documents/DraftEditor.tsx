@@ -110,8 +110,11 @@ const DOC_TYPE_OPTIONS: { value: DraftInput["type"]; label: string }[] = [
   },
   { value: "purchase_title", label: "Τίτλος κτήσης (3.1)" },
   { value: "purchase_title_refused", label: "Τίτλος κτήσης — άρνηση (3.2)" },
+  {
+    value: "credit_note_correlated",
+    label: "Πιστωτικό συσχετιζόμενο (5.1) — συνιστάται",
+  },
   { value: "credit_note", label: "Πιστωτικό μη συσχετιζόμενο (5.2)" },
-  { value: "credit_note_correlated", label: "Πιστωτικό συσχετιζόμενο (5.1)" },
   { value: "self_delivery", label: "Στοιχεία αυτοπαράδοσης (6.1)" },
   { value: "self_use", label: "Στοιχεία ιδιοχρησιμοποίησης (6.2)" },
   { value: "contract_income", label: "Συμβόλαιο — έσοδο (7.1)" },

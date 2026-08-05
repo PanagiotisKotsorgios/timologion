@@ -680,9 +680,23 @@ export async function duplicateDocumentAction(
 }
 
 /**
- * Create a credit note draft against an existing issued document. Copies the
- * client and lines, sets type=credit_note and quantities negative so totals
- * reverse the original.
+ * Create a credit note draft against an existing issued document.
+ *
+ * Wrapp doesn't expose a `cancel` operation for the invoice types we
+ * commonly issue (only delivery notes 9.3 can be cancelled via the
+ * provider). The compliant reversal path is a credit note that
+ * REFERENCES the original — myDATA 5.1 "πιστωτικό συσχετιζόμενο"
+ * carrying the parent MARK. So we default to the correlated variant
+ * whenever the source has a MARK, and only fall back to the
+ * uncorrelated 5.2 when correlation is impossible.
+ *
+ *   retail receipt / simplified invoice   → retail_credit_note (11.4)
+ *   invoice / service_invoice with MARK   → credit_note_correlated (5.1)
+ *   invoice / service_invoice without MARK → credit_note (5.2)
+ *
+ * The client may still pick 5.2 explicitly by opening the draft in
+ * the editor and switching the type — this action only sets the
+ * default.
  */
 export async function issueCreditNoteAction(
   documentId: string,
@@ -701,12 +715,33 @@ export async function issueCreditNoteAction(
       error: "Πιστωτικό εκδίδεται μόνο για παραστατικά που έχουν εκδοθεί.",
     };
   }
-  if (src.type === "credit_note") {
+  if (
+    src.type === "credit_note" ||
+    src.type === "credit_note_correlated" ||
+    src.type === "retail_credit_note"
+  ) {
     return {
       ok: false,
       error:
         "Δεν επιτρέπεται πιστωτικό πάνω σε άλλο πιστωτικό. Το πιστωτικό εκδίδεται μόνο πάνω σε τιμολόγιο ή απόδειξη.",
     };
+  }
+
+  // Retail receipts get the retail credit note (11.4). Everything else
+  // that has a MARK becomes correlated (5.1). Only fall back to 5.2
+  // when we can't correlate.
+  const isRetail =
+    src.type === "retail_receipt" ||
+    src.type === "third_party_retail_receipt" ||
+    src.type === "simplified_invoice" ||
+    src.type === "service_receipt";
+  let creditType: DocumentType;
+  if (isRetail) {
+    creditType = "retail_credit_note";
+  } else if (src.myDataMark) {
+    creditType = "credit_note_correlated";
+  } else {
+    creditType = "credit_note";
   }
 
   const totals = { net: 0, vat: 0, tot: 0 };
@@ -716,10 +751,18 @@ export async function issueCreditNoteAction(
         businessId: ctx.businessId,
         clientId: src.clientId,
         branchId: src.branchId,
-        type: "credit_note",
+        type: creditType,
         status: "draft",
         issueDate: new Date(),
         printLanguage: src.printLanguage,
+        // Correlated + retail-credit variants carry a reference to the
+        // parent doc so the editor's CorrelatedInvoicePicker pre-selects
+        // it and the myDATA payload includes the parent's MARK.
+        correlatedDocumentId:
+          creditType === "credit_note_correlated" ||
+          creditType === "retail_credit_note"
+            ? src.id
+            : null,
         notes: `Πιστωτικό για το ${src.type} με σειρά ${src.series ?? "-"} #${src.number ?? ""}`,
         netTotalAmount: 0,
         vatTotalAmount: 0,
@@ -769,7 +812,7 @@ export async function issueCreditNoteAction(
     action: "document.credit_note.create",
     entityType: "Document",
     entityId: credit.id,
-    meta: { sourceId: documentId },
+    meta: { sourceId: documentId, creditType },
   });
 
   revalidatePath("/app/documents");
