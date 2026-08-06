@@ -154,13 +154,20 @@ export async function ensureDefaultBillingBook(
       select: { id: true },
     });
     return { id: created.id, created: true };
-  } catch {
-    // Lost a race — read the winner.
+  } catch (createErr) {
+    // Was it a race? Retry the read — if a winner exists, we're done.
     const raced = await prisma.billingBook.findFirst({
       where: { businessId, documentType },
       select: { id: true },
     });
     if (raced) return { id: raced.id, created: false };
+    // Not a race. Bubble up the ACTUAL Prisma/DB error instead of the
+    // generic "Failed to ensure default billing book" swallow — the old
+    // wrap turned "MySQL enum truncation on billing_books.documentType"
+    // into an opaque message that hid the real bug for weeks. Callers
+    // (attemptIssueAction, the edit page) already logger.error with
+    // full context, so re-throwing gives us the right diagnostic.
+    if (createErr instanceof Error) throw createErr;
     throw new Error("Failed to ensure default billing book.");
   }
 }
