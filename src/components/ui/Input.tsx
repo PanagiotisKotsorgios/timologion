@@ -74,11 +74,23 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   { className, ...rest },
   ref,
 ) {
+  // Chrome on Greek-Windows renders the native date placeholder as
+  // "ηη/χιλ./εεεε" — it pulls the short-date pattern from Windows and
+  // that pattern renders "M" as the localized abbreviation "χιλ.".
+  // Pinning lang="el-GR" on date-family inputs forces the browser to use
+  // ICU's Greek locale instead, which renders "ηη/μμ/εεεε" as expected.
+  const isDateFamily =
+    rest.type === "date" ||
+    rest.type === "datetime-local" ||
+    rest.type === "month" ||
+    rest.type === "week";
+  const langAttr = isDateFamily && !rest.lang ? "el-GR" : rest.lang;
   return (
     <input
       ref={ref}
       className={clsx(FIELD_BASE, "h-12", className)}
       {...rest}
+      lang={langAttr}
     />
   );
 });

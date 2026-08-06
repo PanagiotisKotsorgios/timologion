@@ -207,10 +207,20 @@ function render<T>(doc: any, input: PdfTableInput<T>) {
   }
 
   if (footerNote) {
+    // Draw the footer INSIDE the bottom margin band (above the physical
+    // page edge but below the content area). Two things matter here:
+    //   • lineBreak: false — otherwise pdfkit measures the text height,
+    //     compares it against `page.height - margins.bottom`, and if the
+    //     y position is even a hair past that line it auto-adds a NEW
+    //     page and re-renders the footer there. That's how "τιμολόγιον"
+    //     was ending up on a phantom second page for short tables.
+    //   • y is placed at `page.height - 24`, safely within the physical
+    //     page but far enough from the content that it reads as a footer.
     doc.font("body").fontSize(8).fillColor("#4A5568")
-      .text(footerNote, doc.page.margins.left, doc.page.height - doc.page.margins.bottom + 10, {
+      .text(footerNote, doc.page.margins.left, doc.page.height - 24, {
         width: pageWidth,
         align: "left",
+        lineBreak: false,
       });
   }
 }

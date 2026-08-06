@@ -49,7 +49,8 @@ export function BusinessSettingsForm({ initial }: { initial: BusinessLike }) {
             name="vatNumber"
             defaultValue={initial.vatNumber}
             required
-            maxLength={20}
+            maxLength={9}
+            inputMode="numeric"
           />
         </Field>
         <Field

@@ -238,7 +238,8 @@ export function QuickAddClientButton({
                       id="qa-vat"
                       value={values.vatNumber}
                       onChange={(e) => set("vatNumber", e.target.value)}
-                      maxLength={20}
+                      maxLength={9}
+                      inputMode="numeric"
                     />
                     <Button
                       type="button"

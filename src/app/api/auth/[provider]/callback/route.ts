@@ -4,11 +4,14 @@ import { prisma } from "@/lib/db";
 import { env } from "@/lib/env";
 import { createSession } from "@/lib/auth/session";
 import { logAudit } from "@/lib/audit";
+import { sendMfaCode } from "@/lib/auth/mfa-otp";
 import {
   exchangeCodeForProfile,
   getProviderConfig,
   verifyState,
   OAUTH_STATE_COOKIE,
+  createOAuthMfaPendingCookie,
+  OAUTH_MFA_PENDING_COOKIE,
   providerFromSegment,
 } from "@/lib/auth/oauth";
 
@@ -105,6 +108,27 @@ export async function GET(
     }
   } else {
     return fail("no_email_from_provider");
+  }
+
+  // If the user has 2FA on, we CANNOT create a session yet — Google
+  // verified their identity but that only proves who owns the mailbox,
+  // not who owns their second factor. Send an OTP to their email, stash
+  // the userId in a short-lived signed cookie, and bounce them to the
+  // OTP step. Mirrors the password login flow (see (auth)/login/actions.ts).
+  const userRow = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { mfaEnabled: true },
+  });
+  if (userRow?.mfaEnabled) {
+    await sendMfaCode(userId, "login").catch(() => undefined);
+    jar.set(OAUTH_MFA_PENDING_COOKIE, createOAuthMfaPendingCookie(userId), {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 10 * 60,
+    });
+    return NextResponse.redirect(`${env.APP_BASE_URL}/login/oauth-mfa`);
   }
 
   const hdr = await headers();

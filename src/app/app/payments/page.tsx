@@ -85,10 +85,37 @@ export default async function PaymentsPage({
   const cutoff90 = new Date(now);
   cutoff90.setDate(cutoff90.getDate() - 90);
 
+  // Only include document types that represent RECEIVABLES from the
+  // customer. Credit notes (5.1/5.2/11.4) are the opposite — they
+  // reduce the customer's balance, so surfacing them here as "unpaid"
+  // is misleading. Delivery notes / quotes / proforma / orders don't
+  // create receivables either.
+  const RECEIVABLE_TYPES: Prisma.DocumentWhereInput["type"] = {
+    in: [
+      "invoice",
+      "service_invoice",
+      "retail_receipt",
+      "service_receipt",
+      "simplified_invoice",
+      "eu_sale_invoice",
+      "third_country_sale_invoice",
+      "eu_service_invoice",
+      "third_country_service_invoice",
+      "complementary_invoice",
+      "complementary_service_invoice",
+      "contract_income",
+      "rental_income",
+      "stay_tax_receipt",
+      "pos_income_receipt",
+      "third_party_retail_receipt",
+    ],
+  };
+
   const openWhere: Prisma.DocumentWhereInput = {
     businessId: ctx.businessId,
     status: "issued",
     paymentStatus: { in: ["unpaid", "partial"] },
+    type: RECEIVABLE_TYPES,
     ...(clientFilter ? { clientId: clientFilter } : {}),
     ...(typeFilter ? { type: typeFilter } : {}),
     ...(search
@@ -166,12 +193,15 @@ export default async function PaymentsPage({
     }),
     prisma.document.count({ where: openWhere }),
     // All open doc ids (unfiltered) so aging totals stay accurate even
-    // when a filter narrows the visible table.
+    // when a filter narrows the visible table. Credit notes excluded
+    // for the same reason as the main table: they reduce receivables
+    // rather than represent them.
     prisma.document.findMany({
       where: {
         businessId: ctx.businessId,
         status: "issued",
         paymentStatus: { in: ["unpaid", "partial"] },
+        type: RECEIVABLE_TYPES,
       },
       select: { id: true, issueDate: true, totalAmount: true },
     }),

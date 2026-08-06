@@ -137,7 +137,8 @@ export function ClientForm({
               name="vatNumber"
               value={values.vatNumber ?? ""}
               onChange={(e) => set("vatNumber", e.target.value)}
-              maxLength={20}
+              maxLength={9}
+              inputMode="numeric"
             />
             <Button
               type="button"

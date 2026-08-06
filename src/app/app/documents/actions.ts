@@ -744,79 +744,108 @@ export async function issueCreditNoteAction(
     creditType = "credit_note";
   }
 
+  if (src.lines.length === 0) {
+    return {
+      ok: false,
+      error:
+        "Το γονικό παραστατικό δεν έχει γραμμές — δεν μπορεί να παραχθεί πιστωτικό. Επεξεργάσου πρώτα το αρχικό.",
+    };
+  }
+
+  // DocumentLine.description is VarChar(255); the "Πιστωτικό: " prefix
+  // (12 chars) can push a long line description over the limit and
+  // trigger a DB-level 500. Truncate defensively.
+  const CREDIT_PREFIX = "Πιστωτικό: ";
+  const DESC_MAX = 255;
+
   const totals = { net: 0, vat: 0, tot: 0 };
-  const credit = await prisma.$transaction(async (tx) => {
-    const d = await tx.document.create({
-      data: {
-        businessId: ctx.businessId,
-        clientId: src.clientId,
-        branchId: src.branchId,
-        type: creditType,
-        status: "draft",
-        issueDate: new Date(),
-        printLanguage: src.printLanguage,
-        // Correlated + retail-credit variants carry a reference to the
-        // parent doc so the editor's CorrelatedInvoicePicker pre-selects
-        // it and the myDATA payload includes the parent's MARK.
-        correlatedDocumentId:
-          creditType === "credit_note_correlated" ||
-          creditType === "retail_credit_note"
-            ? src.id
-            : null,
-        notes: `Πιστωτικό για το ${src.type} με σειρά ${src.series ?? "-"} #${src.number ?? ""}`,
-        netTotalAmount: 0,
-        vatTotalAmount: 0,
-        totalAmount: 0,
-        payableTotalAmount: 0,
-      },
-    });
-    await tx.documentLine.createMany({
-      data: src.lines.map((l, i) => {
-        const netN = -Number(l.netAmount);
-        const vatN = -Number(l.vatAmount);
-        const totN = -Number(l.totalAmount);
-        totals.net += netN;
-        totals.vat += vatN;
-        totals.tot += totN;
-        return {
-          documentId: d.id,
-          itemId: l.itemId,
-          ordinal: i,
-          description: `Πιστωτικό: ${l.description}`,
-          quantity: l.quantity.negated(),
-          unit: l.unit,
-          unitPrice: l.unitPrice,
-          discountPct: l.discountPct,
-          vatRate: l.vatRate,
-          netAmount: netN,
-          vatAmount: vatN,
-          totalAmount: totN,
-        };
-      }),
-    });
-    await tx.document.update({
-      where: { id: d.id },
-      data: {
-        netTotalAmount: totals.net,
-        vatTotalAmount: totals.vat,
-        totalAmount: totals.tot,
-        payableTotalAmount: totals.tot,
-      },
-    });
-    return d;
-  });
 
-  await logAudit({
-    userId: ctx.userId,
-    businessId: ctx.businessId,
-    action: "document.credit_note.create",
-    entityType: "Document",
-    entityId: credit.id,
-    meta: { sourceId: documentId, creditType },
-  });
+  try {
+    const credit = await prisma.$transaction(async (tx) => {
+      const d = await tx.document.create({
+        data: {
+          businessId: ctx.businessId,
+          clientId: src.clientId,
+          branchId: src.branchId,
+          type: creditType,
+          status: "draft",
+          issueDate: new Date(),
+          printLanguage: src.printLanguage,
+          // Correlated + retail-credit variants carry a reference to the
+          // parent doc so the editor's CorrelatedInvoicePicker pre-selects
+          // it and the myDATA payload includes the parent's MARK.
+          correlatedDocumentId:
+            creditType === "credit_note_correlated" ||
+            creditType === "retail_credit_note"
+              ? src.id
+              : null,
+          notes: `Πιστωτικό για το ${src.type} με σειρά ${src.series ?? "-"} #${src.number ?? ""}`,
+          netTotalAmount: 0,
+          vatTotalAmount: 0,
+          totalAmount: 0,
+          payableTotalAmount: 0,
+        },
+      });
+      await tx.documentLine.createMany({
+        data: src.lines.map((l, i) => {
+          const netN = -Number(l.netAmount);
+          const vatN = -Number(l.vatAmount);
+          const totN = -Number(l.totalAmount);
+          totals.net += netN;
+          totals.vat += vatN;
+          totals.tot += totN;
+          const desc = (CREDIT_PREFIX + (l.description ?? "")).slice(0, DESC_MAX);
+          return {
+            documentId: d.id,
+            itemId: l.itemId,
+            ordinal: i,
+            description: desc,
+            quantity: -Number(l.quantity),
+            unit: l.unit,
+            unitPrice: Number(l.unitPrice),
+            discountPct: Number(l.discountPct),
+            vatRate: Number(l.vatRate),
+            netAmount: netN,
+            vatAmount: vatN,
+            totalAmount: totN,
+          };
+        }),
+      });
+      await tx.document.update({
+        where: { id: d.id },
+        data: {
+          netTotalAmount: totals.net,
+          vatTotalAmount: totals.vat,
+          totalAmount: totals.tot,
+          payableTotalAmount: totals.tot,
+        },
+      });
+      return d;
+    });
 
-  revalidatePath("/app/documents");
-  return { ok: true, id: credit.id };
+    await logAudit({
+      userId: ctx.userId,
+      businessId: ctx.businessId,
+      action: "document.credit_note.create",
+      entityType: "Document",
+      entityId: credit.id,
+      meta: { sourceId: documentId, creditType },
+    });
+
+    revalidatePath("/app/documents");
+    return { ok: true, id: credit.id };
+  } catch (err) {
+    logger.error("document.credit_note.create.failed", err, {
+      businessId: ctx.businessId,
+      sourceId: documentId,
+      creditType,
+    });
+    return {
+      ok: false,
+      error:
+        "Δεν καταφέραμε να δημιουργήσουμε το πιστωτικό. Δοκίμασε ξανά — αν επιμένει, στείλε το ID του παραστατικού στο υποστήριξη.",
+    };
+  }
 }
 
 export async function deleteDraftAction(documentId: string) {
@@ -841,6 +870,53 @@ export async function deleteDraftAction(documentId: string) {
   });
   revalidatePath("/app/documents");
   return { ok: true as const };
+}
+
+/**
+ * Bulk-delete drafts. Filters the incoming ids down to genuine drafts
+ * belonging to this tenant before touching anything — never trust the
+ * client to have given us clean input. Returns the count actually
+ * deleted so the UI can show "N πρόχειρα διαγράφηκαν".
+ */
+export async function bulkDeleteDraftsAction(documentIds: string[]) {
+  const ctx = await requireTenant();
+  assertCan(ctx.role, "document:write");
+  const ids = Array.from(
+    new Set(documentIds.filter((s): s is string => typeof s === "string" && !!s)),
+  );
+  if (ids.length === 0) {
+    return { ok: true as const, deleted: 0 };
+  }
+  const drafts = await prisma.document.findMany({
+    where: {
+      id: { in: ids },
+      businessId: ctx.businessId,
+      status: "draft",
+    },
+    select: { id: true },
+  });
+  const draftIds = drafts.map((d) => d.id);
+  if (draftIds.length === 0) {
+    return { ok: true as const, deleted: 0 };
+  }
+  await prisma.$transaction([
+    prisma.documentLine.deleteMany({
+      where: { documentId: { in: draftIds } },
+    }),
+    prisma.document.deleteMany({
+      where: { id: { in: draftIds } },
+    }),
+  ]);
+  await logAudit({
+    userId: ctx.userId,
+    businessId: ctx.businessId,
+    action: "document.draft.bulk_delete",
+    entityType: "Document",
+    entityId: draftIds[0],
+    meta: { count: draftIds.length, ids: draftIds },
+  });
+  revalidatePath("/app/documents");
+  return { ok: true as const, deleted: draftIds.length };
 }
 
 export async function attemptIssueAction(documentId: string) {

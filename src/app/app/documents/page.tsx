@@ -14,6 +14,12 @@ import { date, money } from "@/lib/format";
 import type { DocumentStatus, DocumentType, Prisma } from "@prisma/client";
 import { RowActions } from "./RowActions";
 import { ClickableRow } from "../ClickableRow";
+import {
+  BulkDeleteBar,
+  BulkDraftsProvider,
+  DraftRowCheckbox,
+  DraftSelectAllCheckbox,
+} from "./BulkDrafts";
 import { Pagination, resolvePageSize } from "@/components/ui/Pagination";
 import { ExportMenu } from "@/components/ui/ExportMenu";
 import { DocTypeFilterSelect } from "./DocTypeFilterSelect";
@@ -109,6 +115,7 @@ export default async function DocumentsPage({
   const filterVatSum = Number(sumsForFilter._sum.vatTotalAmount ?? 0);
   const filterTotalSum = Number(sumsForFilter._sum.totalAmount ?? 0);
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const draftIdsOnPage = rows.filter((r) => r.status === "draft").map((r) => r.id);
 
   const baseQuery = {
     q: search,
@@ -157,124 +164,133 @@ export default async function DocumentsPage({
         sort={sort}
       />
 
-      <Card className="overflow-hidden">
-        {rows.length === 0 ? (
-          <div className="p-6">
-            <EmptyState
-              title="Δεν βρέθηκαν παραστατικά."
-              description="Δοκίμασε να αλλάξεις τα φίλτρα ή να δημιουργήσεις ένα πρόχειρο."
-              action={
-                <LinkButton href="/app/documents/new" icon={FilePlus2}>
-                  Νέο Παραστατικό
-                </LinkButton>
-              }
-            />
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Ημ/νία</th>
-                  <th>Τύπος</th>
-                  <th>Πελάτης</th>
-                  <th className="text-right">Καθαρή</th>
-                  <th className="text-right">ΦΠΑ</th>
-                  <th className="text-right">Σύνολο</th>
-                  <th>Κατάσταση</th>
-                  <th className="text-right"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((d) => (
-                  <ClickableRow key={d.id}>
-                    <td className="mono">
-                      <Link
-                        href={`/app/documents/${d.id}`}
-                        data-row-anchor
-                        className="font-semibold text-brand-800 hover:text-brand-900"
+      <BulkDraftsProvider draftIds={draftIdsOnPage}>
+        <BulkDeleteBar />
+        <Card className="overflow-hidden">
+          {rows.length === 0 ? (
+            <div className="p-6">
+              <EmptyState
+                title="Δεν βρέθηκαν παραστατικά."
+                description="Δοκίμασε να αλλάξεις τα φίλτρα ή να δημιουργήσεις ένα πρόχειρο."
+                action={
+                  <LinkButton href="/app/documents/new" icon={FilePlus2}>
+                    Νέο Παραστατικό
+                  </LinkButton>
+                }
+              />
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th className="w-8">
+                      <DraftSelectAllCheckbox />
+                    </th>
+                    <th>Ημ/νία</th>
+                    <th>Τύπος</th>
+                    <th>Πελάτης</th>
+                    <th className="text-right">Καθαρή</th>
+                    <th className="text-right">ΦΠΑ</th>
+                    <th className="text-right">Σύνολο</th>
+                    <th>Κατάσταση</th>
+                    <th className="text-right"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((d) => (
+                    <ClickableRow key={d.id}>
+                      <td className="w-8 text-center">
+                        <DraftRowCheckbox id={d.id} status={d.status} />
+                      </td>
+                      <td className="mono">
+                        <Link
+                          href={`/app/documents/${d.id}`}
+                          data-row-anchor
+                          className="font-semibold text-brand-800 hover:text-brand-900"
+                        >
+                          {date(d.issueDate)}
+                        </Link>
+                      </td>
+                      <td
+                        className="truncate-cell"
+                        title={`${t.documents.types[d.type]}${
+                          d.series
+                            ? " · " + d.series + (d.number ? " #" + d.number : "")
+                            : ""
+                        }`}
+                        style={{ maxWidth: "220px" }}
                       >
-                        {date(d.issueDate)}
-                      </Link>
-                    </td>
-                    <td
-                      className="truncate-cell"
-                      title={`${t.documents.types[d.type]}${
-                        d.series
-                          ? " · " + d.series + (d.number ? " #" + d.number : "")
-                          : ""
-                      }`}
-                      style={{ maxWidth: "220px" }}
-                    >
-                      <span>
-                        <span className="font-semibold text-ink-900">
-                          {t.documents.types[d.type]}
-                        </span>
-                        {d.series && (
-                          <span className="ml-2 text-sm text-ink-500">
-                            {d.series}
-                            {d.number ? ` #${d.number}` : ""}
+                        <span>
+                          <span className="font-semibold text-ink-900">
+                            {t.documents.types[d.type]}
                           </span>
-                        )}
-                      </span>
+                          {d.series && (
+                            <span className="ml-2 text-sm text-ink-500">
+                              {d.series}
+                              {d.number ? ` #${d.number}` : ""}
+                            </span>
+                          )}
+                        </span>
+                      </td>
+                      <td
+                        className="truncate-cell"
+                        title={d.client?.legalName ?? "—"}
+                        style={{ maxWidth: "260px" }}
+                      >
+                        {d.client?.legalName ?? "—"}
+                      </td>
+                      <td className="text-right text-sm tabular-nums text-ink-700">
+                        {money(d.netTotalAmount)}
+                      </td>
+                      <td className="text-right text-sm tabular-nums text-ink-700">
+                        {money(d.vatTotalAmount)}
+                      </td>
+                      <td className="text-right font-semibold tabular-nums">
+                        {money(d.totalAmount)}
+                      </td>
+                      <td>
+                        <StatusBadge status={d.status} />
+                      </td>
+                      <td className="text-right">
+                        <RowActions
+                          id={d.id}
+                          status={d.status}
+                          wrappInvoiceUrl={d.wrappInvoiceUrl}
+                        />
+                      </td>
+                    </ClickableRow>
+                  ))}
+                </tbody>
+                <tfoot className="bg-brand-50 font-bold text-brand-900">
+                  <tr>
+                    <td colSpan={4} className="px-4 py-3.5 text-right text-[11px] font-black uppercase tracking-widest sm:text-xs">
+                      <div className="flex flex-col items-end gap-0.5">
+                        <span>Σύνολα</span>
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-brand-800/80">
+                          {total.toLocaleString("el-GR")}{" "}
+                          {total === 1 ? "εγγραφή" : "εγγραφές"}
+                          {total > rows.length ? " · με φίλτρα" : ""}
+                        </span>
+                      </div>
                     </td>
-                    <td
-                      className="truncate-cell"
-                      title={d.client?.legalName ?? "—"}
-                      style={{ maxWidth: "260px" }}
-                    >
-                      {d.client?.legalName ?? "—"}
+                    <td className="px-4 py-3.5 text-right text-sm tabular-nums">
+                      {money(filterNetSum)}
                     </td>
-                    <td className="text-right text-sm tabular-nums text-ink-700">
-                      {money(d.netTotalAmount)}
+                    <td className="px-4 py-3.5 text-right text-sm tabular-nums">
+                      {money(filterVatSum)}
                     </td>
-                    <td className="text-right text-sm tabular-nums text-ink-700">
-                      {money(d.vatTotalAmount)}
+                    <td className="px-4 py-3.5 text-right text-base tabular-nums">
+                      {money(filterTotalSum)}
                     </td>
-                    <td className="text-right font-semibold tabular-nums">
-                      {money(d.totalAmount)}
-                    </td>
-                    <td>
-                      <StatusBadge status={d.status} />
-                    </td>
-                    <td className="text-right">
-                      <RowActions
-                        id={d.id}
-                        status={d.status}
-                        wrappInvoiceUrl={d.wrappInvoiceUrl}
-                      />
-                    </td>
-                  </ClickableRow>
-                ))}
-              </tbody>
-              <tfoot className="bg-brand-50 font-bold text-brand-900">
-                <tr>
-                  <td colSpan={3} className="px-4 py-3.5 text-right text-[11px] font-black uppercase tracking-widest sm:text-xs">
-                    <div className="flex flex-col items-end gap-0.5">
-                      <span>Σύνολα</span>
-                      <span className="text-[10px] font-semibold uppercase tracking-wider text-brand-800/80">
-                        {total.toLocaleString("el-GR")}{" "}
-                        {total === 1 ? "εγγραφή" : "εγγραφές"}
-                        {total > rows.length ? " · με φίλτρα" : ""}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3.5 text-right text-sm tabular-nums">
-                    {money(filterNetSum)}
-                  </td>
-                  <td className="px-4 py-3.5 text-right text-sm tabular-nums">
-                    {money(filterVatSum)}
-                  </td>
-                  <td className="px-4 py-3.5 text-right text-base tabular-nums">
-                    {money(filterTotalSum)}
-                  </td>
-                  <td colSpan={2}></td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        )}
-      </Card>
+                    <td colSpan={2}></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          )}
+        </Card>
+      </BulkDraftsProvider>
 
       <Pagination
         currentPage={currentPage}

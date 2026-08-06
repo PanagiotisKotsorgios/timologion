@@ -20,7 +20,13 @@ export function OnboardingForm() {
 
       <section className="grid gap-4 md:grid-cols-2">
         <Field label={t.onboarding.vat} htmlFor="vatNumber">
-          <Input id="vatNumber" name="vatNumber" required maxLength={20} />
+          <Input
+            id="vatNumber"
+            name="vatNumber"
+            required
+            maxLength={9}
+            inputMode="numeric"
+          />
         </Field>
         <Field label={t.onboarding.taxOffice} htmlFor="taxOffice">
           <Input id="taxOffice" name="taxOffice" maxLength={120} />

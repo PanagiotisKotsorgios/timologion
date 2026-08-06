@@ -92,6 +92,35 @@ export function verifyState(
 
 export const OAUTH_STATE_COOKIE = "etl_oauth_state";
 
+// ─── Pending-MFA cookie for OAuth logins ─────────────────────────────────
+// After Google (or any OAuth provider) hands us back a verified email, we
+// still need to satisfy 2FA if the user has it turned on. We can't create
+// a session yet, but we need to remember *which* user is halfway through
+// login so the OTP page can complete it. This is a short-lived (10 min)
+// signed cookie carrying just the userId + expiry.
+
+const OAUTH_MFA_TTL_MS = 10 * 60 * 1000;
+
+export const OAUTH_MFA_PENDING_COOKIE = "etl_oauth_mfa_pending";
+
+export function createOAuthMfaPendingCookie(userId: string): string {
+  const expires = Date.now() + OAUTH_MFA_TTL_MS;
+  const payload = `${userId}.${expires}`;
+  return `${payload}.${sign(payload)}`;
+}
+
+export function verifyOAuthMfaPendingCookie(
+  cookieValue: string | undefined,
+): { userId: string } | null {
+  if (!cookieValue) return null;
+  const parts = cookieValue.split(".");
+  if (parts.length !== 3) return null;
+  const [userId, expires, mac] = parts as [string, string, string];
+  if (sign(`${userId}.${expires}`) !== mac) return null;
+  if (Number(expires) < Date.now()) return null;
+  return { userId };
+}
+
 // ─── Provider calls ──────────────────────────────────────────────────────
 
 export type OAuthProfile = {

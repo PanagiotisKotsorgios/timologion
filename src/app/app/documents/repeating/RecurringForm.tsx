@@ -318,17 +318,17 @@ export function RecurringForm({
                 <tr>
                   <th style={{ width: "18%" }}>Είδος</th>
                   <th>Περιγραφή</th>
-                  <th style={{ width: 90 }} className="text-right">
+                  <th style={{ width: 110 }} className="text-right">
                     Ποσότ.
                   </th>
-                  <th style={{ width: 80 }}>Μον.</th>
-                  <th style={{ width: 110 }} className="text-right">
+                  <th style={{ width: 100 }}>Μον.</th>
+                  <th style={{ width: 130 }} className="text-right">
                     Τιμή
                   </th>
-                  <th style={{ width: 90 }} className="text-right">
+                  <th style={{ width: 110 }} className="text-right">
                     ΦΠΑ %
                   </th>
-                  <th style={{ width: 90 }} className="text-right">
+                  <th style={{ width: 110 }} className="text-right">
                     Έκπτ. %
                   </th>
                   <th style={{ width: 44 }} />
@@ -364,7 +364,7 @@ export function RecurringForm({
                         type="number"
                         step="0.01"
                         min="0"
-                        className="text-right"
+                        className="px-2 text-right tabular-nums"
                         value={l.quantity}
                         onChange={(e) =>
                           updateLine(i, { quantity: e.target.value })
@@ -373,6 +373,7 @@ export function RecurringForm({
                     </td>
                     <td>
                       <Input
+                        className="px-2"
                         value={l.unit}
                         onChange={(e) =>
                           updateLine(i, { unit: e.target.value })
@@ -384,7 +385,7 @@ export function RecurringForm({
                         type="number"
                         step="0.01"
                         min="0"
-                        className="text-right"
+                        className="px-2 text-right tabular-nums"
                         value={l.unitPrice}
                         onChange={(e) =>
                           updateLine(i, { unitPrice: e.target.value })
@@ -393,6 +394,7 @@ export function RecurringForm({
                     </td>
                     <td>
                       <Select
+                        className="px-2"
                         value={l.vatRate}
                         onChange={(e) =>
                           updateLine(i, { vatRate: e.target.value })
@@ -410,7 +412,7 @@ export function RecurringForm({
                         step="0.01"
                         min="0"
                         max="100"
-                        className="text-right"
+                        className="px-2 text-right tabular-nums"
                         value={l.discountPct}
                         onChange={(e) =>
                           updateLine(i, { discountPct: e.target.value })
