@@ -14,10 +14,12 @@ export function RowActions({
   id,
   status,
   wrappInvoiceUrl,
+  hasCreditNote,
 }: {
   id: string;
   status: string;
   wrappInvoiceUrl?: string | null;
+  hasCreditNote?: boolean;
 }) {
   const router = useRouter();
   const [, start] = useTransition();
@@ -27,6 +29,7 @@ export function RowActions({
       id={id}
       status={status}
       wrappInvoiceUrl={wrappInvoiceUrl ?? null}
+      hasCreditNote={hasCreditNote}
       onDuplicate={() =>
         start(async () => {
           const res = await duplicateDocumentAction(id);

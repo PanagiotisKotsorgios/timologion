@@ -365,16 +365,12 @@ export async function createDraftAction(
         destinationAddress: parsed.data.destinationAddress || null,
         vehicleNumber: parsed.data.vehicleNumber || null,
         driverName: parsed.data.driverName || null,
-        correlatedDocumentId:
-          parsed.data.type === "credit_note_correlated" ||
-          parsed.data.type === "stay_tax_receipt"
-            ? parsed.data.correlatedDocumentId || null
-            : null,
-        correlatedMarkOverride:
-          parsed.data.type === "credit_note_correlated" ||
-          parsed.data.type === "stay_tax_receipt"
-            ? parsed.data.correlatedMarkOverride || null
-            : null,
+        correlatedDocumentId: CORRELATED_TYPES.includes(parsed.data.type)
+          ? parsed.data.correlatedDocumentId || null
+          : null,
+        correlatedMarkOverride: CORRELATED_TYPES.includes(parsed.data.type)
+          ? parsed.data.correlatedMarkOverride || null
+          : null,
         currency:
           parsed.data.type === "eu_sale_invoice" ||
           parsed.data.type === "third_country_sale_invoice" ||
@@ -536,16 +532,12 @@ export async function updateDraftAction(
         destinationAddress: parsed.data.destinationAddress || null,
         vehicleNumber: parsed.data.vehicleNumber || null,
         driverName: parsed.data.driverName || null,
-        correlatedDocumentId:
-          parsed.data.type === "credit_note_correlated" ||
-          parsed.data.type === "stay_tax_receipt"
-            ? parsed.data.correlatedDocumentId || null
-            : null,
-        correlatedMarkOverride:
-          parsed.data.type === "credit_note_correlated" ||
-          parsed.data.type === "stay_tax_receipt"
-            ? parsed.data.correlatedMarkOverride || null
-            : null,
+        correlatedDocumentId: CORRELATED_TYPES.includes(parsed.data.type)
+          ? parsed.data.correlatedDocumentId || null
+          : null,
+        correlatedMarkOverride: CORRELATED_TYPES.includes(parsed.data.type)
+          ? parsed.data.correlatedMarkOverride || null
+          : null,
         currency:
           parsed.data.type === "eu_sale_invoice" ||
           parsed.data.type === "third_country_sale_invoice" ||

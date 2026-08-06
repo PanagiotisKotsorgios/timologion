@@ -21,6 +21,7 @@ export function DocumentRowMenu({
   id,
   status,
   wrappInvoiceUrl,
+  hasCreditNote,
   onDuplicate,
   onCreditNote,
   onIssue,
@@ -29,6 +30,8 @@ export function DocumentRowMenu({
   id: string;
   status: string;
   wrappInvoiceUrl?: string | null;
+  /** True if a credit note has already been issued against this doc. */
+  hasCreditNote?: boolean;
   onDuplicate?: () => void;
   onCreditNote?: () => void;
   onIssue?: () => void;
@@ -178,7 +181,7 @@ export function DocumentRowMenu({
               Αντιγραφή σε πρόχειρο
             </MenuButton>
           )}
-          {isIssued && onCreditNote && (
+          {isIssued && onCreditNote && !hasCreditNote && (
             <MenuButton
               icon={FileMinus}
               onClick={() => {

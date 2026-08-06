@@ -120,7 +120,17 @@ export async function GET(
     select: { mfaEnabled: true },
   });
   if (userRow?.mfaEnabled) {
-    await sendMfaCode(userId, "login").catch(() => undefined);
+    const send = await sendMfaCode(userId, "login");
+    if (!send.ok) {
+      // Brevo (or our config) refused the OTP. Bounce back to /login
+      // with a clear error instead of silently landing on the OTP page
+      // for a code that will never arrive.
+      return NextResponse.redirect(
+        `${env.APP_BASE_URL}/login?error=${encodeURIComponent(
+          "mfa_send_failed",
+        )}`,
+      );
+    }
     jar.set(OAUTH_MFA_PENDING_COOKIE, createOAuthMfaPendingCookie(userId), {
       httpOnly: true,
       sameSite: "lax",

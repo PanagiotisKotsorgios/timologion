@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireTenant } from "@/lib/tenant";
 import { assertCan } from "@/lib/rbac";
 import { ensureDefaultBillingBook } from "@/lib/billing-books";
+import { logger } from "@/lib/logger";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { DraftEditor } from "../../DraftEditor";
 
@@ -29,20 +30,38 @@ export default async function EditDocumentPage({
 
   // Guarantee a billing book exists for this draft's type — covers drafts
   // created before the auto-seed shipped, or manually cleared series.
-  await ensureDefaultBillingBook(ctx.businessId, doc.type);
+  // Wrap in try so the underlying Prisma/pool error lands in the log
+  // instead of only showing as a Next.js digest on the error boundary.
+  try {
+    await ensureDefaultBillingBook(ctx.businessId, doc.type);
+  } catch (err) {
+    logger.error("document.edit.ensure_book_failed", err, {
+      businessId: ctx.businessId,
+      documentId: doc.id,
+      type: doc.type,
+    });
+    throw err;
+  }
 
   // 12-month cutoff for the parent-invoice picker (5.1 credit notes).
   const twelveMonthsAgo = new Date();
   twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
 
-  const [
-    business,
+  let business,
     clients,
     items,
     branches,
     books,
-    issuedDocsRaw,
-  ] = await Promise.all([
+    issuedDocsRaw;
+  try {
+    [
+      business,
+      clients,
+      items,
+      branches,
+      books,
+      issuedDocsRaw,
+    ] = await Promise.all([
     prisma.business.findUniqueOrThrow({
       where: { id: ctx.businessId },
       select: { legalName: true, tradeName: true },
@@ -133,7 +152,15 @@ export default async function EditDocumentPage({
         client: { select: { legalName: true, tradeName: true } },
       },
     }),
-  ]);
+    ]);
+  } catch (err) {
+    logger.error("document.edit.data_fetch_failed", err, {
+      businessId: ctx.businessId,
+      documentId: doc.id,
+      type: doc.type,
+    });
+    throw err;
+  }
 
   const issuedDocsForCorrelation = issuedDocsRaw
     .filter((d): d is typeof d & { myDataMark: string } => Boolean(d.myDataMark))

@@ -42,6 +42,29 @@ export default async function DocumentDetailPage({
 
   const isDraft = doc.status === "draft";
   const isIssued = doc.status === "issued";
+
+  // Guard the "Έκδοση πιστωτικού" button — hide it once a credit note
+  // already exists for this doc, so the same invoice can't be credited
+  // twice. Only 5.1 / 11.4 correlated variants can be detected here;
+  // uncorrelated 5.2 credit notes don't link back to their parent.
+  const existingCreditNote = isIssued
+    ? await prisma.document.findFirst({
+        where: {
+          businessId: ctx.businessId,
+          correlatedDocumentId: doc.id,
+          type: {
+            in: [
+              "credit_note_correlated",
+              "retail_credit_note",
+              "credit_note",
+            ],
+          },
+          status: { in: ["draft", "sending", "issued"] },
+        },
+        select: { id: true },
+      })
+    : null;
+  const hasCreditNote = Boolean(existingCreditNote);
   const mailtoHref = doc.client?.email
     ? `mailto:${doc.client.email}?subject=${encodeURIComponent(
         `Παραστατικό ${doc.series ?? ""}${doc.number ? " #" + doc.number : ""}`,
@@ -111,6 +134,9 @@ export default async function DocumentDetailPage({
             )}
             {isIssued &&
               doc.type !== "credit_note" &&
+              doc.type !== "credit_note_correlated" &&
+              doc.type !== "retail_credit_note" &&
+              !hasCreditNote &&
               can(ctx.role, "document:write") && (
                 <CreditNoteButton documentId={doc.id} />
               )}

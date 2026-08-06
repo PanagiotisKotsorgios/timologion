@@ -117,6 +117,38 @@ export default async function DocumentsPage({
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const draftIdsOnPage = rows.filter((r) => r.status === "draft").map((r) => r.id);
 
+  // Which docs on this page already have a credit note issued against
+  // them — used to hide the "Έκδοση πιστωτικού" menu item so you can't
+  // credit the same invoice twice. Only 5.1 (credit_note_correlated) and
+  // 11.4 (retail_credit_note) reference the parent via correlatedDocumentId;
+  // uncorrelated 5.2 credit notes are impossible to link back here.
+  const issuedIdsOnPage = rows
+    .filter((r) => r.status === "issued")
+    .map((r) => r.id);
+  const parentIdsWithCreditNote = new Set<string>();
+  if (issuedIdsOnPage.length > 0) {
+    const children = await prisma.document.findMany({
+      where: {
+        businessId: ctx.businessId,
+        correlatedDocumentId: { in: issuedIdsOnPage },
+        type: {
+          in: [
+            "credit_note_correlated",
+            "retail_credit_note",
+            "credit_note",
+          ],
+        },
+        status: { in: ["draft", "sending", "issued"] },
+      },
+      select: { correlatedDocumentId: true },
+    });
+    for (const c of children) {
+      if (c.correlatedDocumentId) {
+        parentIdsWithCreditNote.add(c.correlatedDocumentId);
+      }
+    }
+  }
+
   const baseQuery = {
     q: search,
     status: status ?? "",
@@ -257,6 +289,7 @@ export default async function DocumentsPage({
                           id={d.id}
                           status={d.status}
                           wrappInvoiceUrl={d.wrappInvoiceUrl}
+                          hasCreditNote={parentIdsWithCreditNote.has(d.id)}
                         />
                       </td>
                     </ClickableRow>

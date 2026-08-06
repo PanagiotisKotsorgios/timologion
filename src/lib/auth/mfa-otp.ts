@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { env } from "@/lib/env";
 import { sendEmail } from "@/lib/email/send";
 import { mfaCodeTemplate } from "@/lib/email/templates";
+import { logger } from "@/lib/logger";
 
 export type MfaPurpose = "enroll" | "login" | "disable";
 
@@ -78,13 +79,41 @@ export async function sendMfaCode(
     purpose,
   });
 
-  await sendEmail({
+  // Actually check the send result. The previous `.catch(() => undefined)`
+  // was dead code — sendEmail resolves with `{ok: false, error}` on Brevo
+  // rejections rather than throwing, so the swallow made every "email not
+  // arriving" bug look like a successful send. Now we surface the Brevo
+  // error to the caller so the user sees "Δεν στάλθηκε ο κωδικός" instead
+  // of "check your inbox" for an email that will never arrive, and we log
+  // the Brevo body so we can debug why (bad sender, over quota, blocked
+  // content, etc).
+  const send = await sendEmail({
     to: { email: user.email, name: user.fullName },
     subject,
     html,
     text,
     tags: ["mfa-otp"],
-  }).catch(() => undefined);
+  });
+  if (!send.ok) {
+    logger.error("auth.mfa.send_failed", new Error(send.error), {
+      userId,
+      purpose,
+      status: send.status ?? null,
+    });
+    // Roll the challenge back so the user can request a fresh code
+    // without waiting for the 10-min expiry.
+    await prisma.mfaChallenge
+      .update({
+        where: { id: created.id },
+        data: { consumedAt: new Date() },
+      })
+      .catch(() => undefined);
+    return {
+      ok: false,
+      error:
+        "Δεν καταφέραμε να στείλουμε τον κωδικό στο email σου. Δοκίμασε ξανά — αν το πρόβλημα επιμένει, επικοινώνησε με την υποστήριξη.",
+    };
+  }
 
   return { ok: true, challengeId: created.id };
 }

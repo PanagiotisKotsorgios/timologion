@@ -25,6 +25,8 @@ const OAUTH_ERRORS: Record<string, string> = {
     "Ο πάροχος δεν επέστρεψε email. Χρησιμοποίησε άλλη μέθοδο.",
   missing_params: "Λείπουν παράμετροι — δοκίμασε ξανά.",
   rate_limited: "Πολλές προσπάθειες. Δοκίμασε ξανά σε λίγο.",
+  mfa_send_failed:
+    "Δεν καταφέραμε να στείλουμε τον κωδικό 2FA στο email σου. Δοκίμασε ξανά σε λίγο — αν επιμένει, επικοινώνησε με την υποστήριξη.",
 };
 
 export default async function LoginPage({
