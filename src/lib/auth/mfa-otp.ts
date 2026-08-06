@@ -87,12 +87,23 @@ export async function sendMfaCode(
   // of "check your inbox" for an email that will never arrive, and we log
   // the Brevo body so we can debug why (bad sender, over quota, blocked
   // content, etc).
+  //
+  // Defensive tweaks vs the earlier version, in case Brevo was rejecting
+  // MFA specifically while other transactional sends succeed:
+  //   • Drop the empty-string `name` — an empty display name has tripped
+  //     up other Brevo accounts and there's nothing lost by omitting it.
+  //   • Drop `tags` — Brevo's tag validator is stricter on some accounts;
+  //     omitting the field entirely matches what the internal `sendTest`
+  //     admin path uses and it's known to work.
+  const trimmedName = user.fullName?.trim();
   const send = await sendEmail({
-    to: { email: user.email, name: user.fullName },
+    to: {
+      email: user.email,
+      ...(trimmedName ? { name: trimmedName } : {}),
+    },
     subject,
     html,
     text,
-    tags: ["mfa-otp"],
   });
   if (!send.ok) {
     logger.error("auth.mfa.send_failed", new Error(send.error), {

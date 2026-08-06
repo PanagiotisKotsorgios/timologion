@@ -4,7 +4,6 @@ import {
   Pencil,
   Printer,
   Eye,
-  Mail,
   ExternalLink,
   FileDown,
 } from "lucide-react";
@@ -19,6 +18,7 @@ import { t } from "@/lib/i18n";
 import { date, money } from "@/lib/format";
 import { IssueButton } from "./IssueButton";
 import { CreditNoteButton } from "./DocumentActions";
+import { SendEmailButton } from "./SendEmailButton";
 
 export default async function DocumentDetailPage({
   params,
@@ -66,11 +66,6 @@ export default async function DocumentDetailPage({
       })
     : null;
   const hasCreditNote = Boolean(existingCreditNote);
-  const mailtoHref = doc.client?.email
-    ? `mailto:${doc.client.email}?subject=${encodeURIComponent(
-        `Παραστατικό ${doc.series ?? ""}${doc.number ? " #" + doc.number : ""}`,
-      )}`
-    : null;
 
   return (
     <>
@@ -113,14 +108,12 @@ export default async function DocumentDetailPage({
                 </a>
               </>
             )}
-            {mailtoHref && (
-              <a
-                href={mailtoHref}
-                className="inline-flex h-10 items-center gap-2 rounded-lg border-2 border-cyan-700 bg-cyan-600 px-4 text-sm font-bold text-white shadow-sm transition-colors hover:bg-cyan-700 sm:h-11 sm:text-base"
-              >
-                <Mail size={16} strokeWidth={2.5} aria-hidden />
-                Αποστολή Email
-              </a>
+            {isIssued && (
+              <SendEmailButton
+                documentId={doc.id}
+                defaultRecipient={doc.client?.email ?? null}
+                defaultClientName={doc.client?.legalName ?? null}
+              />
             )}
             {doc.wrappInvoiceUrl && (
               <a

@@ -117,7 +117,12 @@ export function mfaCodeTemplate({
       : purpose === "disable"
         ? "Χρησιμοποίησε τον παρακάτω κωδικό για να απενεργοποιήσεις την επαλήθευση σε δύο βήματα."
         : "Χρησιμοποίησε τον παρακάτω κωδικό για να ολοκληρώσεις τη σύνδεση.";
-  const subject = `${heading} — κωδικός ${code} · timologion`;
+  // Keep the subject boring and code-free. Some Brevo tenants + inbox
+  // spam heuristics down-rank or outright drop subjects that expose a
+  // 6-digit code + the word "κωδικός"/"code" (the "you were just
+  // texted your OTP" pattern). Match the shape the working password-reset
+  // and verify templates use: `<Heading> · timologion`.
+  const subject = `${heading} · timologion`;
   const html = shell(`
     <p style="margin:0 0 8px;font-size:13px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:${BRAND_NAVY};opacity:.6;">Επαλήθευση 2 βημάτων</p>
     <h1 style="margin:0 0 12px;font-size:26px;font-weight:800;letter-spacing:-.02em;color:${BRAND_NAVY};">${escapeHtml(heading)}</h1>

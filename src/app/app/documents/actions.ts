@@ -23,6 +23,9 @@ import {
   ensureDefaultBillingBook,
   ensureWrappBillingBookSynced,
 } from "@/lib/billing-books";
+import { sendEmail } from "@/lib/email/send";
+import { documentToClientTemplate } from "@/lib/email/templates";
+import { t } from "@/lib/i18n";
 import type { DocumentType } from "@prisma/client";
 
 // Greek cash-payment threshold (Ν. 4172/2013 άρθρο 23 παρ. 4 + Ν.
@@ -898,6 +901,127 @@ export async function issueCreditNoteAction(
         "Δεν καταφέραμε να δημιουργήσουμε το πιστωτικό. Δοκίμασε ξανά — αν επιμένει, στείλε το ID του παραστατικού στο υποστήριξη.",
     };
   }
+}
+
+const sendDocSchema = z.object({
+  documentId: z.string().min(1),
+  recipientEmail: z
+    .string()
+    .trim()
+    .email({ message: "Δώσε έγκυρη διεύθυνση email." }),
+  message: z.string().max(2000).optional(),
+});
+
+/**
+ * Send the issued document to an arbitrary email address via Brevo.
+ * Called by the "Αποστολή email" popup on the doc detail page. The
+ * recipient defaults to the client's email in the UI but the user can
+ * type anything — accountant, secondary contact, themselves.
+ *
+ * Requires the doc to be `issued` so there's a public link + PDF to send.
+ * Uses the same tenant-configured Brevo API key as every other outbound
+ * email (getEmailConfig → AppSetting rows).
+ */
+export async function sendDocumentEmailAction(input: {
+  documentId: string;
+  recipientEmail: string;
+  message?: string;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const ctx = await requireTenant();
+  assertCan(ctx.role, "document:read");
+
+  const parsed = sendDocSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? "Μη έγκυρα στοιχεία.",
+    };
+  }
+
+  const doc = await prisma.document.findFirst({
+    where: {
+      id: parsed.data.documentId,
+      businessId: ctx.businessId,
+    },
+    include: {
+      client: { select: { legalName: true, tradeName: true } },
+    },
+  });
+  if (!doc) return { ok: false, error: "Το παραστατικό δεν βρέθηκε." };
+  if (doc.status !== "issued") {
+    return {
+      ok: false,
+      error:
+        "Το παραστατικό δεν έχει εκδοθεί ακόμη — μπορείς να στείλεις email μόνο για εκδοθέντα παραστατικά.",
+    };
+  }
+
+  const business = await prisma.business.findUnique({
+    where: { id: ctx.businessId },
+    select: { legalName: true, tradeName: true },
+  });
+  const senderName =
+    business?.tradeName ?? business?.legalName ?? "Ο εκδότης";
+  const clientName =
+    doc.client?.tradeName ?? doc.client?.legalName ?? "Πελάτης";
+  const docTypeLabel = t.documents.types[doc.type] ?? doc.type;
+  const docNumber =
+    (doc.series ?? "") + (doc.number != null ? " #" + doc.number : "");
+  const money = new Intl.NumberFormat("el-GR", {
+    style: "currency",
+    currency: "EUR",
+  }).format(Number(doc.totalAmount));
+
+  // Prefer the tenant-branded Wrapp link (with QR + PDF) if available;
+  // fall back to the app's own detail page. Both live under HTTPS.
+  const documentUrl =
+    doc.wrappInvoiceUrl ||
+    `${process.env.APP_BASE_URL ?? "https://timologion.gr"}/app/documents/${doc.id}`;
+
+  const { subject, html, text } = documentToClientTemplate({
+    clientName,
+    senderName,
+    docType: docTypeLabel,
+    docNumber,
+    docTotal: money,
+    documentUrl,
+    note: parsed.data.message?.trim() || null,
+  });
+
+  const trimmedRecipientName = clientName?.trim();
+  const send = await sendEmail({
+    to: {
+      email: parsed.data.recipientEmail,
+      ...(trimmedRecipientName ? { name: trimmedRecipientName } : {}),
+    },
+    subject,
+    html,
+    text,
+  });
+
+  if (!send.ok) {
+    logger.error("document.send_email.failed", new Error(send.error), {
+      businessId: ctx.businessId,
+      documentId: doc.id,
+      status: send.status ?? null,
+    });
+    return {
+      ok: false,
+      error:
+        "Δεν καταφέραμε να στείλουμε το email. Δοκίμασε ξανά — αν επιμένει, ελέγξε τις ρυθμίσεις email της πλατφόρμας.",
+    };
+  }
+
+  await logAudit({
+    userId: ctx.userId,
+    businessId: ctx.businessId,
+    action: "document.send_email",
+    entityType: "Document",
+    entityId: doc.id,
+    meta: { to: parsed.data.recipientEmail, messageId: send.messageId },
+  });
+
+  return { ok: true };
 }
 
 export async function deleteDraftAction(documentId: string) {
