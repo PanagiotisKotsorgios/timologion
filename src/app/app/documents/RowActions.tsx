@@ -39,8 +39,17 @@ export function RowActions({
       onCreditNote={() =>
         start(async () => {
           const res = await issueCreditNoteAction(id);
-          if (res.ok) router.push(`/app/documents/${res.id}`);
-          else alert(res.error);
+          if (!res.ok) {
+            alert(res.error);
+            return;
+          }
+          if (!res.transmitted && res.transmitError) {
+            alert(
+              res.transmitError +
+                "\n\nΤο πιστωτικό αποθηκεύτηκε ως πρόχειρο — δοκίμασε ξανά από την «Επίσημη έκδοση».",
+            );
+          }
+          router.push(`/app/documents/${res.id}`);
         })
       }
       onIssue={() =>

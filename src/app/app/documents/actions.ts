@@ -692,7 +692,23 @@ export async function duplicateDocumentAction(
  */
 export async function issueCreditNoteAction(
   documentId: string,
-): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+): Promise<
+  | {
+      ok: true;
+      id: string;
+      /**
+       * True when Wrapp/myDATA accepted the credit note immediately.
+       * When false, the draft was saved but transmission failed — the
+       * caller should show `transmitError` so the user knows to retry
+       * from the detail view (Επίσημη έκδοση button).
+       */
+      transmitted: boolean;
+      series?: string | null;
+      number?: number | null;
+      transmitError?: string;
+    }
+  | { ok: false; error: string }
+> {
   const ctx = await requireTenant();
   assertCan(ctx.role, "document:write");
 
@@ -825,7 +841,51 @@ export async function issueCreditNoteAction(
     });
 
     revalidatePath("/app/documents");
-    return { ok: true, id: credit.id };
+
+    // Auto-transmit — the draft-then-edit hop was leaving every credit
+    // note stuck as πρόχειρο because the user rarely completed the
+    // extra "Διαβίβαση στο myDATA" step. attemptIssueAction handles
+    // number reservation, Wrapp billing-book sync, correlated MARK
+    // wiring, and status transitions. If transmission fails we STILL
+    // return ok=true with the draft id and transmitError set, so the
+    // client can toast the reason and land the user on the detail view
+    // where they can retry via the Επίσημη έκδοση button.
+    //
+    // Guarded by its own try/catch so a permission error (assertCan
+    // "document:issue" inside attemptIssueAction) or an unhandled
+    // Wrapp exception can't wipe out the just-created draft.
+    let transmit: Awaited<ReturnType<typeof attemptIssueAction>>;
+    try {
+      transmit = await attemptIssueAction(credit.id);
+    } catch (transmitErr) {
+      logger.error("document.credit_note.autotransmit.crashed", transmitErr, {
+        businessId: ctx.businessId,
+        creditId: credit.id,
+        creditType,
+      });
+      return {
+        ok: true,
+        id: credit.id,
+        transmitted: false,
+        transmitError:
+          "Το πιστωτικό αποθηκεύτηκε αλλά η διαβίβαση δεν ολοκληρώθηκε λόγω τεχνικού σφάλματος.",
+      };
+    }
+    if (transmit.ok) {
+      return {
+        ok: true,
+        id: credit.id,
+        transmitted: true,
+        series: transmit.series ?? null,
+        number: transmit.number ?? null,
+      };
+    }
+    return {
+      ok: true,
+      id: credit.id,
+      transmitted: false,
+      transmitError: transmit.error,
+    };
   } catch (err) {
     logger.error("document.credit_note.create.failed", err, {
       businessId: ctx.businessId,

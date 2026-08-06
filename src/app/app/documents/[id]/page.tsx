@@ -59,7 +59,8 @@ export default async function DocumentDetailPage({
               "credit_note",
             ],
           },
-          status: { in: ["draft", "sending", "issued"] },
+          // Every status EXCEPT "cancelled" counts as "already credited."
+          status: { in: ["draft", "sending", "issued", "failed"] },
         },
         select: { id: true },
       })

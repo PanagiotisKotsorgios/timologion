@@ -138,7 +138,9 @@ export default async function DocumentsPage({
             "credit_note",
           ],
         },
-        status: { in: ["draft", "sending", "issued"] },
+        // Every status EXCEPT "cancelled" — a live/pending/failed
+        // credit note all count as "already exists, don't double-credit."
+        status: { in: ["draft", "sending", "issued", "failed"] },
       },
       select: { correlatedDocumentId: true },
     });
