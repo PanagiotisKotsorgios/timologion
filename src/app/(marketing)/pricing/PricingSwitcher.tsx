@@ -1,4 +1,16 @@
-import { Check, Calendar, TrendingUp, Plus } from "lucide-react";
+import {
+  Check,
+  Calendar,
+  TrendingUp,
+  Plus,
+  Rocket,
+  Shield,
+  Crown,
+  Sparkles,
+  ArrowRight,
+  Landmark,
+  Zap,
+} from "lucide-react";
 import { PRICING_TIERS, formatEur, B2G_ADDON_INCL_VAT } from "@/lib/pricing";
 
 /**
@@ -28,78 +40,324 @@ export function PricingSwitcher() {
         ))}
       </div>
 
-      <div className="mt-14 rounded-3xl border-2 border-black/10 bg-white p-8 md:p-10">
-        <div className="flex flex-wrap items-start justify-between gap-6">
+      <HighVolumeSection tiers={highVolumeTiers} />
+    </>
+  );
+}
+
+// ─── High-volume section ────────────────────────────────────────────────
+// Distinct look from the three main tiers so the eye reads it as an
+// enterprise upgrade path, not a fourth pricing column. Dark hero with
+// per-tier accent + volume badge + per-thousand cost chip + its own CTA.
+
+const HIGH_VOLUME_META: Record<
+  string,
+  {
+    icon: typeof Rocket;
+    accent: "sky" | "amber" | "violet";
+    /** Compact volume label — reads at a glance in the icon badge. */
+    volumeLabel: string;
+    recommended?: boolean;
+  }
+> = {
+  pro: { icon: Rocket, accent: "sky", volumeLabel: "200K" },
+  enterprise: {
+    icon: Shield,
+    accent: "amber",
+    volumeLabel: "750K",
+    recommended: true,
+  },
+  corporate: { icon: Crown, accent: "violet", volumeLabel: "4M" },
+};
+
+const ACCENT_CLASSES: Record<
+  "sky" | "amber" | "violet",
+  {
+    // Halo behind the icon
+    glow: string;
+    // Icon tile background
+    tile: string;
+    // Icon color
+    iconColor: string;
+    // Divider under the price
+    divider: string;
+    // Volume badge fill + text
+    volumeBadge: string;
+    // Per-doc chip
+    perDocChip: string;
+    // CTA button
+    cta: string;
+    // Feature-check color
+    check: string;
+    // Card border on hover
+    cardHover: string;
+    // Recommended ring color
+    ring: string;
+  }
+> = {
+  sky: {
+    glow: "bg-sky-500/20",
+    tile: "bg-gradient-to-br from-sky-400 to-sky-600",
+    iconColor: "text-white",
+    divider: "bg-sky-400/20",
+    volumeBadge: "bg-sky-500/15 text-sky-200 ring-1 ring-inset ring-sky-400/30",
+    perDocChip: "bg-white/5 text-white/80 ring-1 ring-inset ring-white/10",
+    cta: "bg-sky-500 text-white hover:bg-sky-400 shadow-sky-500/40",
+    check: "text-sky-300",
+    cardHover: "hover:border-sky-400/40",
+    ring: "ring-sky-400/60",
+  },
+  amber: {
+    glow: "bg-amber-500/25",
+    tile: "bg-gradient-to-br from-amber-300 to-amber-500",
+    iconColor: "text-amber-950",
+    divider: "bg-amber-400/25",
+    volumeBadge:
+      "bg-amber-400/15 text-amber-100 ring-1 ring-inset ring-amber-300/40",
+    perDocChip: "bg-white/5 text-white/80 ring-1 ring-inset ring-white/10",
+    cta: "bg-amber-400 text-amber-950 hover:bg-amber-300 shadow-amber-500/40",
+    check: "text-amber-300",
+    cardHover: "hover:border-amber-400/50",
+    ring: "ring-amber-300/70",
+  },
+  violet: {
+    glow: "bg-violet-500/25",
+    tile: "bg-gradient-to-br from-violet-400 to-violet-600",
+    iconColor: "text-white",
+    divider: "bg-violet-400/25",
+    volumeBadge:
+      "bg-violet-500/15 text-violet-200 ring-1 ring-inset ring-violet-400/30",
+    perDocChip: "bg-white/5 text-white/80 ring-1 ring-inset ring-white/10",
+    cta: "bg-violet-500 text-white hover:bg-violet-400 shadow-violet-500/40",
+    check: "text-violet-300",
+    cardHover: "hover:border-violet-400/40",
+    ring: "ring-violet-400/60",
+  },
+};
+
+function HighVolumeSection({
+  tiers,
+}: {
+  tiers: (typeof PRICING_TIERS)[number][];
+}) {
+  return (
+    <section className="relative mt-20 overflow-hidden rounded-[32px] bg-gradient-to-br from-brand-900 via-[#091426] to-black p-8 md:p-12">
+      {/* Ambient background decor — subtle radial glows in the corners. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-amber-500/10 blur-3xl"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -right-24 -bottom-24 h-80 w-80 rounded-full bg-violet-500/10 blur-3xl"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 opacity-[0.035]"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 1px 1px, white 1px, transparent 0)",
+          backgroundSize: "24px 24px",
+        }}
+      />
+
+      <div className="relative">
+        {/* Header row */}
+        <div className="flex flex-wrap items-end justify-between gap-6">
           <div>
-            <p className="eyebrow inline-flex items-center gap-2 text-brand-900/70">
-              <TrendingUp size={14} aria-hidden />
+            <p className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.2em] text-amber-200 ring-1 ring-inset ring-white/10">
+              <TrendingUp size={12} strokeWidth={3} aria-hidden />
               Μεγαλύτερος όγκος
             </p>
-            <h3 className="mt-3 text-3xl font-extrabold text-brand-900">
-              Πακέτα για επιχειρήσεις υψηλού όγκου
+            <h3 className="mt-4 text-3xl font-extrabold tracking-tight text-white md:text-4xl">
+              Πακέτα για επιχειρήσεις{" "}
+              <span className="bg-gradient-to-r from-amber-300 via-amber-200 to-yellow-100 bg-clip-text text-transparent">
+                υψηλού όγκου
+              </span>
             </h3>
-            <p className="mt-2 max-w-xl text-base text-black/60">
-              Αν εκδίδεις πάνω από 18.000 παραστατικά/έτος, επίλεξε ένα από
-              τα παρακάτω επίπεδα. Για custom SLA και ειδικές ανάγκες,
-              επικοινώνησε μαζί μας.
+            <p className="mt-3 max-w-2xl text-base leading-relaxed text-white/70">
+              Πάνω από 18.000 παραστατικά/έτος; Επίλεξε το επίπεδο που ταιριάζει
+              στη ροή σου. Custom SLA και ειδικές ανάγκες — έλα να μιλήσουμε.
             </p>
           </div>
           <a
             href="/contact"
-            className="inline-flex h-12 items-center gap-2 rounded-full border-2 border-brand-900 px-5 text-sm font-bold text-brand-900 hover:bg-brand-900 hover:text-white"
+            className="group inline-flex h-12 items-center gap-2 rounded-full border border-white/20 bg-white/5 px-5 text-sm font-bold text-white backdrop-blur transition-all hover:border-white/40 hover:bg-white/10"
           >
+            <Sparkles size={15} strokeWidth={2.5} aria-hidden />
             Επικοινωνία με πωλήσεις
+            <ArrowRight
+              size={15}
+              strokeWidth={2.5}
+              className="transition-transform group-hover:translate-x-0.5"
+              aria-hidden
+            />
           </a>
         </div>
 
-        <div className="mt-8 grid gap-4 md:grid-cols-3">
-          {highVolumeTiers.map((t) => (
-            <div
-              key={t.code}
-              className="rounded-2xl border-2 border-black/10 bg-brand-50/40 p-6"
-            >
-              <p className="text-[11px] font-black uppercase tracking-widest text-brand-900/70">
-                {t.name}
-              </p>
-              <div className="mt-3 flex items-baseline gap-1.5">
-                <span className="text-3xl font-extrabold text-brand-900">
-                  {formatEur(t.retailInclVat)}
-                </span>
-                <span className="text-sm text-black/50">/έτος</span>
-              </div>
-              <div className="mt-3 grid gap-1 rounded-lg bg-white px-3 py-2 text-xs font-bold text-brand-900">
-                <span>
-                  {t.docsPerYear.toLocaleString("el-GR")} παραστατικά / έτος
-                </span>
-                <span className="text-brand-900/70">
-                  {t.apiCallsPerYear.toLocaleString("el-GR")} API calls / έτος
-                </span>
-              </div>
-              <p className="mt-3 text-sm text-black/60">{t.tagline}</p>
-            </div>
+        {/* Tier cards */}
+        <div className="mt-10 grid gap-5 md:grid-cols-3 lg:gap-6">
+          {tiers.map((t) => (
+            <HighVolumeCard key={t.code} tier={t} />
           ))}
         </div>
 
-        {/* B2G add-on note — pass-through from Wrapp, no timologion markup. */}
-        <div className="mt-8 flex flex-wrap items-center gap-2 rounded-xl border-2 border-dashed border-brand-900/20 bg-brand-50/40 p-4 text-sm text-brand-900">
-          <Plus size={16} strokeWidth={2.5} aria-hidden />
-          <span className="font-bold">B2G add-on (προαιρετικά)</span>
-          <span className="text-black/70">
-            Για έκδοση παραστατικών προς το δημόσιο:{" "}
-            <strong className="tabular-nums">
-              +{formatEur(B2G_ADDON_INCL_VAT)}/έτος
-            </strong>{" "}
-            σε οποιοδήποτε πακέτο.
-          </span>
+        {/* B2G add-on card — richer than the previous dashed strip. */}
+        <div className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur">
+          <div className="flex items-start gap-3">
+            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-emerald-500/15 ring-1 ring-inset ring-emerald-400/30">
+              <Landmark size={20} strokeWidth={2.5} className="text-emerald-300" aria-hidden />
+            </div>
+            <div>
+              <p className="text-sm font-black text-white">
+                B2G add-on{" "}
+                <span className="ml-1 text-[11px] font-bold uppercase tracking-wider text-white/50">
+                  προαιρετικά
+                </span>
+              </p>
+              <p className="mt-0.5 text-sm text-white/70">
+                Για έκδοση παραστατικών προς το δημόσιο — προσθέσιμο σε
+                οποιοδήποτε πακέτο.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-baseline gap-1.5 rounded-xl bg-emerald-500/15 px-4 py-2.5 ring-1 ring-inset ring-emerald-400/30">
+            <Plus size={14} strokeWidth={3} className="self-center text-emerald-300" aria-hidden />
+            <span className="text-lg font-extrabold tabular-nums text-emerald-200">
+              {formatEur(B2G_ADDON_INCL_VAT)}
+            </span>
+            <span className="text-xs font-semibold text-emerald-200/70">
+              /έτος
+            </span>
+          </div>
         </div>
 
-        <p className="mt-6 text-xs text-black/50">
+        <p className="mt-6 text-xs leading-relaxed text-white/50">
           Όλες οι τιμές είναι ετήσιες και συμπεριλαμβάνουν ΦΠΑ 24%. Η αγορά
           του πακέτου ολοκληρώνεται μέσω του πιστοποιημένου παρόχου
           ηλεκτρονικής τιμολόγησης (Wrapp).
         </p>
       </div>
-    </>
+    </section>
+  );
+}
+
+function HighVolumeCard({ tier }: { tier: (typeof PRICING_TIERS)[number] }) {
+  const meta = HIGH_VOLUME_META[tier.code] ?? {
+    icon: Rocket,
+    accent: "sky" as const,
+    volumeLabel: "",
+    recommended: false,
+  };
+  const a = ACCENT_CLASSES[meta.accent];
+  const Icon = meta.icon;
+  // Cost per 1,000 documents — a compelling proof-point for volume buyers
+  // who instinctively compute the unit economics. Rounded to two decimals.
+  const perThousand = (tier.retailInclVat / tier.docsPerYear) * 1000;
+
+  return (
+    <div
+      className={
+        "group relative flex flex-col rounded-2xl border border-white/10 bg-white/[0.04] p-6 backdrop-blur transition-all duration-200 hover:-translate-y-1 hover:bg-white/[0.07] " +
+        a.cardHover +
+        (meta.recommended
+          ? " ring-2 ring-offset-4 ring-offset-transparent " + a.ring
+          : "")
+      }
+    >
+      {meta.recommended && (
+        <span className="absolute -top-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-400 to-yellow-300 px-3.5 py-1 text-[10px] font-black uppercase tracking-[0.15em] text-amber-950 shadow-lg shadow-amber-500/30">
+          <Zap size={11} strokeWidth={3} aria-hidden />
+          Δημοφιλέστερο
+        </span>
+      )}
+
+      {/* Icon + volume badge row */}
+      <div className="flex items-start justify-between">
+        <div className="relative">
+          <div
+            aria-hidden
+            className={"absolute inset-0 rounded-2xl blur-xl " + a.glow}
+          />
+          <div
+            className={
+              "relative grid h-14 w-14 place-items-center rounded-2xl shadow-lg " +
+              a.tile
+            }
+          >
+            <Icon size={26} strokeWidth={2.5} className={a.iconColor} aria-hidden />
+          </div>
+        </div>
+        <span
+          className={
+            "rounded-lg px-2.5 py-1 text-[11px] font-black tabular-nums " +
+            a.volumeBadge
+          }
+        >
+          {meta.volumeLabel} docs
+        </span>
+      </div>
+
+      {/* Tier name */}
+      <p className="mt-5 text-[11px] font-black uppercase tracking-[0.2em] text-white/50">
+        Επίπεδο
+      </p>
+      <h4 className="mt-1 text-2xl font-extrabold text-white">{tier.name}</h4>
+      <p className="mt-2 text-sm leading-relaxed text-white/60">
+        {tier.tagline}
+      </p>
+
+      {/* Price */}
+      <div className="mt-6">
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-4xl font-extrabold tracking-tight text-white lg:text-[42px]">
+            {formatEur(tier.retailInclVat)}
+          </span>
+          <span className="text-sm font-medium text-white/50">/έτος</span>
+        </div>
+        <div className={"mt-3 h-px w-full " + a.divider} />
+        <p
+          className={
+            "mt-3 inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-bold tabular-nums " +
+            a.perDocChip
+          }
+        >
+          {formatEur(perThousand)} ανά 1.000 παραστατικά
+        </p>
+      </div>
+
+      {/* Feature list */}
+      <ul className="mt-6 flex-1 space-y-2.5 text-sm">
+        {tier.features.map((f, i) => (
+          <li key={i} className="flex items-start gap-2.5">
+            <Check
+              size={16}
+              strokeWidth={3}
+              className={"mt-0.5 shrink-0 " + a.check}
+              aria-hidden
+            />
+            <span className="text-white/85">{f}</span>
+          </li>
+        ))}
+      </ul>
+
+      {/* Per-tier CTA — replaces the single global button, easier conversion */}
+      <a
+        href="/register"
+        className={
+          "mt-7 group/cta inline-flex h-12 items-center justify-center gap-2 rounded-xl px-5 text-sm font-bold shadow-lg transition-transform hover:-translate-y-0.5 " +
+          a.cta
+        }
+      >
+        Ξεκίνα με {tier.name}
+        <ArrowRight
+          size={15}
+          strokeWidth={2.75}
+          className="transition-transform group-hover/cta:translate-x-0.5"
+          aria-hidden
+        />
+      </a>
+    </div>
   );
 }
 
