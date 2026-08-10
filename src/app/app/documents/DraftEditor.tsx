@@ -22,6 +22,7 @@ import { Alert } from "@/components/ui/Alert";
 import { useToast } from "@/components/ui/Toast";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { t } from "@/lib/i18n";
+import { todayInAthens, nowInAthensDateTimeLocal } from "@/lib/date";
 import { computeWithholding, classifyClient } from "@/lib/withholding";
 import {
   createDraftAction,
@@ -124,6 +125,10 @@ const DOC_TYPE_OPTIONS: { value: DraftInput["type"]; label: string }[] = [
   { value: "pos_income_receipt", label: "Απόδειξη είσπραξης POS (8.5)" },
   { value: "pos_payment_receipt", label: "Απόδειξη πληρωμής POS (8.6)" },
   { value: "delivery_note", label: "Δελτίο αποστολής (9.3)" },
+  {
+    value: "delivery_note_correlated",
+    label: "Δελτίο αποστολής συσχετιζόμενο (9.3)",
+  },
   { value: "retail_receipt", label: "Απόδειξη λιανικής (11.1)" },
   { value: "service_receipt", label: "Απόδειξη παροχής υπηρεσιών (11.2)" },
   { value: "simplified_invoice", label: "Απλοποιημένο τιμολόγιο (11.3)" },
@@ -131,6 +136,28 @@ const DOC_TYPE_OPTIONS: { value: DraftInput["type"]; label: string }[] = [
   {
     value: "third_party_retail_receipt",
     label: "Λιανική για λ/σμό τρίτων (11.5)",
+  },
+  {
+    value: "income_settlement_accounting",
+    label: "Τακτοποίηση εσόδων — λογιστική βάση (17.1)",
+  },
+  {
+    value: "income_settlement_tax",
+    label: "Τακτοποίηση εσόδων — φορολογική βάση (17.2)",
+  },
+  {
+    value: "expense_settlement_accounting",
+    label: "Τακτοποίηση εξόδων — λογιστική βάση (17.3)",
+  },
+  {
+    value: "expense_settlement_tax",
+    label: "Τακτοποίηση εξόδων — φορολογική βάση (17.4)",
+  },
+  { value: "payroll_entry", label: "Ενσωμάτωση μισθοδοσίας (17.5)" },
+  { value: "depreciation", label: "Αποσβέσεις (17.6)" },
+  {
+    value: "quantitative_receipt",
+    label: "Δελτίο ποσοτικής παραλαβής (εσωτ.)",
   },
   { value: "proforma", label: "Προτιμολόγιο" },
   { value: "quote", label: "Προσφορά" },
@@ -170,6 +197,16 @@ const CORRELATED_TYPES = new Set<DraftInput["type"]>([
   // original retail receipt.
   "retail_refund_receipt",
   "retail_credit_note",
+  // 9.3 correlated variant — same wire code as delivery_note but the
+  // parent MARK is mandatory.
+  "delivery_note_correlated",
+]);
+
+// Types that render the DispatchInfoCard (τόπος φόρτωσης / εκφόρτωσης,
+// ημ/νία αποστολής, όχημα, οδηγός). Both 9.3 variants qualify.
+const DELIVERY_TYPES = new Set<DraftInput["type"]>([
+  "delivery_note",
+  "delivery_note_correlated",
 ]);
 
 const PAYMENT_METHODS = [
@@ -217,6 +254,7 @@ export type DraftEditorInitial = {
   dispatchAt?: string;
   dispatchReason?: string;
   dispatchPurpose?: string;
+  loadingAddress?: string;
   destinationAddress?: string;
   vehicleNumber?: string;
   driverName?: string;
@@ -338,7 +376,7 @@ export function DraftEditor({
   }, [type, availableBooks.length]);
 
   const [issueDate, setIssueDate] = useState(
-    () => editing?.issueDate || new Date().toISOString().slice(0, 10),
+    () => editing?.issueDate || todayInAthens(),
   );
   const [deliveryNoteRef, setDeliveryNoteRef] = useState(
     editing?.deliveryNoteRef ?? "",
@@ -365,6 +403,9 @@ export function DraftEditor({
   );
   const [dispatchPurpose, setDispatchPurpose] = useState(
     editing?.dispatchPurpose ?? "Παράδοση",
+  );
+  const [loadingAddress, setLoadingAddress] = useState(
+    editing?.loadingAddress ?? "",
   );
   const [destinationAddress, setDestinationAddress] = useState(
     editing?.destinationAddress ?? "",
@@ -508,19 +549,21 @@ export function DraftEditor({
         discountPct: Number(l.discountPct),
         vatRate: Number(l.vatRate),
       })),
-      // Delivery-note extras — only meaningful for type=delivery_note; the
+      // Delivery-note extras — meaningful for BOTH 9.3 variants. The
       // server nulls them on other types anyway.
-      dispatchAt: type === "delivery_note" ? dispatchAt || undefined : undefined,
+      dispatchAt: DELIVERY_TYPES.has(type) ? dispatchAt || undefined : undefined,
       dispatchReason:
-        type === "delivery_note" ? dispatchReason || undefined : undefined,
+        DELIVERY_TYPES.has(type) ? dispatchReason || undefined : undefined,
       dispatchPurpose:
-        type === "delivery_note" ? dispatchPurpose || undefined : undefined,
+        DELIVERY_TYPES.has(type) ? dispatchPurpose || undefined : undefined,
+      loadingAddress:
+        DELIVERY_TYPES.has(type) ? loadingAddress || undefined : undefined,
       destinationAddress:
-        type === "delivery_note" ? destinationAddress || undefined : undefined,
+        DELIVERY_TYPES.has(type) ? destinationAddress || undefined : undefined,
       vehicleNumber:
-        type === "delivery_note" ? vehicleNumber || undefined : undefined,
+        DELIVERY_TYPES.has(type) ? vehicleNumber || undefined : undefined,
       driverName:
-        type === "delivery_note" ? driverName || undefined : undefined,
+        DELIVERY_TYPES.has(type) ? driverName || undefined : undefined,
       correlatedDocumentId: CORRELATED_TYPES.has(type)
         ? correlatedDocumentId || undefined
         : undefined,
@@ -902,7 +945,7 @@ export function DraftEditor({
             onAmountChange={setStayTaxAmount}
           />
         )}
-        {type === "delivery_note" ? (
+        {DELIVERY_TYPES.has(type) ? (
           <DispatchInfoCard
             dispatchAt={dispatchAt}
             setDispatchAt={setDispatchAt}
@@ -910,6 +953,8 @@ export function DraftEditor({
             setDispatchReason={setDispatchReason}
             dispatchPurpose={dispatchPurpose}
             setDispatchPurpose={setDispatchPurpose}
+            loadingAddress={loadingAddress}
+            setLoadingAddress={setLoadingAddress}
             destinationAddress={destinationAddress}
             setDestinationAddress={setDestinationAddress}
             vehicleNumber={vehicleNumber}
@@ -1723,6 +1768,8 @@ function DispatchInfoCard({
   setDispatchReason,
   dispatchPurpose,
   setDispatchPurpose,
+  loadingAddress,
+  setLoadingAddress,
   destinationAddress,
   setDestinationAddress,
   vehicleNumber,
@@ -1738,6 +1785,8 @@ function DispatchInfoCard({
   setDispatchReason: (v: string) => void;
   dispatchPurpose: string;
   setDispatchPurpose: (v: string) => void;
+  loadingAddress: string;
+  setLoadingAddress: (v: string) => void;
   destinationAddress: string;
   setDestinationAddress: (v: string) => void;
   vehicleNumber: string;
@@ -1747,6 +1796,13 @@ function DispatchInfoCard({
   printLanguage: "el" | "en";
   setPrintLanguage: (v: "el" | "en") => void;
 }) {
+  // Auto-fill the dispatch datetime on first render with "now in
+  // Athens" so the form isn't blank the moment the user opens it.
+  // Only runs when the field is empty — never overwrites a stored draft.
+  useEffect(() => {
+    if (!dispatchAt) setDispatchAt(nowInAthensDateTimeLocal());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   return (
     <Card>
       <CardHeader
@@ -1804,7 +1860,21 @@ function DispatchInfoCard({
         </Field>
 
         <Field
-          label="Διεύθυνση προορισμού"
+          label="Τόπος φόρτωσης"
+          htmlFor="loadingAddress"
+          help="Από πού αναχωρούν τα αγαθά. Άφησέ το κενό για να χρησιμοποιηθεί αυτόματα η διεύθυνση της έδρας ή του υποκαταστήματος."
+        >
+          <Input
+            id="loadingAddress"
+            value={loadingAddress}
+            onChange={(e) => setLoadingAddress(e.target.value)}
+            placeholder="Οδός, αριθμός (προαιρετικό — προεπιλογή: έδρα/υποκατάστημα)"
+            maxLength={400}
+          />
+        </Field>
+
+        <Field
+          label="Τόπος εκφόρτωσης / προορισμός"
           htmlFor="destinationAddress"
           help="Πού μεταφέρονται τα αγαθά. Συνήθως η διεύθυνση του παραλήπτη ή η αποθήκη προορισμού."
         >

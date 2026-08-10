@@ -6,6 +6,7 @@ import { Plus, X, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Select, Textarea } from "@/components/ui/Input";
 import { Alert } from "@/components/ui/Alert";
+import { todayInAthens } from "@/lib/date";
 import { recordExpensePaymentAction } from "./actions";
 
 /**
@@ -62,7 +63,7 @@ function PaymentModal({
   );
   const [method, setMethod] = useState("bank_transfer");
   const [reference, setReference] = useState("");
-  const [paidAt, setPaidAt] = useState(new Date().toISOString().slice(0, 10));
+  const [paidAt, setPaidAt] = useState(todayInAthens());
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTx] = useTransition();

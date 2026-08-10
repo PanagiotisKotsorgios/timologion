@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Save, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input, Select, Textarea, Field } from "@/components/ui/Input";
+import { todayInAthens } from "@/lib/date";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { saveRecurringAction } from "./actions";
 
@@ -54,6 +55,8 @@ const TYPE_OPTS = [
   { value: "quote", label: "Προσφορά" },
   { value: "order", label: "Παραγγελία" },
   { value: "delivery_note", label: "Δελτίο αποστολής" },
+  { value: "rental_income", label: "Ενοίκιο (έσοδο)" },
+  { value: "contract_income", label: "Συμβόλαιο (έσοδο)" },
 ];
 
 const CADENCE_OPTS = [
@@ -162,7 +165,7 @@ export function RecurringForm({
     });
   }
 
-  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayIso = todayInAthens();
 
   return (
     <form action={formAction} className="space-y-6">

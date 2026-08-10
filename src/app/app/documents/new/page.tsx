@@ -162,10 +162,21 @@ export default async function NewDocumentPage({
             "complementary_invoice",
             "complementary_service_invoice",
             // Non-myDATA internal drafts.
-            "delivery_note",
             "proforma",
             "quote",
             "order",
+            "quantitative_receipt",
+            // 17.x settlement entries — accounting adjustments, no
+            // meaningful parent reference.
+            "income_settlement_accounting",
+            "income_settlement_tax",
+            "expense_settlement_accounting",
+            "expense_settlement_tax",
+            "payroll_entry",
+            "depreciation",
+            // Note: `delivery_note` INTENTIONALLY not excluded so
+            // `delivery_note_correlated` drafts can reference an existing
+            // 9.3 that's being corrected/replaced.
           ],
         },
         issueDate: { gte: twelveMonthsAgo },

@@ -6,6 +6,7 @@ import { Wallet } from "lucide-react";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Select, Textarea } from "@/components/ui/Input";
+import { todayInAthens } from "@/lib/date";
 import { recordPaymentAction, type PaymentFormState } from "./actions";
 
 const METHODS: { value: string; label: string }[] = [
@@ -86,7 +87,7 @@ export function PaymentForm({
             id="receivedAt"
             name="receivedAt"
             type="date"
-            defaultValue={new Date().toISOString().slice(0, 10)}
+            defaultValue={todayInAthens()}
           />
         </Field>
         <Field

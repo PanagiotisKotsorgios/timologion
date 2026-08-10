@@ -321,6 +321,23 @@ enum DocumentType {
   pos_payment_receipt
   retail_credit_note
   third_party_retail_receipt
+  // ─── Delivery variants ───────────────────────────────────────────
+  // Both use myDATA 9.3 on the wire. `delivery_note_correlated` carries
+  // a mandatory correlated parent MARK (Δελτίο Αποστολής συσχετιζόμενο).
+  delivery_note_correlated
+  // Internal-only commercial doc (Δελτίο Ποσοτικής Παραλαβής) — not
+  // transmitted to myDATA. Same treatment as proforma/quote/order.
+  quantitative_receipt
+  // ─── myDATA 17.x settlement entries (accounting / tax basis) ─────
+  // Λοιπές Εγγραφές Τακτοποίησης — used at year-end to reconcile the
+  // accounting books with the tax books. Amounts flow to myDATA but
+  // don't produce a customer-facing printable.
+  income_settlement_accounting  // 17.1
+  income_settlement_tax          // 17.2
+  expense_settlement_accounting // 17.3
+  expense_settlement_tax         // 17.4
+  payroll_entry                  // 17.5 (Ενσωμάτωση Μισθοδοσίας)
+  depreciation                   // 17.6 (Αποσβέσεις)
   proforma
   quote
   order
@@ -1267,10 +1284,17 @@ model Document {
   notes               String?        @db.Text
 
   // Delivery-note (myDATA 9.3) specifics — Πληροφορίες Διακίνησης. Only
-  // populated when type == delivery_note; NULL for every other type.
+  // populated when type is a delivery-note variant; NULL elsewhere.
+  //
+  //   loadingAddress    = τόπος φόρτωσης     → myDATA from_* fields
+  //   destinationAddress = τόπος εκφόρτωσης  → myDATA to_*   fields
+  //
+  // loadingAddress is optional — when NULL, buildDeliveryDetail falls
+  // back to the issuer's branch / business address.
   dispatchAt          DateTime?
   dispatchReason      String?        @db.VarChar(200)
   dispatchPurpose     String?        @db.VarChar(200)
+  loadingAddress      String?        @db.VarChar(400)
   destinationAddress  String?        @db.VarChar(400)
   vehicleNumber       String?        @db.VarChar(40)
   driverName          String?        @db.VarChar(160)

@@ -77,6 +77,28 @@ export function mapDocumentTypeToWrapp(type: DocumentType): string | null {
       return "11.4";
     case "third_party_retail_receipt":
       return "11.5"; // Απόδειξη Λιανικής Πώλησης για Λ/σμο Τρίτων
+    case "delivery_note_correlated":
+      // Same wire code as 9.3 — correlation happens through the
+      // correlated_invoices array on the payload. The type is separate
+      // so we can enforce a mandatory parent MARK in attemptIssueAction.
+      return "9.3";
+    // ─── myDATA 17.x settlement entries ─────────────────────────────
+    case "income_settlement_accounting":
+      return "17.1"; // Λοιπές Εγγραφές Τακτοποίησης Εσόδων — Λογιστική Βάση
+    case "income_settlement_tax":
+      return "17.2"; // Λοιπές Εγγραφές Τακτοποίησης Εσόδων — Φορολογική Βάση
+    case "expense_settlement_accounting":
+      return "17.3"; // Λοιπές Εγγραφές Τακτοποίησης Εξόδων — Λογιστική Βάση
+    case "expense_settlement_tax":
+      return "17.4"; // Λοιπές Εγγραφές Τακτοποίησης Εξόδων — Φορολογική Βάση
+    case "payroll_entry":
+      return "17.5"; // Ενσωμάτωση Μισθοδοσίας
+    case "depreciation":
+      return "17.6"; // Αποσβέσεις
+    case "quantitative_receipt":
+      // Δελτίο Ποσοτικής Παραλαβής — internal commercial doc, not
+      // transmitted to myDATA. Same treatment as proforma/quote/order.
+      return null;
     case "proforma":
     case "quote":
     case "order":
@@ -136,7 +158,21 @@ export function classificationFor(type: DocumentType): {
   category: string;
   type: string;
 } {
-  if (type === "delivery_note")
+  if (type === "delivery_note" || type === "delivery_note_correlated")
+    return { category: "category3", type: "_" };
+  // 17.x settlement entries — myDATA doesn't require classification rows
+  // (the transmitted "invoice_details" carries aggregated adjustment
+  // amounts, not itemized income/expense). category3 with type "_" is
+  // the safe passthrough Wrapp accepts for these adjustment codes; the
+  // accountant reclassifies downstream in their bookkeeping software.
+  if (
+    type === "income_settlement_accounting" ||
+    type === "income_settlement_tax" ||
+    type === "expense_settlement_accounting" ||
+    type === "expense_settlement_tax" ||
+    type === "payroll_entry" ||
+    type === "depreciation"
+  )
     return { category: "category3", type: "_" };
   // EU intra-community sales/services — myDATA classifies these under
   // category1_3 with type E3_561_002 (Πωλήσεις χονδρικές - επιτηδευματιών,

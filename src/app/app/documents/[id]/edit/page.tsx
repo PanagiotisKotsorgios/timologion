@@ -126,16 +126,29 @@ export default async function EditDocumentPage({
         myDataMark: { not: null },
         type: {
           notIn: [
+            // Credit-note / refund variants — never a parent for anything.
             "credit_note",
             "credit_note_correlated",
             "retail_credit_note",
             "retail_refund_receipt",
+            // Complementary variants — themselves need a parent, not one.
             "complementary_invoice",
             "complementary_service_invoice",
-            "delivery_note",
+            // Internal-only commercial docs — never issued to myDATA.
             "proforma",
             "quote",
             "order",
+            "quantitative_receipt",
+            // 17.x settlements — accounting adjustments, no MARK to reference.
+            "income_settlement_accounting",
+            "income_settlement_tax",
+            "expense_settlement_accounting",
+            "expense_settlement_tax",
+            "payroll_entry",
+            "depreciation",
+            // Note: `delivery_note` INTENTIONALLY not excluded — a
+            // `delivery_note_correlated` draft may reference another
+            // 9.3 that's being corrected/replaced.
           ],
         },
         issueDate: { gte: twelveMonthsAgo },
@@ -234,6 +247,7 @@ export default async function EditDocumentPage({
             : "",
           dispatchReason: doc.dispatchReason ?? "",
           dispatchPurpose: doc.dispatchPurpose ?? "",
+          loadingAddress: doc.loadingAddress ?? "",
           destinationAddress: doc.destinationAddress ?? "",
           vehicleNumber: doc.vehicleNumber ?? "",
           driverName: doc.driverName ?? "",

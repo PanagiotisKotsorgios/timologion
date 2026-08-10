@@ -26,6 +26,7 @@ import {
 import { sendEmail } from "@/lib/email/send";
 import { documentToClientTemplate } from "@/lib/email/templates";
 import { t } from "@/lib/i18n";
+import { todayInAthens } from "@/lib/date";
 import type { DocumentType } from "@prisma/client";
 
 // Greek cash-payment threshold (Ν. 4172/2013 άρθρο 23 παρ. 4 + Ν.
@@ -148,6 +149,14 @@ const DOCUMENT_TYPES = [
   "pos_payment_receipt",
   "retail_credit_note",
   "third_party_retail_receipt",
+  "delivery_note_correlated",
+  "quantitative_receipt",
+  "income_settlement_accounting",
+  "income_settlement_tax",
+  "expense_settlement_accounting",
+  "expense_settlement_tax",
+  "payroll_entry",
+  "depreciation",
   "proforma",
   "quote",
   "order",
@@ -169,6 +178,7 @@ const CORRELATED_TYPES: readonly (typeof DOCUMENT_TYPES)[number][] = [
   "complementary_service_invoice",
   "retail_refund_receipt",
   "retail_credit_note",
+  "delivery_note_correlated",
 ];
 
 /**
@@ -249,6 +259,7 @@ const draftSchema = z.object({
   dispatchAt: z.string().optional().or(z.literal("")),
   dispatchReason: z.string().max(200).optional().or(z.literal("")),
   dispatchPurpose: z.string().max(200).optional().or(z.literal("")),
+  loadingAddress: z.string().max(400).optional().or(z.literal("")),
   destinationAddress: z.string().max(400).optional().or(z.literal("")),
   vehicleNumber: z.string().max(40).optional().or(z.literal("")),
   driverName: z.string().max(160).optional().or(z.literal("")),
@@ -365,6 +376,7 @@ export async function createDraftAction(
           : null,
         dispatchReason: parsed.data.dispatchReason || null,
         dispatchPurpose: parsed.data.dispatchPurpose || null,
+        loadingAddress: parsed.data.loadingAddress || null,
         destinationAddress: parsed.data.destinationAddress || null,
         vehicleNumber: parsed.data.vehicleNumber || null,
         driverName: parsed.data.driverName || null,
@@ -532,6 +544,7 @@ export async function updateDraftAction(
           : null,
         dispatchReason: parsed.data.dispatchReason || null,
         dispatchPurpose: parsed.data.dispatchPurpose || null,
+        loadingAddress: parsed.data.loadingAddress || null,
         destinationAddress: parsed.data.destinationAddress || null,
         vehicleNumber: parsed.data.vehicleNumber || null,
         driverName: parsed.data.driverName || null,
@@ -780,7 +793,13 @@ export async function issueCreditNoteAction(
           branchId: src.branchId,
           type: creditType,
           status: "draft",
-          issueDate: new Date(),
+          // Athens-local today. `new Date()` here would use container
+          // UTC time — the resulting timestamp still formats correctly
+          // in Athens locale, but any downstream code that slices to
+          // `YYYY-MM-DD` in UTC would land the row on yesterday after
+          // Athens midnight. Anchoring at 00:00 UTC of today's Athens
+          // date sidesteps that class of bug entirely.
+          issueDate: new Date(todayInAthens()),
           printLanguage: src.printLanguage,
           // Correlated + retail-credit variants carry a reference to the
           // parent doc so the editor's CorrelatedInvoicePicker pre-selects
@@ -1237,7 +1256,7 @@ export async function attemptIssueAction(documentId: string) {
   // business address. Both are fetched only for delivery_note to avoid an
   // extra query on every invoice.
   const issuerAddress =
-    doc.type === "delivery_note"
+    doc.type === "delivery_note" || doc.type === "delivery_note_correlated"
       ? branch?.addressLine
         ? {
             legalName: null as string | null,
@@ -1346,11 +1365,12 @@ export async function attemptIssueAction(documentId: string) {
   // fill safe fallbacks for anything the user left empty — myDATA rejects
   // NULLs on 9.3 payloads.
   const deliveryDetail =
-    doc.type === "delivery_note"
+    doc.type === "delivery_note" || doc.type === "delivery_note_correlated"
       ? buildDeliveryDetail({
           dispatchAt: doc.dispatchAt,
           dispatchReason: doc.dispatchReason,
           dispatchPurpose: doc.dispatchPurpose,
+          loadingAddress: doc.loadingAddress,
           destinationAddress: doc.destinationAddress,
           vehicleNumber: doc.vehicleNumber,
           driverName: doc.driverName,
@@ -1361,10 +1381,11 @@ export async function attemptIssueAction(documentId: string) {
         })
       : undefined;
 
-  // Correlated types (5.1, 8.2, 1.6, 2.4, 8.4, 11.4) — Wrapp requires
-  // the parent's myDATA MARK in `correlated_invoices`. We prefer the
-  // linked local doc's stored MARK; the manual override is the escape
-  // hatch for pre-migration parents that live outside timologion.
+  // Correlated types (5.1, 8.2, 1.6, 2.4, 8.4, 11.4, 9.3-correlated) —
+  // Wrapp requires the parent's myDATA MARK in `correlated_invoices`.
+  // We prefer the linked local doc's stored MARK; the manual override
+  // is the escape hatch for pre-migration parents that live outside
+  // timologion.
   const correlatedTypeLabels: Partial<Record<DocumentType, string>> = {
     credit_note_correlated: "Το πιστωτικό 5.1 (συσχετιζόμενο)",
     stay_tax_receipt: "Η απόδειξη φόρου διαμονής (8.2)",
@@ -1372,6 +1393,7 @@ export async function attemptIssueAction(documentId: string) {
     complementary_service_invoice: "Το συμπληρωματικό παροχής (2.4)",
     retail_refund_receipt: "Η απόδειξη επιστροφής (8.4)",
     retail_credit_note: "Το πιστωτικό λιανικής (11.4)",
+    delivery_note_correlated: "Το δελτίο αποστολής συσχετιζόμενο (9.3)",
   };
   let correlatedInvoices: string[] | undefined;
   if (correlatedTypeLabels[doc.type]) {
@@ -1441,7 +1463,10 @@ export async function attemptIssueAction(documentId: string) {
     notes: doc.notes ?? undefined,
     num: reservedNumber ?? undefined,
     counterpart,
-    is_delivery_note: doc.type === "delivery_note" ? true : undefined,
+    is_delivery_note:
+      doc.type === "delivery_note" || doc.type === "delivery_note_correlated"
+        ? true
+        : undefined,
     delivery_detail: deliveryDetail,
     correlated_invoices: correlatedInvoices,
     currency: isForeign && doc.currency ? doc.currency : undefined,
@@ -1610,6 +1635,8 @@ type DispatchInput = {
   dispatchAt: Date | null;
   dispatchReason: string | null;
   dispatchPurpose: string | null;
+  /** τόπος φόρτωσης — overrides the issuer branch address when set. */
+  loadingAddress: string | null;
   destinationAddress: string | null;
   vehicleNumber: string | null;
   driverName: string | null;
@@ -1641,9 +1668,13 @@ function buildDeliveryDetail(input: DispatchInput) {
   const dispatchDate = now.toISOString().slice(0, 10);
   const dispatchTime = now.toISOString().slice(11, 16);
 
-  const fromStreet = input.fallbackParseStreet(
-    input.issuerAddress?.addressLine,
-  );
+  // τόπος φόρτωσης — explicit user input wins over the branch address,
+  // so 9.3 payloads reflect the ACTUAL loading point when it differs
+  // from the issuer's registered address (warehouse dispatch, third-
+  // party fulfillment, etc.).
+  const fromRaw =
+    input.loadingAddress?.trim() || input.issuerAddress?.addressLine || null;
+  const fromStreet = input.fallbackParseStreet(fromRaw);
   const toStreet = input.fallbackParseStreet(input.destinationAddress);
 
   return {

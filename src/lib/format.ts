@@ -11,10 +11,16 @@ const nfNumber = new Intl.NumberFormat("el-GR", {
   maximumFractionDigits: 2,
 });
 
+// Format dates in the Athens timezone — the app is Greek-tenanted and
+// the production container runs in UTC. Without `timeZone` set, a
+// `Date` created at Athens 01:00 (= UTC 23:00 prev day) formats as
+// yesterday's calendar date, which is confusing for users and wrong on
+// audit-visible surfaces (issued document dates, aging tables).
 const nfDate = new Intl.DateTimeFormat("el-GR", {
   day: "2-digit",
   month: "2-digit",
   year: "numeric",
+  timeZone: "Europe/Athens",
 });
 
 type Numeric = number | string | Prisma.Decimal;

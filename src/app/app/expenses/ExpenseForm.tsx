@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Field, Input, Select, Textarea } from "@/components/ui/Input";
 import { Alert } from "@/components/ui/Alert";
 import { money } from "@/lib/format";
+import { todayInAthens } from "@/lib/date";
 import { EXPENSE_MYDATA_TYPES } from "@/lib/expense-mydata-types";
 import {
   createExpenseAction,
@@ -68,7 +69,7 @@ export function ExpenseForm({
     FormData
   >(action, undefined);
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayInAthens();
   const initialDate =
     initial?.issueDate instanceof Date
       ? initial.issueDate.toISOString().slice(0, 10)
