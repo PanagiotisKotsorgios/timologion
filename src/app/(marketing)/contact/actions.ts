@@ -8,6 +8,16 @@ const schema = z.object({
   email: z.string().email().max(160),
   company: z.string().max(160).optional().or(z.literal("")),
   message: z.string().min(10).max(4000),
+  // GDPR consent — hard-required. FormData carries the checkbox as
+  // "on" when checked, absent when not. Zod's `literal("on")` catches
+  // both "someone checked it" and "someone crafted a POST bypassing
+  // the UI" so no request without explicit consent hits our inbox.
+  acceptTerms: z.literal("on", {
+    errorMap: () => ({
+      message:
+        "Πρέπει να αποδεχτείς τους Όρους Χρήσης και την Πολιτική Απορρήτου για να συνεχίσεις.",
+    }),
+  }),
 });
 
 export type ContactState = { error?: string; success?: string } | undefined;

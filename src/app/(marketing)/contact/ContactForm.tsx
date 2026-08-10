@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
+import Link from "next/link";
+import { useActionState, useState } from "react";
 import { submitContactAction, type ContactState } from "./actions";
 
 export function ContactForm() {
@@ -8,6 +9,7 @@ export function ContactForm() {
     submitContactAction,
     undefined,
   );
+  const [acceptTerms, setAcceptTerms] = useState(false);
 
   return (
     <form action={formAction} className="space-y-6">
@@ -70,10 +72,48 @@ export function ContactForm() {
         />
       </Field>
 
+      {/* GDPR consent — required by the same rule that runs server-side
+          in actions.ts. Disabling the submit button when unchecked is
+          purely UX; the Zod schema won't accept a submission either. */}
+      <label
+        htmlFor="acceptTerms"
+        className="flex cursor-pointer items-start gap-3 rounded-2xl border-2 border-black/10 bg-black/[0.02] p-4 text-sm text-black/80 transition-colors hover:border-brand-900/30"
+      >
+        <input
+          id="acceptTerms"
+          name="acceptTerms"
+          type="checkbox"
+          required
+          checked={acceptTerms}
+          onChange={(e) => setAcceptTerms(e.target.checked)}
+          className="mt-0.5 h-5 w-5 shrink-0 rounded border-2 border-black/40 text-brand-900 accent-brand-900 focus:ring-2 focus:ring-brand-900/20 focus:ring-offset-0"
+        />
+        <span>
+          Αποδέχομαι τους{" "}
+          <Link
+            href="/terms"
+            className="font-semibold text-brand-900 underline underline-offset-2 hover:opacity-70"
+            target="_blank"
+          >
+            Όρους Χρήσης
+          </Link>{" "}
+          και την{" "}
+          <Link
+            href="/privacy"
+            className="font-semibold text-brand-900 underline underline-offset-2 hover:opacity-70"
+            target="_blank"
+          >
+            Πολιτική Απορρήτου
+          </Link>
+          . Τα στοιχεία μου θα χρησιμοποιηθούν για να απαντήσουμε στο
+          μήνυμά μου.
+        </span>
+      </label>
+
       <button
         type="submit"
-        disabled={pending}
-        className="inline-flex h-16 items-center rounded-full bg-brand-900 px-10 text-lg font-semibold text-white transition-transform hover:-translate-y-0.5 disabled:opacity-60"
+        disabled={pending || !acceptTerms}
+        className="inline-flex h-16 items-center rounded-full bg-brand-900 px-10 text-lg font-semibold text-white transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
       >
         {pending ? "Αποστολή..." : "Αποστολή μηνύματος"}
       </button>

@@ -119,7 +119,10 @@ export default async function DashboardPage() {
   };
   const showOnboarding = Object.values(onboardingSteps).some((v) => !v);
 
-  const quotaLimit = quota.ok ? quota.limit : quota.limit;
+  // Local quota `used` is the fallback when the Wrapp reconciler
+  // hasn't populated the tenant's issued-count yet (fresh signup,
+  // reconciler outage). The limit itself always comes from the plan
+  // row below via activeSub.
   const quotaUsed = quota.ok ? quota.used : quota.used;
 
   return (
@@ -185,17 +188,17 @@ export default async function DashboardPage() {
         <StatCard
           eyebrow="Αυτόν τον μήνα"
           value={String(monthCount)}
+          // Purely informational — never against the annual plan cap.
+          // The plan cap is annual (1.500/έτος για Basic, κλπ), while
+          // this card is calendar-month scoped. Mixing the two on one
+          // line was reading as "4 από 1500 του μήνα" which is wrong
+          // arithmetic — the annual quota lives in PlanUsageStrip.
           label={
-            quotaLimit && quotaLimit > 0
-              ? `από ${quotaLimit.toLocaleString("el-GR")} του πακέτου`
-              : "εκδόσεις χωρίς όριο"
+            monthCount === 1
+              ? "παραστατικό εκδόθηκε"
+              : "παραστατικά εκδόθηκαν"
           }
           accent="emerald"
-          progress={
-            quotaLimit && quotaLimit > 0
-              ? Math.min(100, Math.round((quotaUsed / quotaLimit) * 100))
-              : null
-          }
         />
         <StatCard
           eyebrow="Ανεξόφλητα"
@@ -205,31 +208,18 @@ export default async function DashboardPage() {
         />
       </div>
 
-      {/* Wrapp-authoritative counter — nightly reconciler populates it,
-          so we can show the number the provider actually has on file. */}
-      {wrapp?.issuedCountUpstream != null && (
-        <div className="mt-4 flex flex-wrap items-baseline justify-between gap-2 rounded-xl border border-brand-200 bg-brand-50/50 px-4 py-3 text-sm">
-          <div>
-            <span className="text-[10px] font-black uppercase tracking-widest text-ink-500">
-              Σύνολο κατά Wrapp
-            </span>
-            <span className="ml-2 text-lg font-black text-brand-900 tabular-nums">
-              {wrapp.issuedCountUpstream.toLocaleString("el-GR")}
-            </span>
-            <span className="ml-1 text-xs text-ink-600">παραστατικά</span>
-          </div>
-          {wrapp.issuedCountAt && (
-            <span className="text-[11px] text-ink-500">
-              Ενημερώθηκε {wrapp.issuedCountAt.toLocaleString("el-GR")}
-            </span>
-          )}
-        </div>
-      )}
-
       <PlanUsageStrip
         planName={activeSub?.plan.name ?? null}
         cap={activeSub?.plan.includedDocsMonth ?? null}
-        used={quotaUsed}
+        // Wrapp is the source of truth for what counts against the
+        // annual package (they enforce the cap). When the nightly
+        // reconciler has populated `issuedCountUpstream`, prefer that
+        // — otherwise fall back to our local count. This removes the
+        // "user sees 8 (Wrapp), 5/1500 (plan), 4 (this month)" three-
+        // way disagreement on the dashboard.
+        used={wrapp?.issuedCountUpstream ?? quotaUsed}
+        source={wrapp?.issuedCountUpstream != null ? "wrapp" : "local"}
+        lastReconciledAt={wrapp?.issuedCountAt ?? null}
       />
 
       <div className="mt-6 grid gap-4 md:gap-6 xl:grid-cols-4">
@@ -582,10 +572,18 @@ function PlanUsageStrip({
   planName,
   cap,
   used,
+  source = "local",
+  lastReconciledAt = null,
 }: {
   planName: string | null;
   cap: number | null;
   used: number;
+  /** Which counter the `used` number came from. Shown as a small
+   * "κατά Wrapp" chip so the tenant knows the number is authoritative. */
+  source?: "wrapp" | "local";
+  /** When the Wrapp counter was last refreshed by the nightly reconciler.
+   * Only meaningful when `source` is "wrapp". */
+  lastReconciledAt?: Date | null;
 }) {
   const hasCap = typeof cap === "number" && cap > 0;
   const remaining = hasCap ? Math.max(0, cap! - used) : null;
@@ -656,12 +654,26 @@ function PlanUsageStrip({
               {hasCap ? (
                 <>
                   <div className="flex items-baseline justify-between gap-3">
-                    <span className="text-xs font-semibold text-ink-700">
-                      <span className="font-bold text-brand-900">
-                        {used.toLocaleString("el-GR")}
+                    <span className="flex flex-wrap items-baseline gap-x-2 text-xs font-semibold text-ink-700">
+                      <span>
+                        <span className="font-bold text-brand-900">
+                          {used.toLocaleString("el-GR")}
+                        </span>
+                        {" / "}
+                        {cap!.toLocaleString("el-GR")} παραστατικά / έτος
                       </span>
-                      {" / "}
-                      {cap!.toLocaleString("el-GR")} παραστατικά
+                      {source === "wrapp" && (
+                        <span
+                          className="inline-flex items-center gap-1 rounded-md bg-brand-50 px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-brand-900"
+                          title={
+                            lastReconciledAt
+                              ? `Ενημερώθηκε ${lastReconciledAt.toLocaleString("el-GR")}`
+                              : "Πηγή: Wrapp"
+                          }
+                        >
+                          κατά Wrapp
+                        </span>
+                      )}
                     </span>
                     <span
                       className={

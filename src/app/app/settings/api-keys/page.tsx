@@ -1,3 +1,4 @@
+import { notFound } from "next/navigation";
 import { requireTenant } from "@/lib/tenant";
 import { assertCan } from "@/lib/rbac";
 import { prisma } from "@/lib/db";
@@ -12,6 +13,15 @@ import { env } from "@/lib/env";
 export const dynamic = "force-dynamic";
 
 export default async function ApiKeysPage() {
+  // Feature-gated pre-production: the public API, its docs, and its
+  // rate-limit story aren't ready to hand to tenants yet. Removed from
+  // the settings hub AND 404'd here so a bookmarked/typed URL can't
+  // reach it either. Re-enable by dropping the notFound() call when
+  // the public API surface ships.
+  notFound();
+
+  // Everything below stays intact so re-enabling the page is a
+  // one-line delete of the notFound() above — no re-plumbing.
   const ctx = await requireTenant();
   assertCan(ctx.role, "business:update");
 
