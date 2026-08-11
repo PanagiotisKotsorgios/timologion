@@ -662,13 +662,36 @@ export class WrappPartnerClient {
     return (await res.json()) as { login_url: string };
   }
 
+  /**
+   * Check whether a partner_user_id (our internal businessId) has an
+   * active Wrapp subscription. Per Constantinos:
+   *
+   *   POST /embedded_check_user
+   *   X-PARTNER-API-KEY: <partner key>
+   *   { "partner_user_id": "<partner id>" }
+   *
+   *   → { "user": "<email>", "active_subscription": true }
+   *
+   * Two gotchas the docs don't spell out:
+   *   • The endpoint locks on partner_user_id, NOT email. Passing the
+   *     wrong field returns `{"user":"Not found"}` — identical to what
+   *     an unknown user would get. Never interpret that as "no active
+   *     subscription" — the request itself is malformed.
+   *   • `active_subscription` is only present when the user was found;
+   *     "Not found" replies omit it. Caller must distinguish
+   *     found=true / found=false explicitly.
+   */
   async embeddedCheckUser(
-    email: string,
-  ): Promise<{ exists: boolean } & Record<string, unknown>> {
-    const res = await fetchWithTimeout(
-      `${this.base}/embedded_check_user?email=${encodeURIComponent(email)}`,
-      { method: "GET", headers: this.headers() },
-    );
+    partnerUserId: string,
+  ): Promise<
+    | { found: false }
+    | { found: true; user: string; activeSubscription: boolean }
+  > {
+    const res = await fetchWithTimeout(`${this.base}/embedded_check_user`, {
+      method: "POST",
+      headers: this.headers(),
+      body: JSON.stringify({ partner_user_id: partnerUserId }),
+    });
     if (!res.ok) {
       const text = await res.text();
       throw new WrappApiError(
@@ -679,7 +702,26 @@ export class WrappPartnerClient {
         },
       );
     }
-    return (await res.json()) as { exists: boolean } & Record<string, unknown>;
+    const body = (await res.json()) as {
+      user?: string;
+      active_subscription?: boolean;
+    };
+    // Wrapp signals "unknown partner_user_id" with { user: "Not found" }
+    // and NO active_subscription field. Any other shape without a
+    // boolean active_subscription we also treat as "not found" so we
+    // don't fabricate a subscription state.
+    if (
+      !body.user ||
+      body.user === "Not found" ||
+      typeof body.active_subscription !== "boolean"
+    ) {
+      return { found: false };
+    }
+    return {
+      found: true,
+      user: body.user,
+      activeSubscription: body.active_subscription,
+    };
   }
 }
 

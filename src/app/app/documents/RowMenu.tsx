@@ -156,7 +156,9 @@ export function DocumentRowMenu({
           <MenuLink href={`/app/documents/${id}`} icon={Eye}>
             Άνοιγμα
           </MenuLink>
-          <MenuLink href={`/app/documents/${id}/print`} icon={Printer}>
+          {/* Εκτύπωση now opens the provider's official PDF directly
+              (in a new tab) — Wrapp is the source of truth. */}
+          <MenuLink href={`/app/documents/${id}/pdf`} external icon={Printer}>
             Εκτύπωση
           </MenuLink>
           {isDraft && onIssue && (
