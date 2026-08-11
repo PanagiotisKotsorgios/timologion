@@ -7,7 +7,12 @@ const envSchema = z.object({
   SESSION_SECRET: z
     .string()
     .min(32, "SESSION_SECRET must be at least 32 characters"),
-  WRAPP_API_BASE_URL: z.string().url().default("https://staging.wrapp.ai/api/v1"),
+  // Wrapp base URL. Production default — staging is opt-in via env
+  // (WRAPP_API_BASE_URL=https://staging.wrapp.ai/api/v1) or via the
+  // AppSetting row edited from /admin/wrapp. Runtime resolution
+  // (src/lib/wrapp/settings.ts) is: DB row → env var → this default,
+  // so a fresh production deploy with no env override lands on prod.
+  WRAPP_API_BASE_URL: z.string().url().default("https://wrapp.ai/api/v1"),
   WRAPP_API_KEY: z.string().optional().default(""),
   // Partners API key (X-PARTNER-API-KEY header) — used for external_login and
   // embedded_check_user onboarding endpoints. Distinct from the tenant api_key.
@@ -93,7 +98,7 @@ export const env = parsed.success
       SESSION_SECRET:
         process.env.SESSION_SECRET ?? "dev-insecure-secret-please-override-32b",
       WRAPP_API_BASE_URL:
-        process.env.WRAPP_API_BASE_URL ?? "https://staging.wrapp.ai/api/v1",
+        process.env.WRAPP_API_BASE_URL ?? "https://wrapp.ai/api/v1",
       WRAPP_API_KEY: process.env.WRAPP_API_KEY ?? "",
       WRAPP_PARTNER_API_KEY: process.env.WRAPP_PARTNER_API_KEY ?? "",
       WRAPP_STAGING_TENANT_API_KEY: process.env.WRAPP_STAGING_TENANT_API_KEY ?? "",

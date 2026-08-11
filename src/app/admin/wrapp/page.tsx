@@ -3,9 +3,13 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Alert } from "@/components/ui/Alert";
-import { getWrappSettingsForForm } from "@/lib/wrapp/settings";
+import {
+  getWrappSettingsForForm,
+  classifyBaseUrl,
+} from "@/lib/wrapp/settings";
 import { env } from "@/lib/env";
 import { WrappSettingsForm } from "./WrappSettingsForm";
+import { EnvironmentSwitcher } from "./EnvironmentSwitcher";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +19,16 @@ export default async function AdminWrappPage() {
 
   const partnerConfigured = cfg.partnerApiKeySet || cfg.fallbackFromEnv.partnerApiKey;
 
+  // Cross-check the effective Wrapp environment against Node's own env.
+  // production+staging or the reverse are the two situations we want to
+  // shout about — the former ships fake MARKs to a real tenant, the
+  // latter mints a real Wrapp charge from a dev instance.
+  const wrappEnv = classifyBaseUrl(cfg.baseUrl);
+  const nodeEnv = env.NODE_ENV;
+  const envMismatch =
+    (nodeEnv === "production" && wrappEnv === "staging") ||
+    (nodeEnv !== "production" && wrappEnv === "production");
+
   return (
     <>
       <PageHeader
@@ -22,12 +36,26 @@ export default async function AdminWrappPage() {
         subtitle="Κεντρικές ρυθμίσεις για την ενσωμάτωση με τον πάροχο ηλεκτρονικής τιμολόγησης Wrapp."
       />
 
+      {envMismatch && (
+        <Alert tone="danger" title="Ασυμφωνία περιβάλλοντος">
+          Το NODE_ENV είναι <strong>{nodeEnv}</strong> αλλά το ενεργό Wrapp URL
+          είναι <strong>{wrappEnv === "production" ? "παραγωγικό" : "staging"}</strong>.
+          {nodeEnv === "production"
+            ? " Ένας πραγματικός τενάντας μπορεί να λάβει staging MARK — άλλαξε άμεσα σε production παρακάτω."
+            : " Μη-παραγωγικά περιβάλλοντα δεν πρέπει να χρεώνουν πραγματική έκδοση — γύρισε πίσω σε staging."}
+        </Alert>
+      )}
+
       <Alert tone="info" title="Πώς λειτουργεί">
         Τα ευαίσθητα κλειδιά αποθηκεύονται κρυπτογραφημένα (AES-256-GCM) στη βάση
         δεδομένων. Οι αλλαγές ενεργοποιούνται άμεσα, χωρίς restart. Αν κάτι
         αφεθεί κενό εδώ, χρησιμοποιείται η αντίστοιχη μεταβλητή περιβάλλοντος
         ως fallback.
       </Alert>
+
+      <div className="mt-6">
+        <EnvironmentSwitcher current={wrappEnv} baseUrl={cfg.baseUrl} />
+      </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">
@@ -78,8 +106,20 @@ export default async function AdminWrappPage() {
             <CardBody className="space-y-2 text-sm">
               <Row
                 label="Base URL"
-                value={cfg.baseUrl.includes("staging") ? "Staging" : "Production"}
-                tone={cfg.baseUrl.includes("staging") ? "warning" : "success"}
+                value={
+                  wrappEnv === "production"
+                    ? "Production"
+                    : wrappEnv === "staging"
+                      ? "Staging"
+                      : "Custom"
+                }
+                tone={
+                  wrappEnv === "production"
+                    ? "success"
+                    : wrappEnv === "staging"
+                      ? "warning"
+                      : "muted"
+                }
               />
               <Row
                 label="Partner API key"

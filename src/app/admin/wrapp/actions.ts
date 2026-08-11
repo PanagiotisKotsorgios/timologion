@@ -3,7 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/admin";
-import { saveWrappSettings } from "@/lib/wrapp/settings";
+import {
+  saveWrappSettings,
+  WRAPP_PRODUCTION_BASE_URL,
+  WRAPP_STAGING_BASE_URL,
+} from "@/lib/wrapp/settings";
 import { logAudit } from "@/lib/audit";
 import { formatZodError } from "@/lib/zod-el";
 
@@ -88,4 +92,36 @@ export async function clearStagingTenantKeyAction() {
 }
 export async function clearWebhookSecretAction() {
   await clearField("webhook");
+}
+
+/**
+ * One-click "switch env" actions. They only touch the base URL AppSetting
+ * row — the partner API key STAYS put, because staging and production use
+ * different keys and there's no safe way to swap them without human
+ * confirmation. After switching to production, the admin still needs to
+ * paste the production partner key into the form and hit save.
+ *
+ * Audit-logged with the previous URL in `from` so we can trace the exact
+ * moment a tenant crossed over in the incident timeline.
+ */
+async function switchEnvironment(target: "production" | "staging") {
+  const ctx = await requireAdmin("super_admin");
+  const url =
+    target === "production" ? WRAPP_PRODUCTION_BASE_URL : WRAPP_STAGING_BASE_URL;
+  await saveWrappSettings({ baseUrl: url });
+  await logAudit({
+    userId: ctx.userId,
+    action: `admin.wrapp.switch.${target}`,
+    meta: { baseUrl: url },
+  });
+  revalidatePath("/admin/wrapp");
+  revalidatePath("/admin");
+}
+
+export async function switchToProductionAction() {
+  await switchEnvironment("production");
+}
+
+export async function switchToStagingAction() {
+  await switchEnvironment("staging");
 }
