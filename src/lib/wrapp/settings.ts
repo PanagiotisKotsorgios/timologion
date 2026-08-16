@@ -21,6 +21,11 @@ import { logger } from "@/lib/logger";
 const KEYS = {
   baseUrl: "wrapp_api_base_url",
   partnerKey: "wrapp_partner_api_key_enc",
+  // Dedicated partner key for the staging environment. Constantinos
+  // sends distinct keys per env, so runtime-mode=staging needs its own
+  // slot — reusing the production key against the staging URL returns
+  // 401 (learned that the hard way during cutover, see 152cc6c commit).
+  stagingPartnerKey: "wrapp_staging_partner_api_key_enc",
   stagingTenantKey: "wrapp_staging_tenant_api_key_enc",
   stagingTenantEmail: "wrapp_staging_tenant_email",
   webhookSecret: "wrapp_webhook_secret_enc",
@@ -129,21 +134,67 @@ function warnOnEnvMismatchOnce(effectiveBaseUrl: string): void {
   }
 }
 
-export async function getWrappSettings(): Promise<WrappSettings> {
-  const [dbBase, dbPartner, dbStagingKey, dbStagingEmail, dbHook] = await Promise.all([
+/**
+ * Resolve effective Wrapp settings for a given runtime mode.
+ *
+ * `mode="production"` (default) — returns the admin-configured
+ *   base URL + production partner key (DB row → env → default).
+ * `mode="staging"` — force the staging endpoint regardless of what's
+ *   in the DB, paired with the dedicated `stagingPartnerKey` slot.
+ *   Falls back to the same env vars used elsewhere when no DB row is
+ *   set, then to the shared `WRAPP_PARTNER_API_KEY` as a last resort
+ *   so a first-boot install with only one key still works.
+ *
+ * The mode is decided by the caller (see getRuntimeMode()) — this
+ * function doesn't peek at cookies/headers itself so it stays pure
+ * and testable.
+ */
+export async function getWrappSettings(
+  mode: "production" | "staging" = "production",
+): Promise<WrappSettings> {
+  const [
+    dbBase,
+    dbPartner,
+    dbStagingPartner,
+    dbStagingKey,
+    dbStagingEmail,
+    dbHook,
+  ] = await Promise.all([
     readRaw(KEYS.baseUrl),
     readEncrypted(KEYS.partnerKey),
+    readEncrypted(KEYS.stagingPartnerKey),
     readEncrypted(KEYS.stagingTenantKey),
     readRaw(KEYS.stagingTenantEmail),
     readEncrypted(KEYS.webhookSecret),
   ]);
 
-  const baseUrl = normalizeBaseUrl(dbBase?.trim() || env.WRAPP_API_BASE_URL);
-  warnOnEnvMismatchOnce(baseUrl);
+  // Staging mode locks the base URL to the canonical staging host —
+  // we never want a staging session leaking to prod, so DB rows don't
+  // get to override this.
+  const baseUrl =
+    mode === "staging"
+      ? WRAPP_STAGING_BASE_URL
+      : normalizeBaseUrl(dbBase?.trim() || env.WRAPP_API_BASE_URL);
+
+  // Only warn about env↔URL mismatch in production mode. Staging is
+  // an explicit opt-in so the operator already knows.
+  if (mode === "production") warnOnEnvMismatchOnce(baseUrl);
+
+  // Partner key selection:
+  //  - production: production DB row → env
+  //  - staging: staging DB row → shared env → production DB row (last
+  //    resort so an install that only has one key still boots)
+  const partnerApiKey =
+    mode === "staging"
+      ? dbStagingPartner?.trim() ||
+        env.WRAPP_PARTNER_API_KEY ||
+        dbPartner?.trim() ||
+        ""
+      : dbPartner?.trim() || env.WRAPP_PARTNER_API_KEY;
 
   return {
     baseUrl,
-    partnerApiKey: dbPartner?.trim() || env.WRAPP_PARTNER_API_KEY,
+    partnerApiKey,
     stagingTenantApiKey:
       dbStagingKey?.trim() || env.WRAPP_STAGING_TENANT_API_KEY,
     stagingTenantEmail:
@@ -160,18 +211,28 @@ export async function getWrappSettings(): Promise<WrappSettings> {
 export async function getWrappSettingsForForm(): Promise<{
   baseUrl: string;
   partnerApiKeySet: boolean;
+  stagingPartnerApiKeySet: boolean;
   stagingTenantApiKeySet: boolean;
   stagingTenantEmail: string;
   webhookSecretSet: boolean;
   fallbackFromEnv: {
     partnerApiKey: boolean;
+    stagingPartnerApiKey: boolean;
     stagingTenantApiKey: boolean;
     webhookSecret: boolean;
   };
 }> {
-  const [dbBase, dbPartner, dbStagingKey, dbStagingEmail, dbHook] = await Promise.all([
+  const [
+    dbBase,
+    dbPartner,
+    dbStagingPartner,
+    dbStagingKey,
+    dbStagingEmail,
+    dbHook,
+  ] = await Promise.all([
     readRaw(KEYS.baseUrl),
     readEncrypted(KEYS.partnerKey),
+    readEncrypted(KEYS.stagingPartnerKey),
     readEncrypted(KEYS.stagingTenantKey),
     readRaw(KEYS.stagingTenantEmail),
     readEncrypted(KEYS.webhookSecret),
@@ -180,12 +241,16 @@ export async function getWrappSettingsForForm(): Promise<{
   return {
     baseUrl: dbBase?.trim() || env.WRAPP_API_BASE_URL,
     partnerApiKeySet: Boolean(dbPartner?.trim()),
+    stagingPartnerApiKeySet: Boolean(dbStagingPartner?.trim()),
     stagingTenantApiKeySet: Boolean(dbStagingKey?.trim()),
     stagingTenantEmail:
       dbStagingEmail?.trim() || env.WRAPP_STAGING_TENANT_EMAIL,
     webhookSecretSet: Boolean(dbHook?.trim()),
     fallbackFromEnv: {
       partnerApiKey: !dbPartner?.trim() && Boolean(env.WRAPP_PARTNER_API_KEY),
+      // No env slot for the staging partner key — staging always
+      // uses either its own DB row or the shared partner key.
+      stagingPartnerApiKey: false,
       stagingTenantApiKey:
         !dbStagingKey?.trim() && Boolean(env.WRAPP_STAGING_TENANT_API_KEY),
       webhookSecret: !dbHook?.trim() && Boolean(env.WRAPP_WEBHOOK_SECRET),
@@ -196,11 +261,13 @@ export async function getWrappSettingsForForm(): Promise<{
 export type SaveInput = {
   baseUrl?: string;
   partnerApiKey?: string; // empty string = leave unchanged
+  stagingPartnerApiKey?: string;
   stagingTenantApiKey?: string;
   stagingTenantEmail?: string;
   webhookSecret?: string;
   // Explicit clear flags — set to true to wipe the corresponding secret.
   clearPartnerApiKey?: boolean;
+  clearStagingPartnerApiKey?: boolean;
   clearStagingTenantApiKey?: boolean;
   clearWebhookSecret?: boolean;
 };
@@ -208,6 +275,15 @@ export type SaveInput = {
 export async function saveWrappSettings(input: SaveInput): Promise<void> {
   if (input.baseUrl !== undefined && input.baseUrl.trim().length > 0) {
     await writePlain(KEYS.baseUrl, input.baseUrl.trim());
+  }
+
+  if (input.clearStagingPartnerApiKey) {
+    await writeEncrypted(KEYS.stagingPartnerKey, "");
+  } else if (
+    input.stagingPartnerApiKey &&
+    input.stagingPartnerApiKey.trim().length > 0
+  ) {
+    await writeEncrypted(KEYS.stagingPartnerKey, input.stagingPartnerApiKey.trim());
   }
 
   if (input.clearPartnerApiKey) {

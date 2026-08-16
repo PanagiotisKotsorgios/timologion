@@ -16,6 +16,7 @@ const schema = z.object({
     .string()
     .url("Το URL πρέπει να είναι έγκυρο, π.χ. https://staging.wrapp.ai/api/v1"),
   partnerApiKey: z.string().optional().or(z.literal("")),
+  stagingPartnerApiKey: z.string().optional().or(z.literal("")),
   stagingTenantApiKey: z.string().optional().or(z.literal("")),
   stagingTenantEmail: z
     .string()
@@ -38,6 +39,9 @@ export async function saveWrappSettingsAction(
   const parsed = schema.safeParse({
     baseUrl: String(formData.get("baseUrl") ?? "").trim(),
     partnerApiKey: String(formData.get("partnerApiKey") ?? "").trim(),
+    stagingPartnerApiKey: String(
+      formData.get("stagingPartnerApiKey") ?? "",
+    ).trim(),
     stagingTenantApiKey: String(
       formData.get("stagingTenantApiKey") ?? "",
     ).trim(),
@@ -49,6 +53,7 @@ export async function saveWrappSettingsAction(
   await saveWrappSettings({
     baseUrl: parsed.data.baseUrl,
     partnerApiKey: parsed.data.partnerApiKey || undefined,
+    stagingPartnerApiKey: parsed.data.stagingPartnerApiKey || undefined,
     stagingTenantApiKey: parsed.data.stagingTenantApiKey || undefined,
     stagingTenantEmail: parsed.data.stagingTenantEmail,
     webhookSecret: parsed.data.webhookSecret || undefined,
@@ -60,6 +65,7 @@ export async function saveWrappSettingsAction(
     meta: {
       baseUrl: parsed.data.baseUrl,
       updatedPartner: Boolean(parsed.data.partnerApiKey),
+      updatedStagingPartner: Boolean(parsed.data.stagingPartnerApiKey),
       updatedStagingKey: Boolean(parsed.data.stagingTenantApiKey),
       updatedWebhookSecret: Boolean(parsed.data.webhookSecret),
     },
@@ -69,11 +75,14 @@ export async function saveWrappSettingsAction(
   return { success: "Οι ρυθμίσεις Wrapp αποθηκεύτηκαν." };
 }
 
-async function clearField(field: "partner" | "staging" | "webhook") {
+async function clearField(
+  field: "partner" | "staging_partner" | "staging" | "webhook",
+) {
   const ctx = await requireAdmin("super_admin");
   await saveWrappSettings({
     baseUrl: "",
     clearPartnerApiKey: field === "partner",
+    clearStagingPartnerApiKey: field === "staging_partner",
     clearStagingTenantApiKey: field === "staging",
     clearWebhookSecret: field === "webhook",
   });
@@ -86,6 +95,9 @@ async function clearField(field: "partner" | "staging" | "webhook") {
 
 export async function clearPartnerKeyAction() {
   await clearField("partner");
+}
+export async function clearStagingPartnerKeyAction() {
+  await clearField("staging_partner");
 }
 export async function clearStagingTenantKeyAction() {
   await clearField("staging");

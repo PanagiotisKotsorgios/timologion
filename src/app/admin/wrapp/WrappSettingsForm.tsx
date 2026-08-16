@@ -9,6 +9,7 @@ import { Alert } from "@/components/ui/Alert";
 import {
   saveWrappSettingsAction,
   clearPartnerKeyAction,
+  clearStagingPartnerKeyAction,
   clearStagingTenantKeyAction,
   clearWebhookSecretAction,
   type WrappSettingsState,
@@ -17,6 +18,7 @@ import {
 export function WrappSettingsForm({
   baseUrl,
   partnerApiKeySet,
+  stagingPartnerApiKeySet,
   stagingTenantApiKeySet,
   stagingTenantEmail,
   webhookSecretSet,
@@ -26,6 +28,7 @@ export function WrappSettingsForm({
 }: {
   baseUrl: string;
   partnerApiKeySet: boolean;
+  stagingPartnerApiKeySet: boolean;
   stagingTenantApiKeySet: boolean;
   stagingTenantEmail: string;
   webhookSecretSet: boolean;
@@ -62,13 +65,28 @@ export function WrappSettingsForm({
 
       <SecretField
         id="partnerApiKey"
-        label="Partner API key (X-PARTNER-API-KEY)"
-        hint="Χρησιμοποιείται για external_login / embedded_check_user. Δόθηκε από τη Wrapp."
+        label="Partner API key (production)"
+        hint="Το X-PARTNER-API-KEY για το παραγωγικό περιβάλλον. Στέλνεται σε κάθε external_login / embedded_check_user όταν NODE_ENV=production και το runtime mode είναι production."
         set={partnerApiKeySet}
         fromEnv={partnerFromEnv}
         onClear={() =>
           startClear(async () => {
             await clearPartnerKeyAction();
+            router.refresh();
+          })
+        }
+        clearBusy={clearing}
+      />
+
+      <SecretField
+        id="stagingPartnerApiKey"
+        label="Partner API key (staging)"
+        hint="Το X-PARTNER-API-KEY για το staging περιβάλλον. Χρησιμοποιείται όταν ο χρήστης μπει στη λειτουργία δοκιμών μέσω /staging. Ξεχωριστό κλειδί ανά περιβάλλον — μη χρησιμοποιήσεις το production κλειδί εδώ (θα σου γυρίσει 401)."
+        set={stagingPartnerApiKeySet}
+        fromEnv={false}
+        onClear={() =>
+          startClear(async () => {
+            await clearStagingPartnerKeyAction();
             router.refresh();
           })
         }

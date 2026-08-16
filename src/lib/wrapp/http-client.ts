@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { encryptSecret, decryptSecret } from "@/lib/crypto";
 import { logger } from "@/lib/logger";
 import { getWrappSettings } from "./settings";
+import { getRuntimeMode } from "@/lib/runtime-mode";
 import {
   wrappLoginResponse,
   wrappTenantDetails,
@@ -86,8 +87,9 @@ async function resolveTenantCreds(businessId: string): Promise<TenantCreds | nul
   // Staging fallback: if the Business hasn't onboarded to Wrapp yet, allow
   // testing against the shared staging tenant so the full flow works
   // end-to-end without going through external_login. Values come from
-  // AppSetting first (admin UI), then env vars.
-  const settings = await getWrappSettings();
+  // AppSetting first (admin UI), then env vars. Always uses staging
+  // creds since that's what this fallback is for.
+  const settings = await getWrappSettings("staging");
   if (settings.stagingTenantApiKey && settings.stagingTenantEmail) {
     return {
       apiKey: settings.stagingTenantApiKey,
@@ -99,9 +101,12 @@ async function resolveTenantCreds(businessId: string): Promise<TenantCreds | nul
 
 export class HttpWrappClient {
   // Base URL is resolved per-request from AppSetting so admin edits take
-  // effect immediately without restarting the process.
+  // effect immediately without restarting the process. Per-request also
+  // means we can flip between production and staging endpoints based on
+  // the current user's runtime mode (cookie-driven, see runtime-mode.ts).
   private async resolveBase(): Promise<string> {
-    const settings = await getWrappSettings();
+    const mode = await getRuntimeMode();
+    const settings = await getWrappSettings(mode);
     return settings.baseUrl.replace(/\/$/, "");
   }
 
@@ -735,17 +740,21 @@ export function getWrappClient(): HttpWrappClient {
 }
 
 /**
- * Get a partner client from the current AppSetting-backed configuration.
- * Returns null when no partner API key is configured (in AppSetting or env).
+ * Get a partner client from the current AppSetting-backed configuration,
+ * respecting the request's runtime mode (cookie-driven — production or
+ * staging). Returns null when no partner API key is configured for the
+ * resolved mode.
  */
 export async function getWrappPartnerClient(): Promise<WrappPartnerClient | null> {
-  const settings = await getWrappSettings();
+  const mode = await getRuntimeMode();
+  const settings = await getWrappSettings(mode);
   if (!settings.partnerApiKey) return null;
   return new WrappPartnerClient(settings.baseUrl, settings.partnerApiKey);
 }
 
 /** Whether the current process has partner credentials at all. */
 export async function hasPartnerCredentials(): Promise<boolean> {
-  const settings = await getWrappSettings();
+  const mode = await getRuntimeMode();
+  const settings = await getWrappSettings(mode);
   return Boolean(settings.partnerApiKey);
 }

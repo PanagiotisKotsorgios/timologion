@@ -73,6 +73,7 @@ export default async function AdminWrappPage() {
             <WrappSettingsForm
               baseUrl={cfg.baseUrl}
               partnerApiKeySet={cfg.partnerApiKeySet}
+              stagingPartnerApiKeySet={cfg.stagingPartnerApiKeySet}
               stagingTenantApiKeySet={cfg.stagingTenantApiKeySet}
               stagingTenantEmail={cfg.stagingTenantEmail}
               webhookSecretSet={cfg.webhookSecretSet}
@@ -84,6 +85,37 @@ export default async function AdminWrappPage() {
         </Card>
 
         <div className="space-y-4">
+          <Card>
+            <CardHeader title="Λειτουργία δοκιμών (staging)" />
+            <CardBody className="space-y-3 text-sm">
+              <p className="text-ink-700">
+                Πάτα το κουμπί για να μπεις σε staging mode: όλες οι κλήσεις
+                στη Wrapp από τον <strong>δικό σου browser</strong> θα φτάνουν
+                στο{" "}
+                <code className="mono text-xs">staging.wrapp.ai</code>. Οι
+                άλλοι χρήστες δεν επηρεάζονται.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <a
+                  href="/staging"
+                  className="inline-flex h-10 items-center gap-2 rounded-lg border-2 border-amber-600 bg-amber-500 px-3 text-sm font-bold text-white hover:bg-amber-600"
+                >
+                  Μπες σε staging →
+                </a>
+                <a
+                  href="/staging/exit"
+                  className="inline-flex h-10 items-center gap-2 rounded-lg border-2 border-ink-300 bg-white px-3 text-xs font-bold text-ink-800 hover:bg-ink-50"
+                >
+                  Έξοδος
+                </a>
+              </div>
+              <p className="text-xs text-ink-500">
+                Ρύθμισε ξεχωριστό «Partner API key (staging)» στα δεξιά αν
+                δεν το έχεις ήδη — αλλιώς οι κλήσεις staging θα σκάσουν με 401.
+              </p>
+            </CardBody>
+          </Card>
+
           <Card>
             <CardHeader title="Endpoint webhook" />
             <CardBody className="space-y-3 text-sm">

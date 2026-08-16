@@ -8,6 +8,7 @@ import { Sidebar, type SidebarPlugin } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
 import { getPluginRuntime } from "@/lib/plugins";
 import { ImpersonationBanner } from "@/components/layout/ImpersonationBanner";
+import { StagingBanner } from "@/components/StagingBanner";
 import { ToastProvider } from "@/components/ui/Toast";
 import { ActivationGate } from "./ActivationGate";
 
@@ -94,6 +95,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <ToastProvider>
+      <StagingBanner />
       <div className="flex min-h-screen bg-ink-100">
         <Sidebar plugins={sidebarPlugins} />
         <div className="flex min-w-0 flex-1 flex-col">
