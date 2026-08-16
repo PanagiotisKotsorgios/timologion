@@ -237,6 +237,73 @@ async function seedAdmin(): Promise<void> {
   console.log("");
 }
 
+/**
+ * When NODE_ENV=production, wipe any AppSetting row that pins the Wrapp
+ * base URL to staging — that row wins over the env default and would
+ * otherwise silently keep a production deploy pointed at
+ * `https://staging.wrapp.ai/api/v1`, where the production partner API
+ * key returns 401 (Constantinos: different key per env).
+ *
+ * Wiping (not overwriting) means the runtime resolver falls through to
+ * `env.WRAPP_API_BASE_URL`, which defaults to production. The admin
+ * can still opt back into staging from /admin/wrapp — the switcher writes
+ * a fresh AppSetting row and wins over the env again from then on.
+ *
+ * No-op outside production so dev / preview environments keep whatever
+ * base URL an admin explicitly configured.
+ */
+async function clearStaleStagingWrappUrl(): Promise<void> {
+  if (process.env.NODE_ENV !== "production") {
+    console.log(
+      JSON.stringify({
+        level: "info",
+        msg: "first-boot.wrapp_url.skip",
+        reason: "not production",
+      }),
+    );
+    return;
+  }
+  const row = await prisma.appSetting
+    .findUnique({ where: { key: "wrapp_api_base_url" } })
+    .catch(() => null);
+  if (!row) {
+    console.log(
+      JSON.stringify({
+        level: "info",
+        msg: "first-boot.wrapp_url.absent",
+      }),
+    );
+    return;
+  }
+  let isStaging = false;
+  try {
+    isStaging = new URL(row.value).hostname.toLowerCase() === "staging.wrapp.ai";
+  } catch {
+    // Malformed URL in the row — treat as stale so it gets cleared and
+    // the env default takes over rather than crashing every request.
+    isStaging = true;
+  }
+  if (!isStaging) {
+    console.log(
+      JSON.stringify({
+        level: "info",
+        msg: "first-boot.wrapp_url.ok",
+        baseUrl: row.value,
+      }),
+    );
+    return;
+  }
+  await prisma.appSetting.delete({ where: { key: "wrapp_api_base_url" } });
+  console.log(
+    JSON.stringify({
+      level: "warn",
+      msg: "first-boot.wrapp_url.cleared_staging_in_prod",
+      previousBaseUrl: row.value,
+      note: "AppSetting row wiped; runtime now falls through to env WRAPP_API_BASE_URL.",
+    }),
+  );
+}
+
 async function main() {
   console.log(
     JSON.stringify({ level: "info", msg: "first-boot.start" }),
@@ -245,6 +312,7 @@ async function main() {
   try {
     await seedPlans();
     await seedAdmin();
+    await clearStaleStagingWrappUrl();
     console.log(
       JSON.stringify({ level: "info", msg: "first-boot.done" }),
     );

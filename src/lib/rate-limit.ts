@@ -94,12 +94,20 @@ export function clientIp(req: Request | Headers): string {
   if (!(req instanceof Headers)) {
     for (const [k, v] of req.headers.entries()) h.set(k, v);
   }
-  return (
-    h.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    h.get("x-real-ip") ??
+  // Cloudflare and most reverse proxies set at least one of these. If
+  // NONE of them are set (rare — misconfigured proxy in front of the
+  // app), we bail with a random per-request token instead of the
+  // literal string "unknown". Sharing an "unknown" bucket across every
+  // client behind a mis-configured proxy would rate-limit legit users
+  // ("Πάρα πολλές προσπάθειες") the moment the third person tries the
+  // same page — the actual bug the user reported after cutover.
+  const found =
     h.get("cf-connecting-ip") ??
-    "unknown"
-  );
+    h.get("x-real-ip") ??
+    h.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    null;
+  if (found && found.length > 0) return found;
+  return `unknown-${Math.random().toString(36).slice(2, 10)}`;
 }
 
 // Pre-baked limits so callers don't reinvent numbers. Bucket sizes are picked
