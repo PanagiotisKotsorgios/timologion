@@ -11,7 +11,7 @@ const SESSION_TTL_MS_REMEMBER = 1000 * 60 * 60 * 24 * 30; // 30 days rolling
 const SESSION_TTL_MS_SHORT = 1000 * 60 * 60 * 12; // 12h
 const REFRESH_THRESHOLD_MS = 1000 * 60 * 60 * 24; // rotate if <1d remaining
 
-function hashToken(token: string): string {
+export function hashToken(token: string): string {
   return createHmac("sha256", env.SESSION_SECRET).update(token).digest("hex");
 }
 

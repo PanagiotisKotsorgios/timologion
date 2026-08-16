@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { CheckCircle2, AlertCircle } from "lucide-react";
 import { pageMetadata } from "@/lib/seo";
+import { getSession } from "@/lib/auth/session";
 import { LoginForm } from "./LoginForm";
 import { SocialLoginButtons } from "@/components/auth/SocialLoginButtons";
 
@@ -32,10 +34,28 @@ const OAUTH_ERRORS: Record<string, string> = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ reset?: string; banned?: string; error?: string }>;
+  searchParams: Promise<{
+    reset?: string;
+    banned?: string;
+    error?: string;
+    reason?: string;
+  }>;
 }) {
-  const { reset, banned, error } = await searchParams;
+  const { reset, banned, error, reason } = await searchParams;
   const oauthError = error ? OAUTH_ERRORS[error] ?? null : null;
+
+  // Only redirect logged-in users to /app when their session is
+  // ACTUALLY valid — checking against the DB, not just the cookie.
+  // Middleware used to redirect based on cookie presence alone, which
+  // caused an infinite loop when the cookie outlived the DB row
+  // (see ERR_TOO_MANY_REDIRECTS bug). Now we verify here.
+  const session = await getSession();
+  if (session) redirect("/app");
+
+  // Friendly hint when the user landed here via /api/logout after a
+  // stale session was cleaned up.
+  const staleSession = reason === "expired";
+  const bannedMidSession = reason === "banned";
 
   return (
     <>
@@ -55,9 +75,15 @@ export default async function LoginPage({
         </div>
       )}
 
-      {banned === "1" && (
+      {(banned === "1" || bannedMidSession) && (
         <div className="mt-6 rounded-2xl border-2 border-red-500/30 bg-red-50 p-4 text-sm font-medium text-red-700">
           Ο λογαριασμός σου έχει ανασταλεί. Επικοινώνησε με την υποστήριξη.
+        </div>
+      )}
+
+      {staleSession && (
+        <div className="mt-6 rounded-2xl border-2 border-amber-500/30 bg-amber-50 p-4 text-sm font-medium text-amber-800">
+          Η συνεδρία σου έληξε. Συνδέσου ξανά για να συνεχίσεις.
         </div>
       )}
 

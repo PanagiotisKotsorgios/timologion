@@ -1,29 +1,40 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE } from "@/lib/auth/constants";
 
-// Cookie / header names duplicated from src/lib/runtime-mode.ts because
-// middleware can't import server-only modules (that file uses next/headers
-// and is marked "server-only"). Kept in sync by convention.
+// Cookie name duplicated from src/lib/runtime-mode.ts because middleware
+// can't import server-only modules. Kept in sync by convention.
 const RUNTIME_MODE_COOKIE = "timologion-mode";
-const RUNTIME_MODE_HEADER = "x-timologion-mode";
 // 7 days — long enough that a QA session doesn't get flipped mid-way,
 // short enough that a shared browser doesn't stay in staging forever.
 const RUNTIME_MODE_COOKIE_TTL = 7 * 24 * 60 * 60;
 
 /**
- * Middleware does three jobs:
+ * Middleware does two jobs:
  *
- *   1. /staging       → set the runtime-mode cookie to "staging" and
- *                       redirect to /app so subsequent Wrapp calls hit
- *                       https://staging.wrapp.ai/api/v1.
- *      /staging/exit  → clear the cookie and redirect to /app.
+ *   1. /staging       → set the runtime-mode cookie to "staging" so
+ *                       subsequent Wrapp calls hit staging.wrapp.ai.
+ *      /staging/exit  → clear the cookie, redirect to /app.
+ *      /staging/<x>   → set the cookie, redirect to /<x>.
  *
- *   2. Propagate the runtime-mode cookie into a per-request header
- *      so server components can read it via `getRuntimeMode()` without
- *      re-parsing the cookie on every render.
+ *   2. Bounce clearly-unauthenticated users out of /app + /admin.
  *
- *   3. Bounce clearly-unauthenticated users out of /app + /admin
- *      (existing behaviour).
+ * Deliberately does NOT redirect authenticated users away from /login
+ * or /register. That branch existed but caused an infinite redirect
+ * loop the moment a session cookie outlived its DB row:
+ *
+ *     /app → requireTenant sees null → redirect /login → middleware
+ *     sees cookie → redirect /app → … (ERR_TOO_MANY_REDIRECTS)
+ *
+ * The right layer for "logged-in users don't need /login" is the
+ * /login page itself, which can call getSession() and verify the row
+ * still exists before redirecting. Doing that check in middleware
+ * would require a DB hit on every request — not worth it.
+ *
+ * Also deliberately does NOT mutate request headers here. The previous
+ * approach set `x-timologion-mode` on the request to speed up
+ * getRuntimeMode() on the server, but the fallback path (reading the
+ * cookie directly) is fast enough and avoids the whole class of
+ * middleware-loop risks around `NextResponse.next({request: {…}})`.
  */
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -42,20 +53,10 @@ export function middleware(request: NextRequest) {
     return res;
   }
 
-  // Anything under /staging (including the bare /staging landing page
-  // itself, which is a real Next.js route) sets the cookie ONCE on
-  // first visit. The bare /staging landing page then explains what
-  // staging mode does; deep-links like /staging/app/documents/new
-  // strip the prefix and redirect so the normal /app UI kicks in with
-  // the cookie already set.
   if (pathname === "/staging" || pathname === "/staging/") {
-    // Let the /staging page render normally, but ensure the cookie is
-    // set so any Wrapp call on that page's server render already knows.
-    const res = NextResponse.next({
-      request: {
-        headers: appendModeHeader(request.headers, "staging"),
-      },
-    });
+    // Let the /staging page render normally; just set the cookie on
+    // the response so any Wrapp call on that page already knows.
+    const res = NextResponse.next();
     res.cookies.set(RUNTIME_MODE_COOKIE, "staging", {
       path: "/",
       maxAge: RUNTIME_MODE_COOKIE_TTL,
@@ -63,6 +64,7 @@ export function middleware(request: NextRequest) {
     });
     return res;
   }
+
   if (pathname.startsWith("/staging/")) {
     // Deep-link into the app while flipping to staging mode. Strip the
     // prefix so /staging/app/documents becomes /app/documents, and set
@@ -79,11 +81,8 @@ export function middleware(request: NextRequest) {
     return res;
   }
 
-  // ── Auth gate + mode header propagation for every other route ─────
+  // ── Auth gate for /app + /admin ───────────────────────────────────
   const hasCookie = request.cookies.has(SESSION_COOKIE);
-  const modeCookie = request.cookies.get(RUNTIME_MODE_COOKIE)?.value;
-  const mode = modeCookie === "staging" ? "staging" : "production";
-
   const isProtected =
     pathname.startsWith("/app") || pathname.startsWith("/admin");
 
@@ -94,26 +93,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if ((pathname === "/login" || pathname === "/register") && hasCookie) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/app";
-    return NextResponse.redirect(url);
-  }
-
-  return NextResponse.next({
-    request: {
-      headers: appendModeHeader(request.headers, mode),
-    },
-  });
-}
-
-function appendModeHeader(
-  incoming: Headers,
-  mode: "production" | "staging",
-): Headers {
-  const h = new Headers(incoming);
-  h.set(RUNTIME_MODE_HEADER, mode);
-  return h;
+  return NextResponse.next();
 }
 
 export const config = {

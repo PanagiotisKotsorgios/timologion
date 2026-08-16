@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import type { BusinessRole } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { getSession, destroySession } from "@/lib/auth/session";
+import { getSession } from "@/lib/auth/session";
 
 export type TenantContext = {
   userId: string;
@@ -18,16 +18,23 @@ export type TenantContext = {
  */
 export async function requireTenant(): Promise<TenantContext> {
   const session = await getSession();
-  if (!session) redirect("/login");
+  // When the session cookie exists but the DB row was purged (expired,
+  // manually revoked, or the row was already deleted by getSession),
+  // redirect through /api/logout instead of /login. The route handler
+  // clears the browser cookie — server components CAN'T mutate cookies
+  // in Next 15, so a plain `redirect("/login")` here would loop:
+  //     /app → requireTenant → /login → middleware sees cookie → /app → …
+  if (!session) redirect("/api/logout?reason=expired");
 
-  // Bounce if the user has been banned mid-session.
+  // Bounce if the user has been banned mid-session. Same reason as
+  // above — mutation of the session cookie has to happen in a route
+  // handler, so we redirect through /api/logout.
   const account = await prisma.user.findUnique({
     where: { id: session.userId },
     select: { suspendedAt: true },
   });
   if (account?.suspendedAt) {
-    await destroySession();
-    redirect("/login?banned=1");
+    redirect("/api/logout?reason=banned");
   }
 
   const memberships = await prisma.businessMember.findMany({

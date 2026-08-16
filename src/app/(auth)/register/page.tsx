@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { pageMetadata } from "@/lib/seo";
+import { getSession } from "@/lib/auth/session";
 import { RegisterForm } from "./RegisterForm";
 import { SocialLoginButtons } from "@/components/auth/SocialLoginButtons";
 
@@ -17,7 +19,13 @@ export const metadata: Metadata = pageMetadata({
   ],
 });
 
-export default function RegisterPage() {
+export default async function RegisterPage() {
+  // DB-verified check — same reason as /login/page.tsx: middleware
+  // used to bounce cookie-only "logged in" users, which looped when
+  // the cookie outlived its session row. Verify against the DB here.
+  const session = await getSession();
+  if (session) redirect("/app");
+
   return (
     <>
       <h1 className="text-4xl font-extrabold tracking-tightest text-brand-900 md:text-5xl">
