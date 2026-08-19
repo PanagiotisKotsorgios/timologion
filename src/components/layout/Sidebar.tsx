@@ -24,6 +24,7 @@ import {
   CalendarDays,
   Sparkles,
   LifeBuoy,
+  BookOpen,
   type LucideIcon,
 } from "lucide-react";
 import { t } from "@/lib/i18n";
@@ -77,6 +78,11 @@ const primary: NavItem[] = [
 
 const secondary: NavItem[] = [
   { href: "/app/settings/account", label: "Ο λογαριασμός μου", icon: UserCircle },
+  // Opens the public /guides in a new tab — same content the marketing
+  // site uses, no in-app duplicate to maintain. The `target=_blank`
+  // handling is done in the NavLink render (see the isExternal check
+  // below in this file).
+  { href: "/guides", label: "Οδηγοί & βοήθεια", icon: BookOpen },
   { href: "/app/support", label: "Υποστήριξη", icon: LifeBuoy },
   { href: "/app/settings", label: t.nav.settings, icon: Settings },
 ];
@@ -239,10 +245,16 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
   const Icon = item.icon;
   const showTrialBadge =
     typeof item.daysLeftInTrial === "number" && item.daysLeftInTrial > 0;
+  // Public/marketing routes (anything not under /app) open in a new tab
+  // so the app session isn't unloaded — used by the "Οδηγοί & βοήθεια"
+  // entry which points at /guides.
+  const isExternal = !item.href.startsWith("/app");
   return (
     <li>
       <Link
         href={item.href}
+        target={isExternal ? "_blank" : undefined}
+        rel={isExternal ? "noopener noreferrer" : undefined}
         className={clsx(
           "flex items-center gap-3 rounded-xl px-4 py-3 text-[16px] font-semibold transition-colors",
           active

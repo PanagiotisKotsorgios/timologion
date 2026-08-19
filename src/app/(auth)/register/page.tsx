@@ -49,6 +49,15 @@ export default async function RegisterPage() {
           Σύνδεση
         </Link>
       </p>
+      <p className="mt-3 text-sm text-black/50">
+        Πρώτη φορά εδώ;{" "}
+        <Link
+          href="/guides/start"
+          className="font-semibold text-brand-900 underline underline-offset-4 hover:opacity-70"
+        >
+          Οδηγός εγγραφής σε 5 λεπτά
+        </Link>
+      </p>
     </>
   );
 }

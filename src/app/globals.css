@@ -236,6 +236,32 @@ input[type="date"]::-moz-focus-inner {
   thead { display: table-header-group; }
   tfoot { display: table-footer-group; }
   @page { size: A4; margin: 14mm; }
+
+  /* Guides — the hero uses a dark brand background with white type, which
+     wastes ink and looks awful on paper. Force it to plain ink-on-white for
+     the printed version, keep the layout so the guide number + title + read
+     time still lead the page. */
+  .guide-article section {
+    background: #fff !important;
+    color: #0f1f39 !important;
+    padding: 0 0 12mm 0 !important;
+  }
+  .guide-article section :where(h1, h2, h3, p, span, a) {
+    color: #0f1f39 !important;
+  }
+  .guide-article section :where(.text-white\/60, .text-white\/70, .text-white\/75) {
+    color: #4a5568 !important;
+  }
+  .guide-article section :where(.text-emerald-300) {
+    color: #047857 !important;
+  }
+  /* The sticky TOC + prev/next + CTA are all `.no-print` in JSX,
+     so they're already hidden. Belt-and-suspenders below in case
+     future markup drifts. */
+  .guide-article .no-print { display: none !important; }
+  /* Avoid awkward heading orphans mid-page. */
+  .guide-article h2 { page-break-after: avoid; }
+  .guide-article section { page-break-inside: avoid; }
 }
 
 /* ─── Minimal utilities for marketing + auth surfaces ─────────────────── */

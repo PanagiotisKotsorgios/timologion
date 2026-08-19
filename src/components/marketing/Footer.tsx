@@ -23,11 +23,13 @@ const COLUMNS = [
   {
     heading: "Πόροι",
     links: [
-      { href: "/guides", label: "Όλες οι οδηγίες" },
-      { href: "/guides/start", label: "Ξεκίνησε σε 5 λεπτά" },
+      { href: "/guides", label: "Όλοι οι οδηγοί" },
+      { href: "/guides/start", label: "Εγγραφή σε 5 λεπτά" },
       { href: "/guides/activate", label: "Ενεργοποίηση παρόχου" },
-      { href: "/guides/first-client", label: "Πρώτος πελάτης" },
       { href: "/guides/first-invoice", label: "Πρώτο τιμολόγιο" },
+      { href: "/guides/credit-note", label: "Πιστωτικό παραστατικό" },
+      { href: "/guides/payments", label: "Εισπράξεις πελατών" },
+      { href: "/guides/pos", label: "Λιανική / POS" },
       { href: "/guides/mydata", label: "MARK, UID, QR" },
       { href: "/guides/errors", label: "Διαχείριση σφαλμάτων" },
     ],
