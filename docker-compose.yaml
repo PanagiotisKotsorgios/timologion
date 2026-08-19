@@ -146,7 +146,8 @@ services:
         0 7 * * *    curl -fsS       -H "Authorization: Bearer $$CRON_SECRET" $$APP_URL/api/cron/low-stock         && echo "[low-stock] ok"        || echo "[low-stock] FAILED"
         0 8 * * *    curl -fsS       -H "Authorization: Bearer $$CRON_SECRET" $$APP_URL/api/cron/reminders         && echo "[reminders] ok"        || echo "[reminders] FAILED"
         0 9 * * 1    curl -fsS       -H "Authorization: Bearer $$CRON_SECRET" $$APP_URL/api/cron/unpaid-digest     && echo "[unpaid-digest] ok"    || echo "[unpaid-digest] FAILED"
-        30 2 * * *   curl -fsS       -H "Authorization: Bearer $$CRON_SECRET" $$APP_URL/api/cron/wrapp-reconcile  && echo "[wrapp-reconcile] ok" || echo "[wrapp-reconcile] FAILED"
+        30 2 * * *   curl -fsS       -H "Authorization: Bearer $$CRON_SECRET" $$APP_URL/api/cron/wrapp-reconcile         && echo "[wrapp-reconcile] ok"        || echo "[wrapp-reconcile] FAILED"
+        45 3 * * *   curl -fsS       -H "Authorization: Bearer $$CRON_SECRET" $$APP_URL/api/cron/subscription-renewal  && echo "[subscription-renewal] ok" || echo "[subscription-renewal] FAILED"
         EOF
         chmod 600 /etc/crontabs/root
         echo "cron sidecar ready — schedule:"

@@ -27,6 +27,7 @@ import { sendEmail } from "@/lib/email/send";
 import { documentToClientTemplate } from "@/lib/email/templates";
 import { t } from "@/lib/i18n";
 import { todayInAthens } from "@/lib/date";
+import { isStagingMode } from "@/lib/runtime-mode";
 import type { DocumentType } from "@prisma/client";
 
 // Greek cash-payment threshold (Ν. 4172/2013 άρθρο 23 παρ. 4 + Ν.
@@ -338,6 +339,11 @@ export async function createDraftAction(
     }
   }
 
+  // Capture the runtime mode ONCE up front so every doc created in
+  // this action inherits the same flag — a mid-transaction cookie
+  // change won't cause half the row to be tagged staging.
+  const staging = await isStagingMode();
+
   const doc = await prisma.$transaction(async (tx) => {
     // If a billing book is chosen, prefer its series over any free-typed value.
     let series = parsed.data.series || null;
@@ -362,6 +368,7 @@ export async function createDraftAction(
         clientId: parsed.data.clientId || null,
         branchId: parsed.data.branchId || null,
         billingBookId,
+        stagingMode: staging,
         type: parsed.data.type,
         status: "draft",
         series,
@@ -634,6 +641,8 @@ export async function duplicateDocumentAction(
   });
   if (!src) return { ok: false, error: "Το παραστατικό δεν βρέθηκε." };
 
+  const staging = await isStagingMode();
+
   const copy = await prisma.$transaction(async (tx) => {
     const d = await tx.document.create({
       data: {
@@ -642,6 +651,7 @@ export async function duplicateDocumentAction(
         branchId: src.branchId,
         type: src.type,
         status: "draft",
+        stagingMode: staging,
         series: src.series,
         issueDate: new Date(),
         deliveryNoteRef: src.deliveryNoteRef,
@@ -783,6 +793,7 @@ export async function issueCreditNoteAction(
   const DESC_MAX = 255;
 
   const totals = { net: 0, vat: 0, tot: 0 };
+  const staging = await isStagingMode();
 
   try {
     const credit = await prisma.$transaction(async (tx) => {
@@ -792,6 +803,7 @@ export async function issueCreditNoteAction(
           clientId: src.clientId,
           branchId: src.branchId,
           type: creditType,
+          stagingMode: staging,
           status: "draft",
           // Athens-local today. `new Date()` here would use container
           // UTC time — the resulting timestamp still formats correctly

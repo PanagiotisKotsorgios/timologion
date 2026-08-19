@@ -69,6 +69,22 @@ export default async function DocumentDetailPage({
 
   return (
     <>
+      {doc.stagingMode && (
+        <div className="mb-5 flex flex-wrap items-start gap-3 rounded-2xl border-2 border-amber-400 bg-amber-50 p-4 text-sm text-amber-950">
+          <span className="rounded-md border-2 border-amber-500 bg-amber-200 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-amber-900">
+            Staging
+          </span>
+          <p className="flex-1 font-semibold leading-relaxed">
+            Παραστατικό δοκιμών — δημιουργήθηκε σε λειτουργία{" "}
+            <code className="mono rounded bg-amber-200/60 px-1 py-0.5 text-xs">
+              /staging
+            </code>{" "}
+            και οι κλήσεις προς Wrapp πήγαν στο staging περιβάλλον. Τα MARK/UID/QR{" "}
+            <strong>δεν είναι έγκυρα</strong> στο πραγματικό myDATA. Μην το
+            δώσεις σε πραγματικό πελάτη.
+          </p>
+        </div>
+      )}
       <PageHeader
         title={t.documents.types[doc.type]}
         subtitle={`${date(doc.issueDate)}${doc.series ? " · σειρά " + doc.series : ""}${doc.number ? " #" + doc.number : ""}`}

@@ -656,8 +656,18 @@ model WrappConnection {
   // /api/cron/wrapp-reconcile so we can show "You've issued X invoices
   // this year" from Wrapp's authoritative counter without an API call
   // on every dashboard render.
+  //
+  // `issuedCountBaseline` is the value of `issuedCountUpstream` at the
+  // moment the tenant's current subscription period started. Used by
+  // /api/cron/subscription-renewal to compute per-period usage as
+  // `issuedCountUpstream - issuedCountBaseline` — Wrapp's counter is
+  // cumulative across the tenant's lifetime, so we can't rely on it
+  // resetting when a period rolls over. Set to the current upstream
+  // count each time we detect a rollover; NULL means "no baseline yet"
+  // (fresh tenant) and the renewal cron treats used = upstream.
   issuedCountUpstream Int?
   issuedCountAt       DateTime?
+  issuedCountBaseline Int?
   createdAt          DateTime    @default(now())
   updatedAt          DateTime    @updatedAt
 
@@ -1313,6 +1323,14 @@ model Document {
   lastWrappPayload    String?        @db.Text
   lastWrappError      String?        @db.Text
   issuedAt            DateTime?
+
+  // True when the document was created while the user was in
+  // /staging runtime mode. Wrapp calls for this doc went to
+  // staging.wrapp.ai and the returned MARK/UID/QR are staging
+  // artifacts — never valid on real myDATA. UI shows an amber
+  // "STAGING" badge on list rows + a warning banner on the detail
+  // page so no-one mistakenly hands a staging doc to a customer.
+  stagingMode         Boolean        @default(false)
 
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt

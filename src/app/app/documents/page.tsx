@@ -284,7 +284,17 @@ export default async function DocumentsPage({
                         {money(d.totalAmount)}
                       </td>
                       <td>
-                        <StatusBadge status={d.status} />
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <StatusBadge status={d.status} />
+                          {d.stagingMode && (
+                            <span
+                              className="rounded-md border-2 border-amber-400 bg-amber-100 px-1.5 py-0.5 text-[10px] font-black uppercase tracking-widest text-amber-800"
+                              title="Παραστατικό δοκιμών — τα MARK/UID/QR δεν είναι έγκυρα στο πραγματικό myDATA."
+                            >
+                              Staging
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="text-right">
                         <RowActions
