@@ -321,6 +321,82 @@ export async function impersonateUserAction(formData: FormData) {
   redirect("/app");
 }
 
+/**
+ * One-click "Δοκιμή ως staging user".
+ *
+ * Ensures the seeded QA user (staging-qa@timologion.gr + its business)
+ * exists — creating it on first call, reusing on subsequent — then
+ * flips the admin's session to be that user AND sets the runtime-mode
+ * cookie to "staging". End result: admin lands on /app as a fresh
+ * user in staging mode, ready to walk through the whole flow
+ * (onboarding → Wrapp activation → issue test docs) without
+ * touching any real tenant data.
+ *
+ * Restore: the admin's original session is stashed in `etl_admin_return`
+ * (same mechanism as impersonation), so the standard "Επιστροφή στο
+ * admin" flow works to get back.
+ *
+ * Super-admin only.
+ */
+export async function enterAsStagingQaUserAction() {
+  const ctx = await requireAdmin("super_admin");
+
+  const { ensureStagingQaUser } = await import("@/lib/staging-qa-user");
+  const qa = await ensureStagingQaUser();
+
+  const token = randomBytes(32).toString("hex");
+  const tokenHash = createHmac("sha256", env.SESSION_SECRET)
+    .update(token)
+    .digest("hex");
+  const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 4);
+
+  await prisma.session.create({
+    data: {
+      userId: qa.userId,
+      tokenHash,
+      expiresAt,
+      userAgent: `staging-qa:by:${ctx.userId}`,
+    },
+  });
+
+  await logAudit({
+    userId: ctx.userId,
+    action: "platform.staging_qa.enter",
+    entityType: "User",
+    entityId: qa.userId,
+    meta: { created: qa.created, businessId: qa.businessId },
+  });
+
+  const jar = await cookies();
+  const currentAdminCookie = jar.get(SESSION_COOKIE)?.value;
+  if (currentAdminCookie) {
+    jar.set("etl_admin_return", currentAdminCookie, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: env.NODE_ENV === "production",
+      path: "/",
+      expires: expiresAt,
+    });
+  }
+  jar.set(SESSION_COOKIE, token, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: env.NODE_ENV === "production",
+    path: "/",
+    expires: expiresAt,
+  });
+  // Flip runtime mode to staging so every Wrapp call this session
+  // makes hits staging.wrapp.ai — Constantinos: staging + prod keys
+  // are distinct, so this is the whole point of the button.
+  jar.set("timologion-mode", "staging", {
+    path: "/",
+    maxAge: 7 * 24 * 60 * 60,
+    sameSite: "lax",
+  });
+
+  redirect("/app");
+}
+
 export async function stopImpersonationAction() {
   const jar = await cookies();
   const returnTo = jar.get("etl_admin_return")?.value;

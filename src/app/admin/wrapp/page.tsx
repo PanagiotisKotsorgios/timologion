@@ -10,6 +10,7 @@ import {
 import { env } from "@/lib/env";
 import { WrappSettingsForm } from "./WrappSettingsForm";
 import { EnvironmentSwitcher } from "./EnvironmentSwitcher";
+import { enterAsStagingQaUserAction } from "@/app/admin/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -109,6 +110,35 @@ export default async function AdminWrappPage() {
                   Έξοδος
                 </a>
               </div>
+
+              {/* One-click "run through the app as a fresh user, in
+                  staging". Ensures a dedicated staging-qa@ account +
+                  business exist (creating them on first click), flips
+                  the admin's session to that user, and sets the
+                  staging cookie. Everything the admin does then is
+                  isolated from real tenant data. Restore via the
+                  standard "Επιστροφή στο admin" flow. */}
+              <div className="rounded-lg border-2 border-dashed border-ink-300 bg-ink-50 p-3">
+                <p className="text-xs font-bold text-ink-900">
+                  Δοκιμή ως staging user
+                </p>
+                <p className="mt-1 text-xs text-ink-700">
+                  Είσοδος σαν αποκλειστικό QA user σε staging mode —
+                  δοκίμασε ολόκληρη τη ροή (onboarding → ενεργοποίηση →
+                  έκδοση παραστατικών) χωρίς να ακουμπάς πραγματικά
+                  δεδομένα. Επαναχρησιμοποιείται ο ίδιος λογαριασμός
+                  σε κάθε κλικ.
+                </p>
+                <form action={enterAsStagingQaUserAction} className="mt-2">
+                  <button
+                    type="submit"
+                    className="inline-flex h-9 items-center gap-2 rounded-md border-2 border-brand-800 bg-brand-700 px-3 text-xs font-bold text-white hover:bg-brand-800"
+                  >
+                    Είσοδος ως staging user →
+                  </button>
+                </form>
+              </div>
+
               <p className="text-xs text-ink-500">
                 Ρύθμισε ξεχωριστό «Partner API key (staging)» στα δεξιά αν
                 δεν το έχεις ήδη — αλλιώς οι κλήσεις staging θα σκάσουν με 401.
