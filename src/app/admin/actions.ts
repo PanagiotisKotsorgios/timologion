@@ -120,6 +120,142 @@ export async function unbanUserAction(formData: FormData) {
   revalidatePath("/admin/users");
 }
 
+/**
+ * Permanently delete a user + their sole-owned businesses so the
+ * email can be used to re-register from scratch. Distinct from ban:
+ *   - ban keeps the row (soft delete via suspendedAt) so audit trails
+ *     stay intact and the email is still "used".
+ *   - purge wipes the user entirely, which cascades to sessions,
+ *     oauthAccounts, businessMembers, and any Business rows this
+ *     user was the last owner of (via businessMember cascade delete
+ *     + our sole-owned business detection).
+ *
+ * Super-admin only — support can suspend/unsuspend but not purge.
+ * Snapshot written to accountDeletionLog first so we can audit who
+ * deleted whom and why. Guarded against self-delete (would kick you
+ * out of admin) and against deleting the last super_admin (would
+ * lock the platform out of its own admin panel).
+ */
+const userPurgeSchema = z.object({
+  userId: z.string().min(1),
+  reason: z.string().max(255).optional().or(z.literal("")),
+});
+
+export async function purgeUserAction(formData: FormData) {
+  const ctx = await requireAdmin("super_admin");
+  const parsed = userPurgeSchema.safeParse(
+    Object.fromEntries(formData.entries()),
+  );
+  if (!parsed.success) return;
+  const { userId, reason } = parsed.data;
+
+  // Guard against self-delete and against removing the last
+  // super_admin — either would lock the platform's admin panel.
+  if (userId === ctx.userId) return;
+
+  const target = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      memberships: {
+        include: {
+          business: {
+            select: {
+              id: true,
+              legalName: true,
+              vatNumber: true,
+              tradeName: true,
+            },
+          },
+        },
+      },
+    },
+  });
+  if (!target) return;
+
+  if (target.platformRole === "super_admin") {
+    const otherSuperAdmins = await prisma.user.count({
+      where: {
+        platformRole: "super_admin",
+        id: { not: userId },
+      },
+    });
+    if (otherSuperAdmins === 0) return;
+  }
+
+  // Sole-owned businesses = businesses where this user is the only
+  // member (or the only owner). We delete those; multi-member
+  // businesses lose one member but the business itself survives.
+  const soleOwnedIds: string[] = [];
+  for (const m of target.memberships) {
+    const otherMembers = await prisma.businessMember.count({
+      where: {
+        businessId: m.businessId,
+        userId: { not: userId },
+      },
+    });
+    if (otherMembers === 0) {
+      soleOwnedIds.push(m.businessId);
+    }
+  }
+
+  const snapshot = {
+    schemaVersion: 1,
+    userId: target.id,
+    email: target.email,
+    fullName: target.fullName,
+    createdAt: target.createdAt,
+    memberships: target.memberships.map((m) => ({
+      businessId: m.businessId,
+      role: m.role,
+      businessName: m.business.tradeName ?? m.business.legalName,
+      vatNumber: m.business.vatNumber,
+    })),
+    soleOwnedBusinesses: target.memberships
+      .filter((m) => soleOwnedIds.includes(m.businessId))
+      .map((m) => ({
+        id: m.businessId,
+        legalName: m.business.legalName,
+        vatNumber: m.business.vatNumber,
+      })),
+    reason: reason || null,
+    deletedByAdminId: ctx.userId,
+    deletedAt: new Date().toISOString(),
+  };
+
+  await prisma.accountDeletionLog.create({
+    data: {
+      userId: target.id,
+      userEmail: target.email,
+      userFullName: target.fullName ?? null,
+      reason: reason || `Admin purge by ${ctx.email}`,
+      businessesDeleted: soleOwnedIds.length,
+      documentsRetained: 0,
+      snapshot: JSON.stringify(snapshot),
+    },
+  });
+
+  if (soleOwnedIds.length > 0) {
+    await prisma.business.deleteMany({
+      where: { id: { in: soleOwnedIds } },
+    });
+  }
+  await prisma.user.delete({ where: { id: userId } });
+
+  await logAudit({
+    userId: ctx.userId,
+    action: "platform.user.purge",
+    entityType: "User",
+    entityId: userId,
+    meta: {
+      email: target.email,
+      soleOwnedBusinesses: soleOwnedIds.length,
+      reason: reason || null,
+    },
+  });
+
+  redirect("/admin/users?purged=1");
+}
+
 // ─── Impersonate ───────────────────────────────────────────────────────
 
 /**

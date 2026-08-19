@@ -8,8 +8,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Alert } from "@/components/ui/Alert";
 import { money, date } from "@/lib/format";
 import { checkDocumentQuota } from "@/lib/quota";
-import { ChangePlanForm } from "./ChangePlanForm";
-import { CancelButton } from "./CancelButton";
+import { WrappBillingPortalCard } from "./WrappBillingPortalCard";
 import { findTierByName, B2G_ADDON_INCL_VAT, formatEur } from "@/lib/pricing";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +17,11 @@ export default async function SubscriptionSettingsPage() {
   const ctx = await requireTenant();
   assertCan(ctx.role, "business:update");
 
-  const [subscription, plans, wrapp] = await Promise.all([
+  // The plan list used to be fetched here for the local plan-picker;
+  // that picker was retired when billing moved to the WrappBillingPortalCard.
+  // Kept the subscription + wrapp fetches because the summary card still
+  // reads the current plan name + Wrapp counter.
+  const [subscription, wrapp] = await Promise.all([
     prisma.businessSubscription.findFirst({
       where: {
         businessId: ctx.businessId,
@@ -26,10 +29,6 @@ export default async function SubscriptionSettingsPage() {
       },
       include: { plan: true },
       orderBy: { createdAt: "desc" },
-    }),
-    prisma.platformPlan.findMany({
-      where: { active: true },
-      orderBy: [{ sortOrder: "asc" }, { priceMonthly: "asc" }],
     }),
     // Read the reconciler-populated fields so we can show authoritative
     // usage from Wrapp instead of the local approximation.
@@ -276,39 +275,19 @@ export default async function SubscriptionSettingsPage() {
               );
             })()}
 
-            <div className="flex justify-end pt-2">
-              <CancelButton />
-            </div>
           </CardBody>
         </Card>
       )}
 
-      <Card className="mb-6">
-        <CardHeader
-          title="Αλλαγή πακέτου"
-          subtitle="Επίλεξε νέο πακέτο ή κύκλο χρέωσης."
+      {/* All billing lives in Wrapp — plan changes, cancellations,
+          invoice downloads, IBAN edits. The card below opens a
+          Wrapp-signed link so the user goes straight into their
+          Wrapp account without a second login. */}
+      <div className="mb-6">
+        <WrappBillingPortalCard
+          hasActiveWrapp={wrapp?.canIssueInvoice === true}
         />
-        <CardBody>
-          <ChangePlanForm
-            plans={plans.map((p) => ({
-              id: p.id,
-              name: p.name,
-              description: p.description,
-              priceMonthly: p.priceMonthly.toString(),
-              priceYearly: p.priceYearly.toString(),
-              features: p.features
-                ? p.features
-                    .split("\n")
-                    .map((f) => f.trim())
-                    .filter(Boolean)
-                : [],
-            }))}
-            currentPlanId={subscription?.planId ?? null}
-            currentCycle={subscription?.billingCycle ?? null}
-          />
-        </CardBody>
-      </Card>
-
+      </div>
     </>
   );
 }

@@ -22,6 +22,7 @@ import {
   unbanUserAction,
   impersonateUserAction,
 } from "@/app/admin/actions";
+import { PurgeUserButton } from "./PurgeUserButton";
 import {
   revokeSessionAction,
   revokeAllSessionsAction,
@@ -78,6 +79,16 @@ export default async function AdminUserDetailPage({
   ]);
 
   if (!user) notFound();
+
+  // Sole-owned businesses = businesses where this user is the only
+  // member. Used to warn the admin (in the purge modal) that clicking
+  // through will also wipe those businesses + their data.
+  const memberCounts = await Promise.all(
+    user.memberships.map((m) =>
+      prisma.businessMember.count({ where: { businessId: m.businessId } }),
+    ),
+  );
+  const soleOwnedCount = memberCounts.filter((c) => c === 1).length;
 
   return (
     <>
@@ -148,6 +159,14 @@ export default async function AdminUserDetailPage({
                 </Button>
               </form>
             )}
+            {/* Permanent purge — separate control so it can never be
+                confused with the (reversible) ban button. Confirms via
+                type-the-email modal to prevent misclicks. */}
+            <PurgeUserButton
+              userId={user.id}
+              userEmail={user.email}
+              hasSoleOwnedBusinesses={soleOwnedCount > 0}
+            />
           </div>
         }
       />
