@@ -248,6 +248,29 @@ export async function startWrappActivationAction(
         "Λείπει το τηλέφωνο της επιχείρησης — απαιτείται για την ενεργοποίηση.",
     };
   }
+  // Wrapp production validates ΑΦΜ + legal name server-side and 500's
+  // on missing/malformed values instead of a clean 4xx (learned the
+  // hard way in the first production activation attempt). Pre-validate
+  // here so the user gets a specific, actionable error pointing at the
+  // exact field to fix — instead of a raw "500 Internal Server Error"
+  // dump in the activation modal.
+  const legalName = business?.legalName?.trim() ?? "";
+  const vat = business?.vatNumber?.replace(/\D/g, "") ?? "";
+  if (!legalName) {
+    return {
+      ok: false,
+      error:
+        "Λείπει η νόμιμη επωνυμία της επιχείρησης. Συμπλήρωσέ την από Ρυθμίσεις → Επιχείρηση πριν την ενεργοποίηση.",
+    };
+  }
+  if (vat.length !== 9) {
+    return {
+      ok: false,
+      error:
+        "Το ΑΦΜ της επιχείρησης πρέπει να είναι ακριβώς 9 ψηφία. Διόρθωσέ το από Ρυθμίσεις → Επιχείρηση.",
+    };
+  }
+
   if (providedPhone && !business?.phone && business) {
     await prisma.business.update({
       where: { id: business.id },
@@ -267,8 +290,11 @@ export async function startWrappActivationAction(
     const res = await partner.externalLogin({
       email,
       phone,
-      name: business?.legalName ?? undefined,
-      vat: business?.vatNumber ?? undefined,
+      // Send the sanitized values (trimmed name, digits-only 9-char vat)
+      // — never the raw DB field which could carry spaces / dashes / etc.
+      // that Wrapp production's validator rejects with a 500.
+      name: legalName,
+      vat,
       partner_user_id: ctx.businessId,
       return_url: returnUrl,
       webhook_endpoint: webhookEndpoint,
@@ -299,15 +325,53 @@ export async function startWrappActivationAction(
 
     return { ok: true, mode: "redirect", loginUrl: res.login_url };
   } catch (err) {
+    // Log the full technical detail for /admin/errors (status, url,
+    // response body slice) but NEVER return that string to the user —
+    // the previous version dumped the raw HTTP response into the modal
+    // ("Partner external_login failed [500 Internal Server Error]…"),
+    // which read as broken. Users get a friendly Greek message
+    // categorized by HTTP status instead.
     logger.error("wrapp.activation.external_login_failed", err, {
       businessId: ctx.businessId,
     });
-    const message =
-      err instanceof WrappApiError
-        ? err.message
-        : "Αποτυχία επικοινωνίας με τον πάροχο. Δοκίμασε ξανά σε λίγο.";
-    return { ok: false, error: message };
+    return {
+      ok: false,
+      error: friendlyExternalLoginError(err),
+    };
   }
+}
+
+/**
+ * Turn a Wrapp external_login exception into a Greek message a real
+ * tenant can act on. Category buckets:
+ *
+ *   401/403  → wrong or missing partner API key (admin config bug)
+ *   422/400  → Wrapp rejected the payload (bad ΑΦΜ / bad email / etc)
+ *   429      → rate limited
+ *   500/502/503/504 → Wrapp is temporarily broken; retry
+ *   network  → our container couldn't reach Wrapp at all
+ *   other    → generic retry hint
+ */
+function friendlyExternalLoginError(err: unknown): string {
+  if (err instanceof WrappApiError) {
+    const s = err.httpStatus;
+    if (s === 401 || s === 403) {
+      return "Οι ρυθμίσεις σύνδεσης με τον πάροχο δεν είναι σωστές. Επικοινώνησε με την υποστήριξη — δεν είναι δικό σου πρόβλημα.";
+    }
+    if (s === 400 || s === 422) {
+      return "Ο πάροχος απέρριψε τα στοιχεία που στείλαμε. Βεβαιώσου ότι έχεις συμπληρώσει σωστά ΑΦΜ (9 ψηφία), email και τηλέφωνο και δοκίμασε ξανά.";
+    }
+    if (s === 429) {
+      return "Πολλές προσπάθειες σε σύντομο χρόνο. Περίμενε 1–2 λεπτά και δοκίμασε ξανά.";
+    }
+    if (s >= 500 && s <= 599) {
+      return "Ο πάροχος είναι προσωρινά μη διαθέσιμος. Δοκίμασε ξανά σε λίγα λεπτά — αν επιμένει, επικοινώνησε με την υποστήριξη.";
+    }
+    if (err.code === "wrapp.partner.external_login_network_error") {
+      return "Δεν καταφέραμε να επικοινωνήσουμε με τον πάροχο (δικτυακό σφάλμα). Δοκίμασε ξανά σε λίγο.";
+    }
+  }
+  return "Αποτυχία επικοινωνίας με τον πάροχο. Δοκίμασε ξανά σε λίγο — αν επιμένει, επικοινώνησε με την υποστήριξη.";
 }
 
 /**
