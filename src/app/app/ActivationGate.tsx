@@ -248,14 +248,6 @@ export function ActivationGate({
                 >
                   Καταχώρησε το κλειδί πρόσβασης χειροκίνητα →
                 </button>
-                <a
-                  href="/api/wrapp/debug"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-2 block text-xs font-medium text-ink-700 underline underline-offset-4 hover:text-ink-900"
-                >
-                  Διαγνωστικά: τι έστειλε η Wrapp μέχρι στιγμής;
-                </a>
               </div>
             </>
           ) : (
