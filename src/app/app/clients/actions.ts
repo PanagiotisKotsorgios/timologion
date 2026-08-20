@@ -178,8 +178,10 @@ export async function updateClientAction(
 const vatSearchSchema = z.object({ vat: z.string().min(3).max(20) });
 
 export async function vatSearchAction(formData: FormData) {
+  // Public-registry lookup, no tenant data touched — no need to gate on
+  // client:write. Any authenticated tenant user can look up an ΑΦΜ,
+  // including expense-only users filling out a Νέος προμηθευτής form.
   const ctx = await requireTenant();
-  assertCan(ctx.role, "client:write");
 
   const parsed = vatSearchSchema.safeParse({ vat: formData.get("vat") });
   if (!parsed.success) return { ok: false as const, error: "Μη έγκυρο ΑΦΜ." };

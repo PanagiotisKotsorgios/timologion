@@ -177,7 +177,10 @@ const DEFAULT_VISIBLE_DOC_TYPES: DraftInput["type"][] = [
   "service_invoice",
   "retail_receipt",
   "service_receipt",
-  "credit_note",
+  // 5.1 συσχετιζόμενο is the compliance-recommended reversal path
+  // (parent MARK carried through) — 5.2 is only for legacy parents
+  // that live outside myDATA. Default to the safer variant here.
+  "credit_note_correlated",
   "delivery_note",
 ];
 
@@ -623,12 +626,23 @@ export function DraftEditor({
     });
   }
 
+  // Payment-method confirmation before actually firing the issue.
+  // Small, unblocking popup — just shows the method the editor has
+  // recorded so the user can catch a stale "Μετρητά" default before
+  // it lands on a real myDATA MARK.
+  const [paymentConfirmOpen, setPaymentConfirmOpen] = useState(false);
+
   /**
    * Wraps the issue action so the cash-limit check is enforced at the
    * top of `submit` — this stays as a compat shim for the button
-   * handler.
+   * handler. First shows the payment-method confirmation modal; the
+   * modal's "Επιβεβαίωση" button calls actuallyIssue() below.
    */
   function attemptIssue() {
+    setPaymentConfirmOpen(true);
+  }
+  function actuallyIssue() {
+    setPaymentConfirmOpen(false);
     submit("issue");
   }
 
@@ -1324,6 +1338,14 @@ export function DraftEditor({
         />
       )}
 
+      {paymentConfirmOpen && (
+        <PaymentConfirmModal
+          paymentMethod={paymentMethod}
+          onCancel={() => setPaymentConfirmOpen(false)}
+          onConfirm={actuallyIssue}
+        />
+      )}
+
       {duplicateWarning && (
         <DuplicateModal
           matches={duplicateWarning.matches}
@@ -1470,6 +1492,86 @@ function StayTaxCard({
             onChange={(e) => onAmountChange(e.target.value)}
           />
         </Field>
+      </div>
+    </div>
+  );
+}
+
+function PaymentConfirmModal({
+  paymentMethod,
+  onCancel,
+  onConfirm,
+}: {
+  paymentMethod: string | null | undefined;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="pay-confirm-title"
+      className="fixed inset-0 z-[110] flex items-center justify-center p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onCancel();
+      }}
+    >
+      <button
+        type="button"
+        aria-label="Ακύρωση"
+        onClick={onCancel}
+        className="fixed inset-0 bg-ink-900/40"
+      />
+      <div className="relative w-full max-w-md rounded-2xl border-2 border-ink-200 bg-white shadow-2xl">
+        <div className="border-b-2 border-ink-100 px-5 py-4">
+          <p className="text-[11px] font-black uppercase tracking-widest text-brand-900/60">
+            Επιβεβαίωση διαβίβασης
+          </p>
+          <h2
+            id="pay-confirm-title"
+            className="mt-0.5 text-lg font-extrabold text-brand-900"
+          >
+            Έλεγξε τον τρόπο πληρωμής
+          </h2>
+        </div>
+
+        <div className="p-5">
+          <p className="text-sm text-ink-700">
+            Το παραστατικό θα διαβιβαστεί στο myDATA με τον
+            παρακάτω τρόπο πληρωμής:
+          </p>
+          <div className="mt-3 rounded-xl border-2 border-brand-100 bg-brand-50/60 p-4">
+            <p className="text-[10px] font-black uppercase tracking-widest text-brand-900/60">
+              Τρόπος πληρωμής
+            </p>
+            <p className="mt-0.5 text-base font-extrabold text-brand-900">
+              {paymentMethod?.trim() || "Δεν έχει οριστεί"}
+            </p>
+          </div>
+          {!paymentMethod?.trim() && (
+            <p className="mt-3 text-xs font-semibold text-amber-800">
+              Δεν έχει επιλεγεί τρόπος πληρωμής — αν χρειάζεται,
+              κλείσε το popup και συμπλήρωσέ τον στη φόρμα.
+            </p>
+          )}
+        </div>
+
+        <div className="flex flex-wrap justify-end gap-2 border-t-2 border-ink-100 bg-ink-50 p-4">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="inline-flex h-10 items-center rounded-lg border-2 border-ink-300 bg-white px-4 text-sm font-bold text-ink-800 hover:bg-ink-100"
+          >
+            Ακύρωση
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="inline-flex h-10 items-center gap-2 rounded-lg border-2 border-brand-800 bg-brand-700 px-4 text-sm font-bold text-white shadow-sm hover:bg-brand-800"
+          >
+            Επιβεβαίωση & Διαβίβαση
+          </button>
+        </div>
       </div>
     </div>
   );

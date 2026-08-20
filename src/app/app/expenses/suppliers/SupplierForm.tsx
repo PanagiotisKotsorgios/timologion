@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
-import { Save, Plus } from "lucide-react";
+import { useActionState, useState, useTransition } from "react";
+import { Save, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Textarea } from "@/components/ui/Input";
 import { Alert } from "@/components/ui/Alert";
@@ -13,6 +13,11 @@ import {
   updateSupplierAction,
   type SupplierFormState,
 } from "../actions";
+// Reuse the same lookup the client + document editor use — a
+// registry lookup is registry-agnostic re: what the caller intends to
+// do with the row. See src/app/app/clients/actions.ts, where the
+// permission gate was relaxed to any tenant user for this reason.
+import { vatSearchAction } from "@/app/app/clients/actions";
 
 type SupplierLike = {
   id?: string;
@@ -69,20 +74,90 @@ export function SupplierForm({
     setValues((s) => ({ ...s, [key]: v }));
   }
 
+  const [vatBusy, startVat] = useTransition();
+  const [vatMessage, setVatMessage] = useState<string | null>(null);
+
+  function runVatSearch() {
+    setVatMessage(null);
+    const vat = values.vatNumber?.trim();
+    if (!vat) {
+      setVatMessage("Πληκτρολόγησε πρώτα ΑΦΜ.");
+      return;
+    }
+    const fd = new FormData();
+    fd.set("vat", vat);
+    startVat(async () => {
+      const res = await vatSearchAction(fd);
+      if (!res.ok) {
+        setVatMessage(res.error);
+        return;
+      }
+      // Preserve any manual values the user already typed — the
+      // registry only fills empty fields (except vatNumber +
+      // legalName which are canonical from the search).
+      setValues((s) => ({
+        ...s,
+        vatNumber: res.result.vat,
+        legalName: res.result.legal_name,
+        tradeName: s.tradeName || res.result.trade_name || "",
+        taxOffice: s.taxOffice || res.result.tax_office || "",
+        activity: s.activity || res.result.activity || "",
+        addressLine: s.addressLine || res.result.address || "",
+        city: s.city || res.result.city || "",
+        postalCode: s.postalCode || res.result.postal_code || "",
+        phone: s.phone || res.result.phone || "",
+        email: s.email || res.result.email || "",
+      }));
+      const filledLabels: string[] = ["Επωνυμία"];
+      if (res.result.trade_name) filledLabels.push("Διακριτικός τίτλος");
+      if (res.result.tax_office) filledLabels.push("ΔΟΥ");
+      if (res.result.activity) filledLabels.push("Δραστηριότητα");
+      if (res.result.address) filledLabels.push("Διεύθυνση");
+      if (res.result.city) filledLabels.push("Πόλη");
+      if (res.result.postal_code) filledLabels.push("Τ.Κ.");
+      if (res.result.phone) filledLabels.push("Τηλέφωνο");
+      if (res.result.email) filledLabels.push("Email");
+      setVatMessage(
+        `Συμπληρώθηκαν: ${filledLabels.join(", ")}. Έλεγξε και συμπλήρωσε τα υπόλοιπα χειροκίνητα.`,
+      );
+    });
+  }
+
   return (
     <form action={formAction} className="space-y-6">
       {state?.error && <Alert tone="danger">{state.error}</Alert>}
 
       <section className="grid gap-4 md:grid-cols-3">
-        <Field label="ΑΦΜ" htmlFor="vatNumber">
-          <Input
-            id="vatNumber"
-            name="vatNumber"
-            value={values.vatNumber}
-            onChange={(e) => set("vatNumber", e.target.value)}
-            maxLength={9}
-            inputMode="numeric"
-          />
+        <Field
+          label="ΑΦΜ"
+          htmlFor="vatNumber"
+          help="Πάτα «Αναζήτηση» για αυτόματη συμπλήρωση επωνυμίας, ΔΟΥ, διεύθυνσης και δραστηριότητας από την ΑΑΔΕ."
+        >
+          <div className="flex gap-2">
+            <Input
+              id="vatNumber"
+              name="vatNumber"
+              value={values.vatNumber}
+              onChange={(e) => set("vatNumber", e.target.value)}
+              maxLength={9}
+              inputMode="numeric"
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              size="md"
+              icon={Search}
+              onClick={runVatSearch}
+              disabled={vatBusy}
+            >
+              {vatBusy ? "Αναζήτηση..." : "Αναζήτηση"}
+            </Button>
+          </div>
+          {vatMessage && (
+            <p className="mt-2 text-xs font-medium text-brand-900">
+              {vatMessage}
+            </p>
+          )}
         </Field>
         <Field
           label="Νόμιμη επωνυμία"

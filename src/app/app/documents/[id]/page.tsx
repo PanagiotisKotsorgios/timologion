@@ -151,7 +151,10 @@ export default async function DocumentDetailPage({
                 <CreditNoteButton documentId={doc.id} />
               )}
             {isDraft && can(ctx.role, "document:issue") && (
-              <IssueButton documentId={doc.id} />
+              <IssueButton
+                documentId={doc.id}
+                paymentMethod={doc.paymentMethod}
+              />
             )}
           </div>
         }

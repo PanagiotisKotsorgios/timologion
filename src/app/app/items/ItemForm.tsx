@@ -28,6 +28,37 @@ type ItemLike = {
 
 const VAT_RATES = [24, 13, 6, 0];
 
+/**
+ * Units of measurement Wrapp / myDATA accepts on invoice lines. The
+ * transmit endpoint's validator rejects free-form Greek strings with
+ * cryptic errors (Wrapp's internal enum maps to AADE's unit codes),
+ * so the item catalog forces one of these — no more "τα κιλα" typos
+ * silently blocking a doc from being issued weeks later.
+ *
+ * Ordered by how common they are for Greek SMBs: pieces + hours cover
+ * ~80% of tenants; weight / volume / length / package follow.
+ */
+const UNIT_OPTIONS: { value: string; label: string }[] = [
+  { value: "τμχ", label: "τμχ — Τεμάχια" },
+  { value: "h", label: "h — Ώρες" },
+  { value: "d", label: "d — Ημέρες" },
+  { value: "μήνας", label: "μήνας — Μήνες (συνδρομή)" },
+  { value: "kg", label: "kg — Κιλά" },
+  { value: "gr", label: "gr — Γραμμάρια" },
+  { value: "L", label: "L — Λίτρα" },
+  { value: "ml", label: "ml — Χιλιοστόλιτρα" },
+  { value: "m", label: "m — Μέτρα" },
+  { value: "cm", label: "cm — Εκατοστά" },
+  { value: "m2", label: "m² — Τετραγωνικά μέτρα" },
+  { value: "m3", label: "m³ — Κυβικά μέτρα" },
+  { value: "km", label: "km — Χιλιόμετρα" },
+  { value: "συσκευασία", label: "συσκευασία — Συσκευασία / Πακέτο" },
+  { value: "κιβώτιο", label: "κιβώτιο — Κιβώτιο" },
+  { value: "παλέτα", label: "παλέτα — Παλέτα" },
+  { value: "σετ", label: "σετ — Σετ" },
+  { value: "υπηρεσία", label: "υπηρεσία — Παροχή υπηρεσίας" },
+];
+
 export function ItemForm({
   initial,
   mode,
@@ -75,14 +106,23 @@ export function ItemForm({
         <Field
           label="Μονάδα"
           htmlFor="unit"
-          help="Μονάδα μέτρησης πώλησης — π.χ. τμχ, κιλά, μέτρα, ώρες, εκτ."
+          help="Επίλεξε την επίσημη μονάδα μέτρησης που δέχεται το myDATA. Χρησιμοποίησε «τμχ» για τεμάχια, «h» για ώρες υπηρεσιών, «kg» για βάρος."
         >
-          <Input
+          <Select
             id="unit"
             name="unit"
             defaultValue={initial?.unit ?? "τμχ"}
-            maxLength={20}
-          />
+          >
+            {/* Λίστα συμβατή με myDATA / Wrapp — οι μονάδες που
+                δέχεται ο πάροχος χωρίς χειροκίνητη ρύθμιση.
+                Ελεύθερο κείμενο δεν επιτρέπεται στη νέα ροή γιατί
+                η ΑΑΔΕ απορρίπτει άγνωστες μονάδες με obscure errors. */}
+            {UNIT_OPTIONS.map((u) => (
+              <option key={u.value} value={u.value}>
+                {u.label}
+              </option>
+            ))}
+          </Select>
         </Field>
         <Field
           label="Ονομασία"
