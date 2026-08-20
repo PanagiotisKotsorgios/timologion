@@ -304,46 +304,12 @@ async function clearStaleStagingWrappUrl(): Promise<void> {
   );
 }
 
-/**
- * Wipe every active session row on every redeploy.
- *
- * Coolify triggers first-boot after each successful `prisma migrate
- * deploy`, so this fires exactly once per deployment. Every user's
- * session cookie is still in their browser, but the DB row it hashes
- * to is gone — `getSession()` returns null on the next request,
- * `requireTenant()` redirects them through `/api/logout?reason=expired`
- * which clears the browser cookie and lands them on `/login` with a
- * friendly amber banner ("Η συνεδρία σου έληξε. Συνδέσου ξανά.").
- *
- * Rationale: every deploy may ship security-sensitive code (auth,
- * permissions, rate limits, session TTL). Forcing re-login guarantees
- * every session runs against the freshest server code — no risk of a
- * stale in-memory JWT / cached RBAC decision surviving a change.
- *
- * Opt-out via env `SKIP_SESSION_WIPE=1` if a specific deploy is a
- * hotfix that doesn't touch security.
- */
-async function wipeSessionsOnDeploy(): Promise<void> {
-  if (process.env.SKIP_SESSION_WIPE === "1") {
-    console.log(
-      JSON.stringify({
-        level: "info",
-        msg: "first-boot.sessions.skip",
-        reason: "SKIP_SESSION_WIPE=1",
-      }),
-    );
-    return;
-  }
-  const res = await prisma.session.deleteMany({}).catch(() => ({ count: 0 }));
-  console.log(
-    JSON.stringify({
-      level: "info",
-      msg: "first-boot.sessions.wiped",
-      count: res.count,
-      note: "Every user is signed out — cookies get cleared on next request via /api/logout.",
-    }),
-  );
-}
+// The wipe-sessions-on-redeploy step used to run here — reverted by
+// user request because logging everyone out on every push was too
+// disruptive relative to how often we deploy. If we ever ship a
+// security-critical change that MUST invalidate all sessions, we can
+// call `prisma.session.deleteMany({})` manually from a migration or
+// a one-shot admin script instead of automating it.
 
 async function main() {
   console.log(
@@ -354,7 +320,6 @@ async function main() {
     await seedPlans();
     await seedAdmin();
     await clearStaleStagingWrappUrl();
-    await wipeSessionsOnDeploy();
     console.log(
       JSON.stringify({ level: "info", msg: "first-boot.done" }),
     );

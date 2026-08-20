@@ -102,22 +102,30 @@ export function ClientForm({
         phone: s.phone || res.result.phone || "",
         email: s.email || res.result.email || "",
       }));
-      // Rough count of what actually got populated — helpful UX signal so
-      // the user knows if we just filled name+city vs a full record.
-      const filled = [
-        res.result.legal_name,
-        res.result.trade_name,
-        res.result.tax_office,
-        res.result.activity,
-        res.result.address,
-        res.result.city,
-        res.result.postal_code,
-        res.result.phone,
-        res.result.email,
-      ].filter(Boolean).length;
-      setVatMessage(
-        `Συμπληρώθηκαν ${filled} πεδία από την αναζήτηση ΑΦΜ.`,
-      );
+      // Report which specific fields the registry populated. Being
+      // explicit prevents the "why only 4 πεδία?" confusion —
+      // registries (Wrapp / ΑΑΔΕ) genuinely don't have email + phone
+      // for most ΑΦΜs, and knowing which fields are auto-filled tells
+      // the user exactly what they still need to complete by hand.
+      const filledLabels: string[] = [];
+      if (res.result.legal_name) filledLabels.push("Επωνυμία");
+      if (res.result.trade_name) filledLabels.push("Διακριτικός τίτλος");
+      if (res.result.tax_office) filledLabels.push("ΔΟΥ");
+      if (res.result.activity) filledLabels.push("Δραστηριότητα");
+      if (res.result.address) filledLabels.push("Διεύθυνση");
+      if (res.result.city) filledLabels.push("Πόλη");
+      if (res.result.postal_code) filledLabels.push("Τ.Κ.");
+      if (res.result.phone) filledLabels.push("Τηλέφωνο");
+      if (res.result.email) filledLabels.push("Email");
+      if (filledLabels.length === 0) {
+        setVatMessage(
+          "Το ΑΦΜ βρέθηκε αλλά το μητρώο δεν επέστρεψε λεπτομέρειες. Συμπλήρωσε τα υπόλοιπα πεδία χειροκίνητα.",
+        );
+      } else {
+        setVatMessage(
+          `Συμπληρώθηκαν αυτόματα: ${filledLabels.join(", ")}. Έλεγξε και συμπλήρωσε τα υπόλοιπα χειροκίνητα.`,
+        );
+      }
     });
   }
 

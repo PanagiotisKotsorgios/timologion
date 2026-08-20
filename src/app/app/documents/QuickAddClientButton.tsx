@@ -110,17 +110,22 @@ export function QuickAddClientButton({
         phone: s.phone || res.result.phone || "",
         email: s.email || res.result.email || "",
       }));
-      const filled = [
-        res.result.trade_name,
-        res.result.tax_office,
-        res.result.activity,
-        res.result.address,
-        res.result.city,
-        res.result.postal_code,
-        res.result.phone,
-        res.result.email,
-      ].filter(Boolean).length;
-      setVatMessage(`Συμπληρώθηκαν ${filled} πεδία από την αναζήτηση ΑΦΜ.`);
+      // Explicit list of what got auto-filled — clearer than a bare
+      // count, and makes it obvious when the registry didn't return
+      // email/phone (which they usually don't) so the user knows to
+      // add those manually rather than assuming something broke.
+      const filledLabels: string[] = ["Επωνυμία"]; // always populated on a hit
+      if (res.result.trade_name) filledLabels.push("Διακριτικός τίτλος");
+      if (res.result.tax_office) filledLabels.push("ΔΟΥ");
+      if (res.result.activity) filledLabels.push("Δραστηριότητα");
+      if (res.result.address) filledLabels.push("Διεύθυνση");
+      if (res.result.city) filledLabels.push("Πόλη");
+      if (res.result.postal_code) filledLabels.push("Τ.Κ.");
+      if (res.result.phone) filledLabels.push("Τηλέφωνο");
+      if (res.result.email) filledLabels.push("Email");
+      setVatMessage(
+        `Συμπληρώθηκαν: ${filledLabels.join(", ")}. Έλεγξε και συμπλήρωσε τα υπόλοιπα χειροκίνητα.`,
+      );
     });
   }
 
