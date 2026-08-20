@@ -1,3 +1,4 @@
+import { AlertTriangle } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { requireTenant } from "@/lib/tenant";
 import { assertCan, can } from "@/lib/rbac";
@@ -27,6 +28,35 @@ export default async function UsersSettingsPage() {
         title="Χρήστες"
         subtitle="Πρόσθεσε συνεργάτες και όρισε ρόλους."
       />
+
+      {/* Beta notice — role-based collaboration is wired end-to-end
+          in the DB + RBAC layer, but the invitation email + acceptance
+          flow + team-level notification routing still need polish before
+          we recommend it for daily use. Warn tenants explicitly so no
+          one relies on it in production yet. Remove this banner when
+          the "invite → accept via email → assigned role" loop is
+          shipped. */}
+      <div className="mb-6 flex items-start gap-3 rounded-2xl border-2 border-amber-400 bg-amber-50 p-4 md:p-5">
+        <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-amber-400 text-amber-950">
+          <AlertTriangle size={18} strokeWidth={2.5} aria-hidden />
+        </span>
+        <div className="flex-1 space-y-1 text-sm text-amber-950">
+          <p className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full border-2 border-amber-600 bg-amber-200 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-widest text-amber-900">
+              Beta · Έρχεται σύντομα
+            </span>
+            <strong className="font-black">
+              Η λειτουργία πολλαπλών χρηστών είναι σε φάση δοκιμών.
+            </strong>
+          </p>
+          <p className="leading-relaxed">
+            Οι ρόλοι και οι προσκλήσεις δεν λειτουργούν πλήρως ακόμα — η
+            πρόσβαση συνεργατών ενδέχεται να μην ενημερώνεται άμεσα.
+            Χρησιμοποίησέ το μόνο για δοκιμές. Το πλήρες onboarding
+            συνεργατών (invite email + αποδοχή) έρχεται σύντομα.
+          </p>
+        </div>
+      </div>
 
       <div className="space-y-6">
         <Card>
