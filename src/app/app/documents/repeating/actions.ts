@@ -47,6 +47,7 @@ const schema = z.object({
   notes: z.string().max(5000).optional().or(z.literal("")),
   nextRunAt: z.string().min(1),
   status: z.enum(["active", "paused"]).default("active"),
+  autoTransmit: z.boolean().default(false),
   lines: z.array(lineSchema).min(1),
 });
 
@@ -82,6 +83,7 @@ export async function saveRecurringAction(
     nextRunAt: new Date(parsed.data.nextRunAt),
     paymentMethod: parsed.data.paymentMethod || null,
     notes: parsed.data.notes || null,
+    autoTransmit: parsed.data.autoTransmit,
     linesJson: JSON.stringify(parsed.data.lines),
   };
 

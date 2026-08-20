@@ -17,6 +17,7 @@ import {
   mapPaymentMethodToWrapp,
   classificationFor,
 } from "@/lib/wrapp/client";
+import { translateWrappError } from "@/lib/wrapp/errors-el";
 import { reserveNextNumber } from "@/lib/numbering";
 import { logger } from "@/lib/logger";
 import {
@@ -78,6 +79,18 @@ function cashLimitViolation(
  * the client sees a warning modal with a "confirm anyway" button
  * since some duplicates are intentional (correction, re-issue).
  */
+// Credit-note-like types: multiple credits against the same parent on the
+// same day for the same total are LEGITIMATE (partial credits, correction
+// re-issues). Flagging these as duplicates trained users to ignore the
+// warning modal — worse than not warning at all. Skip dup detection
+// entirely for these types.
+const CREDIT_NOTE_LIKE_TYPES: ReadonlySet<DocumentType> = new Set([
+  "credit_note",
+  "credit_note_correlated",
+  "retail_credit_note",
+  "retail_refund_receipt",
+] as const);
+
 async function findLikelyDuplicates(input: {
   businessId: string;
   clientId: string | null;
@@ -88,6 +101,7 @@ async function findLikelyDuplicates(input: {
 }): Promise<
   Array<{ id: string; series: string | null; number: number | null; status: string; createdAt: Date }>
 > {
+  if (CREDIT_NOTE_LIKE_TYPES.has(input.type)) return [];
   const dayStart = new Date(input.issueDate);
   dayStart.setHours(0, 0, 0, 0);
   const dayEnd = new Date(input.issueDate);
@@ -1126,12 +1140,187 @@ export async function bulkDeleteDraftsAction(documentIds: string[]) {
   return { ok: true as const, deleted: draftIds.length };
 }
 
+// EU member state 2-letter ISO codes — used to gate intracommunity vs
+// third-country validation. Excludes GR intentionally: intra-EU invoices
+// require a NON-Greek EU counterpart. Kept as a Set for O(1) lookup.
+const EU_COUNTRY_CODES: ReadonlySet<string> = new Set([
+  "AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "HU",
+  "IE", "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO", "SK", "SI",
+  "ES", "SE",
+]);
+
+// Doc types where every line's VAT rate must be 0 (myDATA vatCategory 7).
+const ZERO_VAT_TYPES: ReadonlySet<DocumentType> = new Set([
+  "eu_sale_invoice",
+  "eu_service_invoice",
+  "third_country_sale_invoice",
+  "third_country_service_invoice",
+  "purchase_title",
+  "purchase_title_refused",
+  "self_delivery",
+  "self_use",
+] as const);
+
+// 17.x settlement entries (τακτοποιήσεις, μισθοδοσία, αποσβέσεις) use a
+// fundamentally different myDATA payload shape: no per-line quantity /
+// unit / unit-price, no payment method, and `expensesClassification`
+// instead of `incomeClassification`. The auto-transmit pipeline built
+// for sales invoices cannot produce a compliant payload for these, so
+// we block them at the pre-issue gate with a plain-Greek message.
+// The rows still save as drafts locally — a λογιστής can transmit them
+// through the AADE portal or a bookkeeping tool.
+const BLOCKED_FROM_AUTO_TRANSMIT: ReadonlySet<DocumentType> = new Set([
+  "income_settlement_accounting",
+  "income_settlement_tax",
+  "expense_settlement_accounting",
+  "expense_settlement_tax",
+  "payroll_entry",
+  "depreciation",
+] as const);
+
+type PreflightDoc = {
+  type: DocumentType;
+  client: { country: string | null } | null;
+  lines: { vatRate: unknown }[];
+  correlatedDocument: { myDataMark: string | null } | null;
+  correlatedMarkOverride: string | null;
+  dispatchAt: Date | null;
+  issueDate: Date;
+  additionalTaxes: string | null;
+};
+
+/**
+ * Cheap up-front checks that mirror the myDATA validator rules we know
+ * about. When any fires we refuse to submit and return a plain-Greek
+ * message that names the specific field to fix. This replaces surfacing
+ * raw English validator errors like "Vat category must have value 7…".
+ */
+function preIssueValidation(doc: PreflightDoc): string | null {
+  const country = doc.client?.country?.trim().toUpperCase() || null;
+
+  // 17.x settlement / payroll / depreciation entries are not supported by
+  // the automated sales-side transmission pipeline.
+  if (BLOCKED_FROM_AUTO_TRANSMIT.has(doc.type)) {
+    return (
+      "Οι εγγραφές τακτοποίησης (17.1–17.6: λοιπές τακτοποιήσεις, ενσωμάτωση μισθοδοσίας, αποσβέσεις) " +
+      "απαιτούν ειδική δομή παραστατικού (χωρίς γραμμές πώλησης, με ταξινόμηση εξόδων) " +
+      "και διαβιβάζονται από τη λογιστική εφαρμογή ή απευθείας μέσω του portal της ΑΑΔΕ. " +
+      "Το πρόχειρο έχει αποθηκευτεί εδώ για ιστορικούς λόγους — μη προσπαθήσεις να το εκδώσεις από το timologion."
+    );
+  }
+
+  // Intra-EU sales/services (1.2 / 2.2)
+  if (doc.type === "eu_sale_invoice" || doc.type === "eu_service_invoice") {
+    if (!country || country === "GR" || !EU_COUNTRY_CODES.has(country)) {
+      return (
+        "Το ενδοκοινοτικό παραστατικό απαιτεί πελάτη από χώρα Ε.Ε. εκτός Ελλάδας. " +
+        "Άνοιξε την καρτέλα του πελάτη και όρισε ισχύον κωδικό χώρας Ε.Ε. (π.χ. DE, IT, FR, CY)."
+      );
+    }
+  }
+
+  // Third-country sales/services (1.3 / 2.3)
+  if (
+    doc.type === "third_country_sale_invoice" ||
+    doc.type === "third_country_service_invoice"
+  ) {
+    if (!country || country === "GR" || EU_COUNTRY_CODES.has(country)) {
+      return (
+        "Το παραστατικό τρίτης χώρας απαιτεί πελάτη εκτός Ε.Ε. " +
+        "Ενημέρωσε τη χώρα του πελάτη (π.χ. US, GB, CH, TR) και ξαναπροσπάθησε."
+      );
+    }
+  }
+
+  // Zero-VAT types — every line must have vatRate 0
+  if (ZERO_VAT_TYPES.has(doc.type)) {
+    const bad = doc.lines.find((l) => Number(l.vatRate) !== 0);
+    if (bad) {
+      return (
+        "Αυτός ο τύπος παραστατικού απαιτεί 0% ΦΠΑ σε όλες τις γραμμές. " +
+        "Άνοιξε το πρόχειρο και άλλαξε το ΦΠΑ των γραμμών σε 0."
+      );
+    }
+  }
+
+  // Correlated types — the MARK check already lives in attemptIssueForBusiness,
+  // but running it here too gives the user a consistent Greek message
+  // before we start reserving numbers.
+  const needsMark: Partial<Record<DocumentType, string>> = {
+    credit_note_correlated: "Το πιστωτικό συσχετιζόμενο (5.1)",
+    stay_tax_receipt: "Η απόδειξη φόρου διαμονής (8.2)",
+    complementary_invoice: "Το συμπληρωματικό τιμολόγιο (1.6)",
+    complementary_service_invoice: "Το συμπληρωματικό παροχής (2.4)",
+    retail_refund_receipt: "Η απόδειξη επιστροφής (8.4)",
+    retail_credit_note: "Το πιστωτικό λιανικής (11.4)",
+    delivery_note_correlated: "Το δελτίο αποστολής συσχετιζόμενο (9.3)",
+  };
+  const label = needsMark[doc.type];
+  if (label) {
+    const parentMark =
+      doc.correlatedDocument?.myDataMark ?? doc.correlatedMarkOverride;
+    if (!parentMark) {
+      return (
+        `${label} απαιτεί το MARK του γονικού παραστατικού. ` +
+        "Άνοιξε την επεξεργασία και επίλεξε το γονικό στο πεδίο " +
+        "«Συσχετιζόμενο παραστατικό», ή δώσε το MARK χειροκίνητα."
+      );
+    }
+  }
+
+  // Stay-tax receipts (8.2) require Επιπλέον φόροι populated
+  if (doc.type === "stay_tax_receipt") {
+    const raw = doc.additionalTaxes?.trim();
+    if (!raw) {
+      return (
+        "Η απόδειξη φόρου διαμονής απαιτεί καταχώρηση Επιπλέον Φόρου. " +
+        "Άνοιξε την επεξεργασία και πρόσθεσε γραμμή στο πεδίο «Επιπλέον φόροι» " +
+        "με την κατηγορία «Φόρος διαμονής» και το αντίστοιχο ποσό."
+      );
+    }
+  }
+
+  // Delivery notes — dispatch time must be >= issue time
+  if (
+    doc.type === "delivery_note" ||
+    doc.type === "delivery_note_correlated"
+  ) {
+    if (doc.dispatchAt && doc.dispatchAt.getTime() < doc.issueDate.getTime()) {
+      return (
+        "Η ώρα αποστολής του δελτίου δεν μπορεί να είναι πριν την ώρα έκδοσης. " +
+        "Άνοιξε την επεξεργασία και όρισε ώρα αποστολής ίση ή μεταγενέστερη."
+      );
+    }
+  }
+
+  return null;
+}
+
 export async function attemptIssueAction(documentId: string) {
   const ctx = await requireTenant();
   assertCan(ctx.role, "document:issue");
+  return attemptIssueForBusiness(ctx.businessId, ctx.userId, documentId);
+}
 
+/**
+ * Session-free core of the "issue draft → myDATA" flow.
+ *
+ * `attemptIssueAction` is the interactive entry point (RBAC + tenant cookie),
+ * but non-interactive callers (the recurring cron for auto-transmit templates,
+ * future webhook retry loops, etc.) need the same transmission logic without
+ * a user session. They pass `businessId` + optional `actorUserId` explicitly
+ * and skip the RBAC check — the caller is responsible for its own authz.
+ *
+ * `actorUserId` is nullable so system-triggered audit rows are attributed to
+ * a null actor (audit.userId is a nullable FK on purpose).
+ */
+export async function attemptIssueForBusiness(
+  businessId: string,
+  actorUserId: string | null,
+  documentId: string,
+) {
   const doc = await prisma.document.findFirst({
-    where: { id: documentId, businessId: ctx.businessId },
+    where: { id: documentId, businessId },
     include: {
       client: true,
       lines: true,
@@ -1148,8 +1337,25 @@ export async function attemptIssueAction(documentId: string) {
   );
   if (cashError) return { ok: false as const, error: cashError };
 
+  // ─── Pre-issue validation (plain Greek) ──────────────────────────
+  // These catch conditions Wrapp/myDATA rejects with English validator
+  // errors that scare users. We stop the submission early with a clear,
+  // actionable message so the user knows exactly what to fix.
+  const preflightError = preIssueValidation(doc);
+  if (preflightError) {
+    // Persist the friendly reason so it shows on the detail card even
+    // if the toast is dismissed before the user reads it.
+    await prisma.document
+      .update({
+        where: { id: doc.id },
+        data: { lastWrappError: preflightError },
+      })
+      .catch(() => undefined);
+    return { ok: false as const, error: preflightError };
+  }
+
   const wrapp = await prisma.wrappConnection.findUnique({
-    where: { businessId: ctx.businessId },
+    where: { businessId: businessId },
   });
 
   if (!wrapp || wrapp.status !== "active" || !wrapp.canIssueInvoice) {
@@ -1167,7 +1373,7 @@ export async function attemptIssueAction(documentId: string) {
   let effectiveBillingBookId = doc.billingBookId;
   if (!effectiveBillingBookId) {
     try {
-      const ensured = await ensureDefaultBillingBook(ctx.businessId, doc.type);
+      const ensured = await ensureDefaultBillingBook(businessId, doc.type);
       effectiveBillingBookId = ensured.id;
       await prisma.document.update({
         where: { id: doc.id },
@@ -1175,7 +1381,7 @@ export async function attemptIssueAction(documentId: string) {
       });
     } catch (err) {
       logger.error("wrapp.issue.autoprovision_local_book_failed", err, {
-        businessId: ctx.businessId,
+        businessId: businessId,
         documentId: doc.id,
         type: doc.type,
       });
@@ -1197,7 +1403,7 @@ export async function attemptIssueAction(documentId: string) {
   if (doc.number == null) {
     const bookId = effectiveBillingBookId;
     const reservation = await prisma.$transaction(async (tx) => {
-      return reserveNextNumber(tx, bookId, ctx.businessId);
+      return reserveNextNumber(tx, bookId, businessId);
     });
     if (!reservation) {
       return {
@@ -1238,7 +1444,7 @@ export async function attemptIssueAction(documentId: string) {
   // Auto-sync the billing book with Wrapp on first use — never surface the
   // "σειρά δεν είναι συγχρονισμένη" dead-end anymore.
   const sync = await ensureWrappBillingBookSynced(
-    ctx.businessId,
+    businessId,
     effectiveBillingBookId,
     invoiceTypeCode,
   );
@@ -1278,7 +1484,7 @@ export async function attemptIssueAction(documentId: string) {
           }
         : await prisma.business
             .findUnique({
-              where: { id: ctx.businessId },
+              where: { id: businessId },
               select: {
                 legalName: true,
                 addressLine: true,
@@ -1493,6 +1699,28 @@ export async function attemptIssueAction(documentId: string) {
       const net = wire(Number(l.netAmount));
       const vat = wire(Number(l.vatAmount));
       const total = wire(Number(l.totalAmount));
+      // myDATA VAT-exemption codes signal the WHY of a 0% line so the
+      // AADE validator classifies it under vatCategory 7 (χωρίς ΦΠΑ)
+      // instead of category 8 (απαλλασσόμενα). Without this Wrapp
+      // rejects intracommunity/third-country docs with
+      // "Vat category must have value 7 for this invoice type".
+      //   3  = Άρθρο 3 Κώδικα ΦΠΑ (out of scope, e.g. intra-EU services)
+      //   5  = Άρθρο 24 (τρίτες χώρες — exports)
+      //   14 = Άρθρο 28 (ενδοκοινοτικές παραδόσεις αγαθών)
+      //   15 = Χωρίς φόρο εισοδήματος (special)
+      const vatExemptionCode: number | undefined =
+        Number(l.vatRate) === 0
+          ? doc.type === "eu_sale_invoice"
+            ? 14
+            : doc.type === "eu_service_invoice"
+              ? 3
+              : doc.type === "third_country_sale_invoice" ||
+                  doc.type === "third_country_service_invoice"
+                ? 5
+                : ZERO_VAT_TYPES.has(doc.type)
+                  ? 1 // Άρθρο 2, 3 — self-supply / purchase title fallback
+                  : undefined
+          : undefined;
       return {
         line_number: i + 1,
         name: (l.description?.trim() || "Είδος").slice(0, 200),
@@ -1505,6 +1733,7 @@ export async function attemptIssueAction(documentId: string) {
         vat_rate: Number(l.vatRate),
         vat_total: vat,
         subtotal: total,
+        vat_exemption_code: vatExemptionCode,
         classification_category: classification.category,
         classification_type: classification.type,
       };
@@ -1512,7 +1741,7 @@ export async function attemptIssueAction(documentId: string) {
   };
 
   try {
-    const res = await getWrappClient().issueInvoice(ctx.businessId, wrappPayload);
+    const res = await getWrappClient().issueInvoice(businessId, wrappPayload);
     const asObj = res as Record<string, unknown>;
 
     if (typeof asObj.id === "string") {
@@ -1555,7 +1784,7 @@ export async function attemptIssueAction(documentId: string) {
         if (amount > 0) {
           await prisma.payment.create({
             data: {
-              businessId: ctx.businessId,
+              businessId: businessId,
               clientId: doc.clientId,
               documentId: doc.id,
               amount,
@@ -1572,8 +1801,8 @@ export async function attemptIssueAction(documentId: string) {
       }
 
       await logAudit({
-        userId: ctx.userId,
-        businessId: ctx.businessId,
+        userId: actorUserId,
+        businessId: businessId,
         action: "document.issue.ok",
         entityType: "Document",
         entityId: doc.id,
@@ -1602,35 +1831,40 @@ export async function attemptIssueAction(documentId: string) {
 
     // Structured error envelope.
     const errors = Array.isArray(asObj.errors) ? asObj.errors : [];
-    const message = errors
+    const rawMessage = errors
       .map((e: Record<string, unknown>) => e.title ?? e.message)
       .filter(Boolean)
       .join("; ")
       .slice(0, 500);
-    throw new WrappApiError(message || "Η Wrapp επέστρεψε σφάλμα.", {
-      code: "wrapp.errors",
-      raw: res,
-    });
+    // Translate to plain Greek BEFORE throwing so the user-facing
+    // envelope carries the friendly text; the raw is still logged.
+    throw new WrappApiError(
+      translateWrappError(rawMessage) || "Η Wrapp επέστρεψε σφάλμα.",
+      { code: "wrapp.errors", raw: res },
+    );
   } catch (err) {
     logger.error("wrapp.issue.failed", err, {
-      businessId: ctx.businessId,
-      userId: ctx.userId,
+      businessId: businessId,
+      userId: actorUserId,
       documentId: doc.id,
       action: "document.issue",
     });
-    const message =
+    const rawMessage =
       err instanceof Error ? err.message.slice(0, 500) : "Άγνωστο σφάλμα.";
+    // Translate again in case the error came from a lower layer (e.g. a
+    // raw fetch error string) that bypassed the WrappApiError wrap above.
+    const friendly = translateWrappError(rawMessage);
     await prisma.document
       .update({
         where: { id: doc.id },
-        data: { status: "draft", lastWrappError: message },
+        data: { status: "draft", lastWrappError: friendly },
       })
       .catch(() => undefined);
 
     if (err instanceof NotImplementedInPhase1) {
       return { ok: false as const, error: err.message };
     }
-    return { ok: false as const, error: message };
+    return { ok: false as const, error: friendly };
   }
 }
 

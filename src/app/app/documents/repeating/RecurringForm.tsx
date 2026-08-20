@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Save, Plus, Trash2 } from "lucide-react";
+import { Save, Plus, Trash2, Zap } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input, Select, Textarea, Field } from "@/components/ui/Input";
 import { todayInAthens } from "@/lib/date";
@@ -42,6 +42,7 @@ export type RecurringInitial = {
   paymentMethod?: string | null;
   notes?: string | null;
   status?: string;
+  autoTransmit?: boolean;
   lines?: LineDraft[];
 };
 
@@ -104,6 +105,9 @@ export function RecurringForm({
   const [lines, setLines] = useState<LineDraft[]>(
     initial?.lines?.length ? initial.lines : [emptyLine()],
   );
+  const [autoTransmit, setAutoTransmit] = useState<boolean>(
+    initial?.autoTransmit ?? false,
+  );
 
   const [state, formAction, pending] = useActionState(
     async (_prev: { error?: string } | null, form: FormData) => {
@@ -123,6 +127,7 @@ export function RecurringForm({
         status: (initial?.status === "paused" ? "paused" : "active") as
           | "active"
           | "paused",
+        autoTransmit,
         lines: lines.map((l) => ({
           itemId: l.itemId || undefined,
           description: l.description,
@@ -306,6 +311,48 @@ export function RecurringForm({
               placeholder="Προαιρετικές οδηγίες..."
             />
           </Field>
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardHeader
+          title="Αυτόματη διαβίβαση"
+          subtitle="Στέλνει το παραστατικό στην ΑΑΔΕ μόλις δημιουργηθεί, χωρίς να περιμένει έγκρισή σου."
+        />
+        <CardBody>
+          <label
+            className={
+              "flex cursor-pointer items-start gap-3 rounded-xl border-2 p-4 transition-colors " +
+              (autoTransmit
+                ? "border-amber-400 bg-amber-50"
+                : "border-ink-200 bg-white hover:border-brand-500")
+            }
+          >
+            <input
+              type="checkbox"
+              checked={autoTransmit}
+              onChange={(e) => setAutoTransmit(e.target.checked)}
+              className="mt-1 h-4 w-4 shrink-0 accent-amber-600"
+            />
+            <span className="flex-1 space-y-1 text-sm">
+              <span className="flex items-center gap-2 font-bold text-ink-900">
+                <Zap size={14} className="text-amber-600" aria-hidden />
+                Διαβίβαση χωρίς αποθήκευση ως πρόχειρο
+              </span>
+              <span className="block text-ink-600">
+                Το παραστατικό εκδίδεται και διαβιβάζεται αυτόματα στη
+                Wrapp/myDATA κάθε φορά. Αν αποτύχει η διαβίβαση (π.χ.
+                προσωρινό σφάλμα ΑΑΔΕ), το παραστατικό παραμένει σαν
+                πρόχειρο με το σφάλμα καταγεγραμμένο — δεν χάνεται τίποτα.
+              </span>
+              <span className="mt-2 block rounded-md bg-amber-100 px-2 py-1 text-[11px] font-semibold text-amber-900">
+                Χρησιμοποίησέ το μόνο για σταθερά επαναλαμβανόμενα
+                (συνδρομές, πάγια ενοίκια). Λάθη στο πρότυπο θα φτάσουν
+                στην ΑΑΔΕ χωρίς έλεγχο — θα χρειαστεί πιστωτικό για
+                διόρθωση.
+              </span>
+            </span>
+          </label>
         </CardBody>
       </Card>
 

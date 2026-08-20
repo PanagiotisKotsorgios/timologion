@@ -132,6 +132,14 @@ model RecurringDocument {
   lastRunAt      DateTime?
   paymentMethod  String?           @db.VarChar(80)
   notes          String?           @db.Text
+  // When true, the recurring cron IMMEDIATELY transmits the generated
+  // doc to myDATA (via attemptIssueForBusiness) instead of stopping at
+  // draft. Meant for hands-off scenarios like monthly hosting subscriptions
+  // where the client + line items never change. Default false so the safe
+  // create-draft → user reviews → user transmits flow remains the norm.
+  // If auto-transmit fails (Wrapp down, VAT rejection), the draft is left
+  // behind with lastWrappError set — nothing is lost, just visible next morning.
+  autoTransmit   Boolean           @default(false)
   // Snapshot of line template: itemId, description, qty, unit, unitPrice, discountPct, vatRate
   linesJson      String            @db.Text
   createdAt      DateTime          @default(now())

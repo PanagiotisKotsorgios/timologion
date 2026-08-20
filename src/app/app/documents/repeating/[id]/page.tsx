@@ -94,6 +94,7 @@ export default async function EditRecurringPage({
           paymentMethod: rec.paymentMethod,
           notes: rec.notes,
           status: rec.status,
+          autoTransmit: rec.autoTransmit,
           lines: parsedLines.map((l) => ({
             itemId: l.itemId,
             description: l.description,

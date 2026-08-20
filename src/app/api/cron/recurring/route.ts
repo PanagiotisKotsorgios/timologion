@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { computeLine, computeDocument } from "@/lib/totals";
 import { authorizeCron } from "@/lib/cron-auth";
 import { withCronLog } from "@/lib/cron-logger";
+import { attemptIssueForBusiness } from "@/app/app/documents/actions";
 import type { RecurrenceCadence } from "@prisma/client";
 
 export const runtime = "nodejs";
@@ -45,7 +46,13 @@ async function runRecurring() {
     take: 200,
   });
 
-  const results: { id: string; documentId?: string; error?: string }[] = [];
+  const results: {
+    id: string;
+    documentId?: string;
+    transmitted?: boolean;
+    transmitError?: string;
+    error?: string;
+  }[] = [];
 
   for (const rec of due) {
     try {
@@ -103,7 +110,38 @@ async function runRecurring() {
         return created;
       });
 
-      results.push({ id: rec.id, documentId: doc.id });
+      // Opt-in auto-transmit: when the template is flagged, hand the fresh
+      // draft straight to myDATA. Failures are non-fatal — the doc simply
+      // stays as a draft with lastWrappError set for the user to see next
+      // login. We do NOT reschedule / undo `nextRunAt`, since the draft
+      // still exists and can be transmitted manually.
+      let transmitted: boolean | undefined;
+      let transmitError: string | undefined;
+      if (rec.autoTransmit) {
+        try {
+          const issued = await attemptIssueForBusiness(
+            rec.businessId,
+            null,
+            doc.id,
+          );
+          if (issued.ok) {
+            transmitted = true;
+          } else {
+            transmitted = false;
+            transmitError = issued.error;
+          }
+        } catch (err) {
+          transmitted = false;
+          transmitError = err instanceof Error ? err.message : "unknown";
+        }
+      }
+
+      results.push({
+        id: rec.id,
+        documentId: doc.id,
+        transmitted,
+        transmitError,
+      });
     } catch (err) {
       results.push({
         id: rec.id,

@@ -174,45 +174,52 @@ export function classificationFor(type: DocumentType): {
     type === "depreciation"
   )
     return { category: "category3", type: "_" };
-  // EU intra-community sales/services — myDATA classifies these under
-  // category1_3 with type E3_561_002 (Πωλήσεις χονδρικές - επιτηδευματιών,
-  // ενδοκοινοτικές).
+  // EU intra-community sales/services — corrected from the earlier
+  // E3_561_002 (invalid for 1.2/2.2) to E3_561_006 which is the
+  // dedicated "πωλήσεις ενδοκοινοτικές" income bucket accepted by
+  // myDATA for intracommunity invoice type codes.
   if (type === "eu_sale_invoice" || type === "eu_service_invoice")
-    return { category: "category1_3", type: "E3_561_002" };
-  // Third-country sales/services — E3_561_005 (Πωλήσεις χονδρικές -
-  // επιτηδευματιών, τρίτες χώρες).
+    return { category: "category1_3", type: "E3_561_006" };
+  // Third-country sales/services — E3_561_005 (Πωλήσεις τρίτων χωρών).
   if (
     type === "third_country_sale_invoice" ||
     type === "third_country_service_invoice"
   )
     return { category: "category1_3", type: "E3_561_005" };
-  // Stay-tax receipts fall under special taxes.
+  // Stay-tax receipts (8.2) do not classify as ordinary income — the
+  // tax amount rides in `other_taxes`. Use the passthrough combo Wrapp
+  // accepts (category3/"_") so the accountant reclassifies downstream.
   if (type === "stay_tax_receipt")
-    return { category: "category1_5", type: "E3_596" };
-  // Third-party sales / clearings (invoice-on-behalf-of). myDATA reuses
-  // the retail wholesale bucket with the "τρίτων" sub-code E3_561_007.
+    return { category: "category3", type: "_" };
+  // Third-party sales / clearings / retail-for-third-party (1.4 / 1.5 /
+  // 11.5) — myDATA validator rejects the previously used E3_561_007
+  // combination on these codes ("Could not load valid validation doc
+  // for classification with category1_3 and type E3_561_007"). Use the
+  // passthrough combo Wrapp accepts and let the accountant reclassify
+  // downstream.
   if (
     type === "third_party_sale_invoice" ||
     type === "third_party_sale_clearing" ||
     type === "third_party_retail_receipt"
   )
-    return { category: "category1_3", type: "E3_561_007" };
-  // Rental income → other income bucket, real-estate rental type.
-  if (type === "rental_income")
-    return { category: "category1_2", type: "E3_881_003" };
-  // Contract income (deed / συμβόλαιο) → other income, contracts.
-  if (type === "contract_income")
-    return { category: "category1_2", type: "E3_881_001" };
-  // Purchase titles are issued BY the buyer FOR a non-obligated seller —
-  // in our sales-side flow we treat these as B2B invoices for
-  // classification purposes and let the accountant adjust downstream.
+    return { category: "category3", type: "_" };
+  // Rental income (8.1) and contract income (7.1) — myDATA's E3_881_003
+  // rejects the combination we previously used. Move both to the
+  // "Λοιπά έσοδα" bucket E3_881_004 under category1_4 which is the
+  // AADE-recommended combo for other-income document types.
+  if (type === "rental_income" || type === "contract_income")
+    return { category: "category1_4", type: "E3_881_004" };
+  // Purchase titles (τίτλος κτήσης 3.1/3.2) are BUYER-issued docs for a
+  // non-obligated seller — myDATA rejects standard sales classifications
+  // on these codes. Use the passthrough combo so Wrapp accepts the
+  // submission and downstream bookkeeping applies the correct code.
   if (type === "purchase_title" || type === "purchase_title_refused")
-    return { category: "category1_3", type: "E3_561_001" };
-  // Self-delivery / self-use are accounting adjustments — classified
-  // with wholesale to keep the totals consistent with the source
-  // inventory movement.
+    return { category: "category3", type: "_" };
+  // Self-delivery / self-use (6.1/6.2) are accounting adjustments and
+  // myDATA's validation rejects ordinary sales classifications. Use the
+  // passthrough combo — same treatment as settlement entries above.
   if (type === "self_delivery" || type === "self_use")
-    return { category: "category1_3", type: "E3_561_001" };
+    return { category: "category3", type: "_" };
   // Retail refund + retail credit + POS receipts all follow retail flow.
   if (
     type === "retail_refund_receipt" ||

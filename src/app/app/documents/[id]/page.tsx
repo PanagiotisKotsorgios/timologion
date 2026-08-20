@@ -19,6 +19,7 @@ import { date, money } from "@/lib/format";
 import { IssueButton } from "./IssueButton";
 import { CreditNoteButton } from "./DocumentActions";
 import { SendEmailButton } from "./SendEmailButton";
+import { parseAdditionalTaxes } from "../AdditionalTaxesEditor";
 
 export default async function DocumentDetailPage({
   params,
@@ -150,12 +151,42 @@ export default async function DocumentDetailPage({
               can(ctx.role, "document:write") && (
                 <CreditNoteButton documentId={doc.id} />
               )}
-            {isDraft && can(ctx.role, "document:issue") && (
-              <IssueButton
-                documentId={doc.id}
-                paymentMethod={doc.paymentMethod}
-              />
-            )}
+            {isDraft &&
+              can(ctx.role, "document:issue") &&
+              // 17.x settlement / payroll / depreciation types require a
+              // fundamentally different myDATA payload (expenses-side
+              // classification, no line quantity/unit/payment) that our
+              // sales-transmission pipeline cannot produce. Hide the
+              // button so the user isn't tricked into clicking it — the
+              // pre-issue guard would refuse it anyway, this just makes
+              // the constraint visible up-front.
+              doc.type !== "income_settlement_accounting" &&
+              doc.type !== "income_settlement_tax" &&
+              doc.type !== "expense_settlement_accounting" &&
+              doc.type !== "expense_settlement_tax" &&
+              doc.type !== "payroll_entry" &&
+              doc.type !== "depreciation" && (
+                <IssueButton
+                  documentId={doc.id}
+                  paymentMethod={doc.paymentMethod}
+                />
+              )}
+            {isDraft &&
+              (doc.type === "income_settlement_accounting" ||
+                doc.type === "income_settlement_tax" ||
+                doc.type === "expense_settlement_accounting" ||
+                doc.type === "expense_settlement_tax" ||
+                doc.type === "payroll_entry" ||
+                doc.type === "depreciation") && (
+                <div className="inline-flex max-w-md items-start gap-2 rounded-lg border-2 border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                  <span className="font-black">Μόνο τοπική αποθήκευση.</span>
+                  <span>
+                    Οι εγγραφές 17.x (τακτοποιήσεις, μισθοδοσία, αποσβέσεις)
+                    διαβιβάζονται μόνο από λογιστική εφαρμογή ή απευθείας
+                    από το portal της ΑΑΔΕ.
+                  </span>
+                </div>
+              )}
           </div>
         }
       />
@@ -282,16 +313,74 @@ export default async function DocumentDetailPage({
             <Card>
               <CardHeader title="Επιπλέον" />
               <CardBody className="space-y-4">
-                {doc.additionalTaxes && (
-                  <div>
-                    <p className="text-sm font-semibold text-ink-900">
-                      Επιπλέον φόροι
-                    </p>
-                    <p className="mt-1 whitespace-pre-line text-base text-ink-900">
-                      {doc.additionalTaxes}
-                    </p>
-                  </div>
-                )}
+                {doc.additionalTaxes && (() => {
+                  const { rows, legacyText } = parseAdditionalTaxes(
+                    doc.additionalTaxes,
+                  );
+                  if (rows.length === 0 && legacyText) {
+                    return (
+                      <div>
+                        <p className="text-sm font-semibold text-ink-900">
+                          Επιπλέον φόροι
+                        </p>
+                        <p className="mt-1 whitespace-pre-line text-base text-ink-900">
+                          {legacyText}
+                        </p>
+                      </div>
+                    );
+                  }
+                  if (rows.length === 0) return null;
+                  const total = rows.reduce((acc, r) => {
+                    const n = Number(String(r.amount).replace(",", "."));
+                    return Number.isFinite(n) ? acc + n : acc;
+                  }, 0);
+                  return (
+                    <div>
+                      <p className="text-sm font-semibold text-ink-900">
+                        Επιπλέον φόροι
+                      </p>
+                      <div className="mt-2 overflow-x-auto rounded-lg border border-ink-200">
+                        <table className="w-full text-sm">
+                          <thead className="bg-ink-100 text-xs uppercase tracking-wide text-ink-500">
+                            <tr>
+                              <th className="px-3 py-1.5 text-left">Κατηγορία</th>
+                              <th className="px-3 py-1.5 text-left">Περιγραφή</th>
+                              <th className="px-3 py-1.5 text-right">Ποσό</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-ink-200">
+                            {rows.map((r, i) => (
+                              <tr key={i}>
+                                <td className="px-3 py-1.5 text-ink-700">
+                                  {r.category || "—"}
+                                </td>
+                                <td className="px-3 py-1.5 text-ink-900">
+                                  {r.label || "—"}
+                                </td>
+                                <td className="px-3 py-1.5 text-right font-mono tabular-nums">
+                                  {money(Number(String(r.amount).replace(",", ".") || 0))}
+                                </td>
+                              </tr>
+                            ))}
+                            <tr className="bg-brand-50/40 font-semibold">
+                              <td colSpan={2} className="px-3 py-1.5 text-right text-xs uppercase tracking-widest text-brand-900/70">
+                                Σύνολο
+                              </td>
+                              <td className="px-3 py-1.5 text-right font-mono tabular-nums text-brand-900">
+                                {money(total)}
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                      {legacyText && (
+                        <p className="mt-2 text-xs text-ink-500">
+                          Παλιά σημείωση: {legacyText}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
                 {doc.notes && (
                   <div>
                     <p className="text-sm font-semibold text-ink-900">

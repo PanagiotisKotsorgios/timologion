@@ -18,6 +18,7 @@ import { Field, Input, Select, Textarea } from "@/components/ui/Input";
 import { HelpTip } from "@/components/ui/HelpTip";
 import { AutoTextarea } from "@/components/ui/AutoTextarea";
 import { DocTypePickerModal } from "./DocTypePickerModal";
+import { AdditionalTaxesEditor } from "./AdditionalTaxesEditor";
 import { Alert } from "@/components/ui/Alert";
 import { useToast } from "@/components/ui/Toast";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
@@ -1303,15 +1304,12 @@ export function DraftEditor({
             <div className="space-y-6 border-t-2 border-ink-300/60 px-5 py-5">
               <Field
                 label="Επιπλέον φόροι"
-                hint="Παρακράτηση, χαρτόσημο, ΟΓΑ κ.ά. — μία ανά γραμμή."
+                hint="Παρακράτηση, χαρτόσημο, τέλη διαμονής, ΟΓΑ κ.ά. — δομημένη είσοδος για σωστή διαβίβαση στο myDATA."
                 htmlFor="additionalTaxes"
               >
-                <Textarea
-                  id="additionalTaxes"
+                <AdditionalTaxesEditor
                   value={additionalTaxes}
-                  onChange={(e) => setAdditionalTaxes(e.target.value)}
-                  rows={3}
-                  placeholder="π.χ. Παρακράτηση φόρου 20% : -100,00"
+                  onChange={setAdditionalTaxes}
                 />
               </Field>
               <Field label="Σημειώσεις" htmlFor="notes">
