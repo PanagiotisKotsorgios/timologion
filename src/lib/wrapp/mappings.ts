@@ -83,18 +83,28 @@ export function mapDocumentTypeToWrapp(type: DocumentType): string | null {
       // so we can enforce a mandatory parent MARK in attemptIssueAction.
       return "9.3";
     // ─── myDATA 17.x settlement entries ─────────────────────────────
-    case "income_settlement_accounting":
-      return "17.1"; // Λοιπές Εγγραφές Τακτοποίησης Εσόδων — Λογιστική Βάση
-    case "income_settlement_tax":
-      return "17.2"; // Λοιπές Εγγραφές Τακτοποίησης Εσόδων — Φορολογική Βάση
-    case "expense_settlement_accounting":
-      return "17.3"; // Λοιπές Εγγραφές Τακτοποίησης Εξόδων — Λογιστική Βάση
-    case "expense_settlement_tax":
-      return "17.4"; // Λοιπές Εγγραφές Τακτοποίησης Εξόδων — Φορολογική Βάση
+    // Per Wrapp/AADE docs the codes are:
+    //   17.1 = Μισθοδοσία
+    //   17.2 = Αποσβέσεις
+    //   17.3 = Λοιπές Τακτοποίησης Εσόδων / Λογιστική Βάση
+    //   17.4 = Λοιπές Τακτοποίησης Εσόδων / Φορολογική Βάση
+    //   17.5 = Λοιπές Τακτοποίησης Εξόδων / Λογιστική Βάση
+    //   17.6 = Λοιπές Τακτοποίησης Εξόδων / Φορολογική Βάση
+    // Our DocumentType names are what we picked on our side — the
+    // *values* used to be swapped against the Wrapp codes; this
+    // corrects them.
     case "payroll_entry":
-      return "17.5"; // Ενσωμάτωση Μισθοδοσίας
+      return "17.1"; // Μισθοδοσία
     case "depreciation":
-      return "17.6"; // Αποσβέσεις
+      return "17.2"; // Αποσβέσεις
+    case "income_settlement_accounting":
+      return "17.3"; // Λοιπές Τακτοποίησης Εσόδων — Λογιστική Βάση
+    case "income_settlement_tax":
+      return "17.4"; // Λοιπές Τακτοποίησης Εσόδων — Φορολογική Βάση
+    case "expense_settlement_accounting":
+      return "17.5"; // Λοιπές Τακτοποίησης Εξόδων — Λογιστική Βάση
+    case "expense_settlement_tax":
+      return "17.6"; // Λοιπές Τακτοποίησης Εξόδων — Φορολογική Βάση
     case "quantitative_receipt":
       // Δελτίο Ποσοτικής Παραλαβής — internal commercial doc, not
       // transmitted to myDATA. Same treatment as proforma/quote/order.
@@ -186,11 +196,12 @@ export function classificationFor(type: DocumentType): {
     type === "third_country_service_invoice"
   )
     return { category: "category1_3", type: "E3_561_005" };
-  // Stay-tax receipts (8.2) do not classify as ordinary income — the
-  // tax amount rides in `other_taxes`. Use the passthrough combo Wrapp
-  // accepts (category3/"_") so the accountant reclassifies downstream.
+  // Stay-tax receipts (8.2) — per Wrapp docs the line uses
+  // `category1_95` (Λοιπά Πληροφοριακά Στοιχεία Εσόδων) with no
+  // classification type; the tax amount rides in `other_taxes_amount`
+  // + `accommodation_tax` + `other_taxes_percent_category`.
   if (type === "stay_tax_receipt")
-    return { category: "category3", type: "_" };
+    return { category: "category1_95", type: "_" };
   // Third-party sales / clearings / retail-for-third-party (1.4 / 1.5 /
   // 11.5) — myDATA validator rejects the previously used E3_561_007
   // combination on these codes ("Could not load valid validation doc
@@ -203,23 +214,25 @@ export function classificationFor(type: DocumentType): {
     type === "third_party_retail_receipt"
   )
     return { category: "category3", type: "_" };
-  // Rental income (8.1) and contract income (7.1) — myDATA's E3_881_003
-  // rejects the combination we previously used. Move both to the
-  // "Λοιπά έσοδα" bucket E3_881_004 under category1_4 which is the
-  // AADE-recommended combo for other-income document types.
+  // Rental income (8.1) and contract income (7.1) — per Wrapp/AADE
+  // classification tables these fall under category1_5 (Λοιπά Έσοδα /
+  // Κέρδη) with type E3_562 (Λοιπά συνήθη έσοδα). The earlier
+  // category1_4 / E3_881_004 pairing was invalid.
   if (type === "rental_income" || type === "contract_income")
-    return { category: "category1_4", type: "E3_881_004" };
-  // Purchase titles (τίτλος κτήσης 3.1/3.2) are BUYER-issued docs for a
-  // non-obligated seller — myDATA rejects standard sales classifications
-  // on these codes. Use the passthrough combo so Wrapp accepts the
-  // submission and downstream bookkeeping applies the correct code.
+    return { category: "category1_5", type: "E3_562" };
+  // Purchase titles (τίτλος κτήσης 3.1/3.2) — buyer-issued docs. Use
+  // the informational-only combo category1_95 + "_" which myDATA
+  // accepts as passthrough while the accountant reclassifies downstream.
   if (type === "purchase_title" || type === "purchase_title_refused")
-    return { category: "category3", type: "_" };
-  // Self-delivery / self-use (6.1/6.2) are accounting adjustments and
-  // myDATA's validation rejects ordinary sales classifications. Use the
-  // passthrough combo — same treatment as settlement entries above.
+    return { category: "category1_95", type: "_" };
+  // Self-delivery / self-use (6.1 / 6.2) — per Wrapp classification
+  // table, category1_6 (Αυτοπαραδόσεις / Ιδιοχρησιμοποιήσεις) paired
+  // with type E3_106 (Ιδιοπαραγωγή παγίων - Αυτοπαραδόσεις -
+  // Καταστροφές αποθεμάτων / Εμπορεύματα). myDATA also requires a
+  // positive VAT amount on these — the user must set a real VAT rate
+  // (24 / 13 / 6) on the lines, not zero.
   if (type === "self_delivery" || type === "self_use")
-    return { category: "category3", type: "_" };
+    return { category: "category1_6", type: "E3_106" };
   // Retail refund + retail credit + POS receipts all follow retail flow.
   if (
     type === "retail_refund_receipt" ||

@@ -1150,12 +1150,8 @@ const EU_COUNTRY_CODES: ReadonlySet<string> = new Set([
 ]);
 
 // Doc types where every line's VAT rate must be 0 (myDATA vatCategory 7).
-// Foreign-only — self_delivery / self_use / purchase_title were WRONGLY
-// included here in an earlier iteration: myDATA actually rejects
-// vatCategory 7/8 on those codes and requires a positive vat_amount
-// with vatCategory 1-6 (a real Greek VAT rate). Those types are now in
-// BLOCKED_FROM_AUTO_TRANSMIT because their correct classification
-// depends on the tenant's activity code (ΚΑΔ) which we don't collect.
+// Only intra-EU / third-country flows — for those the exemption code
+// tells the AADE validator WHY VAT is zero.
 const ZERO_VAT_TYPES: ReadonlySet<DocumentType> = new Set([
   "eu_sale_invoice",
   "eu_service_invoice",
@@ -1163,35 +1159,15 @@ const ZERO_VAT_TYPES: ReadonlySet<DocumentType> = new Set([
   "third_country_service_invoice",
 ] as const);
 
-// Types the automated sales-transmission pipeline cannot reliably
-// produce a myDATA-compliant payload for. Each entry is here because
-// its correct classification / VAT / payment-method structure depends
-// on data we don't capture (business KAD, expense structure, special
-// tax codes). The drafts still save locally — the user transmits via
-// their λογιστική application or the AADE portal.
-//
-// Grouped so the Greek message can name the family:
-//   17.1-17.6 — settlement / payroll / depreciation
-//   3.1-3.2   — τίτλος κτήσης (buyer-issued for non-obligated seller)
-//   6.1-6.2   — αυτοπαράδοση / ιδιοχρησιμοποίηση (self-supply)
-//   7.1       — συμβόλαιο (έσοδο)
-//   8.1       — ενοίκιο (έσοδο)
-//   8.2       — φόρος διαμονής (needs OtherTaxes structured extras)
-const BLOCKED_FROM_AUTO_TRANSMIT: ReadonlySet<DocumentType> = new Set([
-  "income_settlement_accounting",
-  "income_settlement_tax",
-  "expense_settlement_accounting",
-  "expense_settlement_tax",
-  "payroll_entry",
-  "depreciation",
-  "self_delivery",
-  "self_use",
-  "purchase_title",
-  "purchase_title_refused",
-  "rental_income",
-  "contract_income",
-  "stay_tax_receipt",
-] as const);
+// The block list is now EMPTY — after wiring the correct Wrapp fields
+// (`expense: true` for 17.x, `accommodation_tax` + `other_taxes_amount`
+// for 8.2, correct classification codes per doc type per AADE spec),
+// every myDATA type our doc-picker exposes can transmit through the
+// standard pipeline. Kept as a `Set<DocumentType>` (rather than
+// deleted) so the mechanism stays in place — if we discover a new
+// blocking edge case later, add its DocumentType here and the
+// pre-issue guard + UI hide-list pick it up automatically.
+const BLOCKED_FROM_AUTO_TRANSMIT: ReadonlySet<DocumentType> = new Set([]);
 
 type PreflightDoc = {
   type: DocumentType;
@@ -1718,15 +1694,62 @@ export async function attemptIssueForBusiness(
   const emailLocale: "el" | "en" | undefined =
     doc.printLanguage === "en" ? "en" : doc.printLanguage === "el" ? "el" : undefined;
 
+  // Per-type payload shape signals (used further down):
+  //   isSettlement: 17.x — expense flag on lines, no payment method
+  //   isStayTax:    8.2  — accommodation_tax on line, no name/quantity/vat
+  const isSettlement =
+    doc.type === "payroll_entry" ||
+    doc.type === "depreciation" ||
+    doc.type === "income_settlement_accounting" ||
+    doc.type === "income_settlement_tax" ||
+    doc.type === "expense_settlement_accounting" ||
+    doc.type === "expense_settlement_tax";
+  const isExpenseSide =
+    doc.type === "expense_settlement_accounting" ||
+    doc.type === "expense_settlement_tax" ||
+    doc.type === "payroll_entry" ||
+    doc.type === "depreciation";
+  const isStayTax = doc.type === "stay_tax_receipt";
+
+  // Parse structured "Επιπλέον φόροι" (JSON) if present. Only the
+  // first row is used for 8.2 (Wrapp expects one accommodation_tax +
+  // one other_taxes_percent_category per line).
+  let stayTaxRow: { category: string; amount: number } | null = null;
+  if (isStayTax && doc.additionalTaxes) {
+    try {
+      const parsed = JSON.parse(doc.additionalTaxes);
+      const first = Array.isArray(parsed?.rows) ? parsed.rows[0] : null;
+      if (first && first.category) {
+        const amt = Number(String(first.amount).replace(",", "."));
+        stayTaxRow = {
+          category: String(first.category),
+          amount: Number.isFinite(amt) ? amt : 0,
+        };
+      }
+    } catch {
+      // additionalTaxes wasn't JSON — user is on the legacy free-text
+      // path. Leave stayTaxRow null; the preflight already blocks empty.
+    }
+  }
+
   const wrappPayload = {
     invoice_type_code: invoiceTypeCode,
     billing_book_id: book.wrappBookId,
     branch: branch?.wrappBranchId ?? undefined,
-    payment_method_type: mapPaymentMethodToWrapp(doc.paymentMethod),
-    net_total_amount: wire(Number(doc.netTotalAmount)),
-    vat_total_amount: wire(Number(doc.vatTotalAmount)),
-    total_amount: wire(Number(doc.totalAmount)),
-    payable_total_amount: wire(Number(doc.payableTotalAmount)),
+    // 17.x forbids payment_method_type per Wrapp validator.
+    payment_method_type: isSettlement
+      ? undefined
+      : mapPaymentMethodToWrapp(doc.paymentMethod),
+    // 8.2 sends money on other_taxes_amount, not the standard totals.
+    net_total_amount: isStayTax ? 0 : wire(Number(doc.netTotalAmount)),
+    vat_total_amount: isStayTax ? 0 : wire(Number(doc.vatTotalAmount)),
+    total_amount: isStayTax
+      ? (stayTaxRow?.amount ?? Number(doc.totalAmount))
+      : wire(Number(doc.totalAmount)),
+    payable_total_amount: isStayTax
+      ? (stayTaxRow?.amount ?? Number(doc.payableTotalAmount))
+      : wire(Number(doc.payableTotalAmount)),
+    other_taxes_amount: isStayTax ? (stayTaxRow?.amount ?? 0) : undefined,
     notes: doc.notes ?? undefined,
     num: reservedNumber ?? undefined,
     counterpart,
@@ -1748,15 +1771,29 @@ export async function attemptIssueForBusiness(
       const net = wire(Number(l.netAmount));
       const vat = wire(Number(l.vatAmount));
       const total = wire(Number(l.totalAmount));
+
+      // ── 8.2 stay-tax special line: no name/quantity/vat, just
+      //    accommodation_tax + other_taxes_percent_category. Only one
+      //    line is meaningful (see stayTaxRow above).
+      if (isStayTax) {
+        return {
+          line_number: i + 1,
+          accommodation_tax: stayTaxRow?.amount ?? 0,
+          other_taxes_percent_category: stayTaxRow?.category ?? "7",
+          other_taxes_amount: stayTaxRow?.amount ?? 0,
+          classification_category: classification.category,
+          classification_type: classification.type,
+        };
+      }
+
       // myDATA VAT-exemption codes signal the WHY of a 0% line so the
       // AADE validator classifies it under vatCategory 7 (χωρίς ΦΠΑ)
       // instead of category 8 (απαλλασσόμενα). Without this Wrapp
       // rejects intracommunity/third-country docs with
       // "Vat category must have value 7 for this invoice type".
-      //   3  = Άρθρο 3 Κώδικα ΦΠΑ (out of scope, e.g. intra-EU services)
-      //   5  = Άρθρο 24 (τρίτες χώρες — exports)
-      //   14 = Άρθρο 28 (ενδοκοινοτικές παραδόσεις αγαθών)
-      //   15 = Χωρίς φόρο εισοδήματος (special)
+      //   3  = Άρθρο 17 (τόπος παράδοσης αγαθών)
+      //   6  = Άρθρο 24 (τρίτες χώρες — exports)
+      //   14 = Άρθρο 33 (ενδοκοινοτικές παραδόσεις αγαθών)
       const vatExemptionCode: number | undefined =
         Number(l.vatRate) === 0
           ? doc.type === "eu_sale_invoice"
@@ -1765,26 +1802,34 @@ export async function attemptIssueForBusiness(
               ? 3
               : doc.type === "third_country_sale_invoice" ||
                   doc.type === "third_country_service_invoice"
-                ? 5
+                ? 6
                 : ZERO_VAT_TYPES.has(doc.type)
-                  ? 1 // Άρθρο 2, 3 — self-supply / purchase title fallback
+                  ? 1 // Άρθρο 2, 3 — fallback
                   : undefined
           : undefined;
       return {
         line_number: i + 1,
-        name: (l.description?.trim() || "Είδος").slice(0, 200),
+        // 17.x forbids MeasurementUnit + Quantity + name/price/vat on
+        // the line — send only line_number + classification + expense
+        // flag so Wrapp emits an expensesClassifications entry.
+        name: isSettlement
+          ? undefined
+          : (l.description?.trim() || "Είδος").slice(0, 200),
         code: undefined,
         description: undefined,
-        quantity: wire(Number(l.quantity)),
-        quantity_type: 1,
-        unit_price: wire(Number(l.unitPrice)),
-        net_total_price: net,
-        vat_rate: Number(l.vatRate),
-        vat_total: vat,
-        subtotal: total,
+        quantity: isSettlement ? undefined : wire(Number(l.quantity)),
+        quantity_type: isSettlement ? undefined : 1,
+        unit_price: isSettlement ? undefined : wire(Number(l.unitPrice)),
+        net_total_price: isSettlement ? undefined : net,
+        vat_rate: isSettlement ? undefined : Number(l.vatRate),
+        vat_total: isSettlement ? undefined : vat,
+        subtotal: isSettlement ? undefined : total,
         vat_exemption_code: vatExemptionCode,
         classification_category: classification.category,
         classification_type: classification.type,
+        // Flip to expensesClassifications for settlement types
+        // (17.1–17.6 and any explicit expense-side entry).
+        expense: isExpenseSide ? true : undefined,
       };
     }),
   };

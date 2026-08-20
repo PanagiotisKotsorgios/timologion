@@ -22,25 +22,13 @@ import { SendEmailButton } from "./SendEmailButton";
 import { parseAdditionalTaxes } from "../AdditionalTaxesEditor";
 import type { DocumentType } from "@prisma/client";
 
-// Kept in sync with BLOCKED_FROM_AUTO_TRANSMIT in ../actions.ts —
-// duplicated here so this Server Component doesn't need to import the
-// server-only module (which would drag its "use server" deps into the
-// RSC compilation). Adding a type to one list means adding it here too.
-const AUTO_TRANSMIT_BLOCKED_TYPES: ReadonlySet<DocumentType> = new Set([
-  "income_settlement_accounting",
-  "income_settlement_tax",
-  "expense_settlement_accounting",
-  "expense_settlement_tax",
-  "payroll_entry",
-  "depreciation",
-  "self_delivery",
-  "self_use",
-  "purchase_title",
-  "purchase_title_refused",
-  "rental_income",
-  "contract_income",
-  "stay_tax_receipt",
-] as const);
+// Kept in sync with BLOCKED_FROM_AUTO_TRANSMIT in ../actions.ts. The
+// list is currently empty because every myDATA type our doc-picker
+// exposes now transmits through the standard pipeline. If a new
+// blocking edge case appears, add its DocumentType here and the
+// "Διαβίβαση" button hides + the amber "μόνο τοπική αποθήκευση"
+// banner appears in its place.
+const AUTO_TRANSMIT_BLOCKED_TYPES: ReadonlySet<DocumentType> = new Set([]);
 
 export default async function DocumentDetailPage({
   params,

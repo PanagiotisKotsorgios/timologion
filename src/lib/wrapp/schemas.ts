@@ -117,19 +117,32 @@ export const wrappInvoiceCounterpart = z.object({
 
 export const wrappInvoiceLine = z.object({
   line_number: z.number(),
-  name: z.string(),
+  // Most fields are now OPTIONAL because myDATA rejects them on some
+  // invoice type codes: 17.x (settlement/payroll/depreciation) forbid
+  // MeasurementUnit/Quantity, and 8.2 (stay-tax) rides on
+  // `accommodation_tax` + `other_taxes_percent_category` instead of
+  // name/price/vat. The payload builder in documents/actions.ts sends
+  // only the fields relevant to each type.
+  name: z.string().optional(),
   code: z.string().optional(),
   description: z.string().optional(),
-  quantity: z.number(),
+  quantity: z.number().optional(),
   quantity_type: z.number().optional(),
-  unit_price: z.number(),
-  net_total_price: z.number(),
-  vat_rate: z.number(),
-  vat_total: z.number(),
-  subtotal: z.number(),
+  unit_price: z.number().optional(),
+  net_total_price: z.number().optional(),
+  vat_rate: z.number().optional(),
+  vat_total: z.number().optional(),
+  subtotal: z.number().optional(),
   vat_exemption_code: z.union([z.number(), z.string()]).optional(),
   classification_category: z.string(),
   classification_type: z.string().optional(),
+  // Line-level 8.2 (stay-tax) fields.
+  accommodation_tax: z.number().optional(),
+  other_taxes_percent_category: z.string().optional(),
+  other_taxes_amount: z.number().optional(),
+  // When true, Wrapp emits `expensesClassifications` instead of
+  // `incomeClassifications` — required for 17.x settlement types.
+  expense: z.boolean().optional(),
 });
 export type WrappInvoiceLine = z.infer<typeof wrappInvoiceLine>;
 
@@ -159,8 +172,12 @@ export const wrappInvoiceRequest = z.object({
   invoice_type_code: z.string(),
   billing_book_id: z.string(),
   branch: z.string().optional(),
-  payment_method_type: z.number(),
+  // payment_method_type is optional because 17.x settlement types
+  // forbid it ("Payment Methods is forbidden for this invoice type").
+  payment_method_type: z.number().optional(),
   payment_details: z.string().optional(),
+  // Invoice-level stay-tax (8.2) sum.
+  other_taxes_amount: z.number().optional(),
   currency: z.string().optional(),
   exchange_rate: z.number().optional(),
   net_total_amount: z.number(),
