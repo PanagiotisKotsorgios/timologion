@@ -311,7 +311,27 @@ export function DraftEditor({
       if (raw) {
         const parsed = JSON.parse(raw) as DraftInput["type"][];
         if (Array.isArray(parsed) && parsed.length > 0) {
-          setVisibleTypes(parsed);
+          // Migrate legacy default that showed the standalone 5.2 credit
+          // note. The new default is 5.1 (συσχετιζόμενο) because it
+          // carries the parent MARK and is the compliance-recommended
+          // variant. If the user has 5.2 but NOT 5.1 in their persisted
+          // set, upgrade it in-place — preserves every other custom
+          // choice they made. Anyone who explicitly enabled BOTH keeps
+          // both (no downgrade).
+          let migrated = parsed;
+          if (
+            parsed.includes("credit_note") &&
+            !parsed.includes("credit_note_correlated")
+          ) {
+            migrated = parsed.map((v) =>
+              v === "credit_note" ? "credit_note_correlated" : v,
+            );
+            window.localStorage.setItem(
+              "timologion.visibleDocTypes",
+              JSON.stringify(migrated),
+            );
+          }
+          setVisibleTypes(migrated);
         }
       }
     } catch {
