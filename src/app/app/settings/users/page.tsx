@@ -20,7 +20,10 @@ export default async function UsersSettingsPage() {
     orderBy: { createdAt: "asc" },
   });
 
+  // Kept for one-line re-enable when multi-user exits beta — see the
+  // <RoleSelect> disabled={true} below and this file's beta banner.
   const canEditRole = can(ctx.role, "member:update_role");
+  void canEditRole;
 
   return (
     <>
@@ -96,10 +99,13 @@ export default async function UsersSettingsPage() {
                       </td>
                       <td className="px-4 py-2 text-ink-700">{m.user.email}</td>
                       <td className="px-4 py-2">
+                        {/* Locked during beta — the amber banner at the
+                            top explains why. When multi-user ships,
+                            restore `disabled={!canEditRole || isSelf}`. */}
                         <RoleSelect
                           memberId={m.id}
                           role={m.role}
-                          disabled={!canEditRole || isSelf}
+                          disabled
                         />
                       </td>
                       <td className="px-4 py-2 text-ink-700">
