@@ -18,9 +18,44 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function fail(reason: string): Response {
-  return NextResponse.redirect(
-    `${env.APP_BASE_URL}/login?error=${encodeURIComponent(reason)}`,
+// Runtime-mode cookie name — duplicated from src/lib/runtime-mode.ts
+// because that module is `server-only` and can't be imported from a
+// route handler in a Next 15 build. Kept in sync by convention.
+const RUNTIME_MODE_COOKIE = "timologion-mode";
+const RUNTIME_MODE_TTL = 7 * 24 * 60 * 60;
+
+/**
+ * Wrap a redirect Response so it explicitly re-sets the runtime-mode
+ * cookie when the incoming request was in staging mode. The cookie is
+ * already in the browser (path=/, sameSite=lax, 7-day TTL), so in
+ * theory it survives a redirect chain automatically — but the OAuth
+ * bounce through Google + our own callback + downstream /app redirect
+ * had users landing in production mode after a staging-Google login.
+ * Defensive re-set makes the cookie's survival unconditional.
+ */
+function preserveMode(req: Request, res: NextResponse): NextResponse {
+  const mode = new Headers(req.headers)
+    .get("cookie")
+    ?.split(";")
+    .map((c) => c.trim())
+    .find((c) => c.startsWith(`${RUNTIME_MODE_COOKIE}=`))
+    ?.split("=")[1];
+  if (mode === "staging") {
+    res.cookies.set(RUNTIME_MODE_COOKIE, "staging", {
+      path: "/",
+      maxAge: RUNTIME_MODE_TTL,
+      sameSite: "lax",
+    });
+  }
+  return res;
+}
+
+function fail(req: Request, reason: string): Response {
+  return preserveMode(
+    req,
+    NextResponse.redirect(
+      `${env.APP_BASE_URL}/login?error=${encodeURIComponent(reason)}`,
+    ),
   );
 }
 
@@ -30,28 +65,28 @@ export async function GET(
 ) {
   const { provider: segment } = await params;
   const provider = providerFromSegment(segment);
-  if (!provider) return fail("unknown_provider");
+  if (!provider) return fail(req, "unknown_provider");
 
   const cfg = getProviderConfig(provider);
-  if (!cfg) return fail("oauth_disabled");
+  if (!cfg) return fail(req, "oauth_disabled");
 
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
   const err = url.searchParams.get("error");
-  if (err) return fail(err);
-  if (!code || !state) return fail("missing_params");
+  if (err) return fail(req, err);
+  if (!code || !state) return fail(req, "missing_params");
 
   const jar = await cookies();
   const stateCookie = jar.get(OAUTH_STATE_COOKIE)?.value;
-  if (!verifyState(state, stateCookie)) return fail("bad_state");
+  if (!verifyState(state, stateCookie)) return fail(req, "bad_state");
   jar.delete(OAUTH_STATE_COOKIE);
 
   let profile;
   try {
     profile = await exchangeCodeForProfile(cfg, code);
   } catch {
-    return fail("oauth_exchange_failed");
+    return fail(req, "oauth_exchange_failed");
   }
 
   // 1) Existing oauth link?
@@ -107,7 +142,7 @@ export async function GET(
       userId = user.id;
     }
   } else {
-    return fail("no_email_from_provider");
+    return fail(req, "no_email_from_provider");
   }
 
   // If the user has 2FA on, we CANNOT create a session yet — Google
@@ -125,10 +160,13 @@ export async function GET(
       // Brevo (or our config) refused the OTP. Bounce back to /login
       // with a clear error instead of silently landing on the OTP page
       // for a code that will never arrive.
-      return NextResponse.redirect(
-        `${env.APP_BASE_URL}/login?error=${encodeURIComponent(
-          "mfa_send_failed",
-        )}`,
+      return preserveMode(
+        req,
+        NextResponse.redirect(
+          `${env.APP_BASE_URL}/login?error=${encodeURIComponent(
+            "mfa_send_failed",
+          )}`,
+        ),
       );
     }
     jar.set(OAUTH_MFA_PENDING_COOKIE, createOAuthMfaPendingCookie(userId), {
@@ -138,7 +176,10 @@ export async function GET(
       path: "/",
       maxAge: 10 * 60,
     });
-    return NextResponse.redirect(`${env.APP_BASE_URL}/login/oauth-mfa`);
+    return preserveMode(
+      req,
+      NextResponse.redirect(`${env.APP_BASE_URL}/login/oauth-mfa`),
+    );
   }
 
   const hdr = await headers();
@@ -163,7 +204,10 @@ export async function GET(
     select: { businessId: true },
   });
 
-  return NextResponse.redirect(
-    `${env.APP_BASE_URL}${hasMembership ? "/app" : "/app/onboarding"}`,
+  return preserveMode(
+    req,
+    NextResponse.redirect(
+      `${env.APP_BASE_URL}${hasMembership ? "/app" : "/app/onboarding"}`,
+    ),
   );
 }
