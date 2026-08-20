@@ -20,6 +20,27 @@ import { IssueButton } from "./IssueButton";
 import { CreditNoteButton } from "./DocumentActions";
 import { SendEmailButton } from "./SendEmailButton";
 import { parseAdditionalTaxes } from "../AdditionalTaxesEditor";
+import type { DocumentType } from "@prisma/client";
+
+// Kept in sync with BLOCKED_FROM_AUTO_TRANSMIT in ../actions.ts —
+// duplicated here so this Server Component doesn't need to import the
+// server-only module (which would drag its "use server" deps into the
+// RSC compilation). Adding a type to one list means adding it here too.
+const AUTO_TRANSMIT_BLOCKED_TYPES: ReadonlySet<DocumentType> = new Set([
+  "income_settlement_accounting",
+  "income_settlement_tax",
+  "expense_settlement_accounting",
+  "expense_settlement_tax",
+  "payroll_entry",
+  "depreciation",
+  "self_delivery",
+  "self_use",
+  "purchase_title",
+  "purchase_title_refused",
+  "rental_income",
+  "contract_income",
+  "stay_tax_receipt",
+] as const);
 
 export default async function DocumentDetailPage({
   params,
@@ -153,40 +174,28 @@ export default async function DocumentDetailPage({
               )}
             {isDraft &&
               can(ctx.role, "document:issue") &&
-              // 17.x settlement / payroll / depreciation types require a
-              // fundamentally different myDATA payload (expenses-side
-              // classification, no line quantity/unit/payment) that our
-              // sales-transmission pipeline cannot produce. Hide the
-              // button so the user isn't tricked into clicking it — the
-              // pre-issue guard would refuse it anyway, this just makes
-              // the constraint visible up-front.
-              doc.type !== "income_settlement_accounting" &&
-              doc.type !== "income_settlement_tax" &&
-              doc.type !== "expense_settlement_accounting" &&
-              doc.type !== "expense_settlement_tax" &&
-              doc.type !== "payroll_entry" &&
-              doc.type !== "depreciation" && (
+              // Types the auto-transmit pipeline cannot serve — hide the
+              // button entirely so the user isn't tricked into clicking
+              // it. The pre-issue guard refuses these anyway; this just
+              // makes the constraint visible up-front. Kept in sync with
+              // BLOCKED_FROM_AUTO_TRANSMIT in actions.ts.
+              !AUTO_TRANSMIT_BLOCKED_TYPES.has(doc.type) && (
                 <IssueButton
                   documentId={doc.id}
                   paymentMethod={doc.paymentMethod}
                 />
               )}
-            {isDraft &&
-              (doc.type === "income_settlement_accounting" ||
-                doc.type === "income_settlement_tax" ||
-                doc.type === "expense_settlement_accounting" ||
-                doc.type === "expense_settlement_tax" ||
-                doc.type === "payroll_entry" ||
-                doc.type === "depreciation") && (
-                <div className="inline-flex max-w-md items-start gap-2 rounded-lg border-2 border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                  <span className="font-black">Μόνο τοπική αποθήκευση.</span>
-                  <span>
-                    Οι εγγραφές 17.x (τακτοποιήσεις, μισθοδοσία, αποσβέσεις)
-                    διαβιβάζονται μόνο από λογιστική εφαρμογή ή απευθείας
-                    από το portal της ΑΑΔΕ.
-                  </span>
-                </div>
-              )}
+            {isDraft && AUTO_TRANSMIT_BLOCKED_TYPES.has(doc.type) && (
+              <div className="inline-flex max-w-md items-start gap-2 rounded-lg border-2 border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                <span className="font-black">Μόνο τοπική αποθήκευση.</span>
+                <span>
+                  Αυτός ο τύπος παραστατικού απαιτεί ειδική δομή myDATA
+                  payload που εξαρτάται από τον ΚΑΔ της επιχείρησης —
+                  διαβιβάζεται μόνο από λογιστική εφαρμογή ή απευθείας
+                  από το portal της ΑΑΔΕ.
+                </span>
+              </div>
+            )}
           </div>
         }
       />

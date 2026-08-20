@@ -170,6 +170,16 @@ const RULES: Rule[] = [
       /expensesclassification is mandatory for invoice detail|incomeclassification is forbidden for invoice detail/i,
     el: "Αυτός ο τύπος παραστατικού απαιτεί ταξινόμηση εξόδων (όχι εσόδων). Οι εγγραφές τακτοποίησης 17.x διαβιβάζονται μόνο από λογιστική εφαρμογή ή από το portal της ΑΑΔΕ.",
   },
+  {
+    match:
+      /the values 7 or 8 are not allowed for vat category for this invoice type/i,
+    el: "Αυτός ο τύπος παραστατικού απαιτεί κανονικό ΦΠΑ (π.χ. 24%), όχι απαλλασσόμενο ή «χωρίς ΦΠΑ». Άνοιξε την επεξεργασία και επίλεξε ποσοστό ΦΠΑ 6/13/24 στις γραμμές.",
+  },
+  {
+    match:
+      /vat amount per line must have value greater than 0 for this invoice type/i,
+    el: "Αυτός ο τύπος παραστατικού απαιτεί ΦΠΑ μεγαλύτερο του μηδενός σε κάθε γραμμή. Ελέγξε τα ποσοστά ΦΠΑ των γραμμών.",
+  },
 ];
 
 /**

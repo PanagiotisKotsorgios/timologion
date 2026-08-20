@@ -1150,25 +1150,33 @@ const EU_COUNTRY_CODES: ReadonlySet<string> = new Set([
 ]);
 
 // Doc types where every line's VAT rate must be 0 (myDATA vatCategory 7).
+// Foreign-only — self_delivery / self_use / purchase_title were WRONGLY
+// included here in an earlier iteration: myDATA actually rejects
+// vatCategory 7/8 on those codes and requires a positive vat_amount
+// with vatCategory 1-6 (a real Greek VAT rate). Those types are now in
+// BLOCKED_FROM_AUTO_TRANSMIT because their correct classification
+// depends on the tenant's activity code (ΚΑΔ) which we don't collect.
 const ZERO_VAT_TYPES: ReadonlySet<DocumentType> = new Set([
   "eu_sale_invoice",
   "eu_service_invoice",
   "third_country_sale_invoice",
   "third_country_service_invoice",
-  "purchase_title",
-  "purchase_title_refused",
-  "self_delivery",
-  "self_use",
 ] as const);
 
-// 17.x settlement entries (τακτοποιήσεις, μισθοδοσία, αποσβέσεις) use a
-// fundamentally different myDATA payload shape: no per-line quantity /
-// unit / unit-price, no payment method, and `expensesClassification`
-// instead of `incomeClassification`. The auto-transmit pipeline built
-// for sales invoices cannot produce a compliant payload for these, so
-// we block them at the pre-issue gate with a plain-Greek message.
-// The rows still save as drafts locally — a λογιστής can transmit them
-// through the AADE portal or a bookkeeping tool.
+// Types the automated sales-transmission pipeline cannot reliably
+// produce a myDATA-compliant payload for. Each entry is here because
+// its correct classification / VAT / payment-method structure depends
+// on data we don't capture (business KAD, expense structure, special
+// tax codes). The drafts still save locally — the user transmits via
+// their λογιστική application or the AADE portal.
+//
+// Grouped so the Greek message can name the family:
+//   17.1-17.6 — settlement / payroll / depreciation
+//   3.1-3.2   — τίτλος κτήσης (buyer-issued for non-obligated seller)
+//   6.1-6.2   — αυτοπαράδοση / ιδιοχρησιμοποίηση (self-supply)
+//   7.1       — συμβόλαιο (έσοδο)
+//   8.1       — ενοίκιο (έσοδο)
+//   8.2       — φόρος διαμονής (needs OtherTaxes structured extras)
 const BLOCKED_FROM_AUTO_TRANSMIT: ReadonlySet<DocumentType> = new Set([
   "income_settlement_accounting",
   "income_settlement_tax",
@@ -1176,6 +1184,13 @@ const BLOCKED_FROM_AUTO_TRANSMIT: ReadonlySet<DocumentType> = new Set([
   "expense_settlement_tax",
   "payroll_entry",
   "depreciation",
+  "self_delivery",
+  "self_use",
+  "purchase_title",
+  "purchase_title_refused",
+  "rental_income",
+  "contract_income",
+  "stay_tax_receipt",
 ] as const);
 
 type PreflightDoc = {
@@ -1198,14 +1213,48 @@ type PreflightDoc = {
 function preIssueValidation(doc: PreflightDoc): string | null {
   const country = doc.client?.country?.trim().toUpperCase() || null;
 
-  // 17.x settlement / payroll / depreciation entries are not supported by
-  // the automated sales-side transmission pipeline.
+  // Types the automated sales-transmission pipeline can't reliably
+  // build a myDATA payload for. Each family has a slightly different
+  // reason (settlement uses expenses classification, self-supply needs
+  // KAD-specific category1_10 mapping, τίτλος κτήσης is buyer-issued,
+  // ενοίκιο/συμβόλαιο need Άλλα Έσοδα codes that vary per business).
   if (BLOCKED_FROM_AUTO_TRANSMIT.has(doc.type)) {
+    const familyMessages: Partial<Record<DocumentType, string>> = {
+      income_settlement_accounting:
+        "Εγγραφή τακτοποίησης εσόδων (17.1) — απαιτεί ταξινόμηση εξόδων και χωρίς γραμμές πώλησης.",
+      income_settlement_tax:
+        "Εγγραφή τακτοποίησης εσόδων φορολογικής βάσης (17.2) — απαιτεί ταξινόμηση εξόδων και χωρίς γραμμές πώλησης.",
+      expense_settlement_accounting:
+        "Εγγραφή τακτοποίησης εξόδων (17.3) — απαιτεί ταξινόμηση εξόδων.",
+      expense_settlement_tax:
+        "Εγγραφή τακτοποίησης εξόδων φορολογικής βάσης (17.4) — απαιτεί ταξινόμηση εξόδων.",
+      payroll_entry:
+        "Ενσωμάτωση μισθοδοσίας (17.5) — απαιτεί ειδική δομή payload μισθοδοσίας.",
+      depreciation:
+        "Αποσβέσεις (17.6) — απαιτεί ειδική δομή payload αποσβέσεων.",
+      self_delivery:
+        "Στοιχεία αυτοπαράδοσης (6.1) — η ταξινόμηση εξαρτάται από τον ΚΑΔ της επιχείρησης (category1_10 / E3_595) και από το είδος του εμπορεύματος.",
+      self_use:
+        "Στοιχεία ιδιοχρησιμοποίησης (6.2) — η ταξινόμηση εξαρτάται από τον ΚΑΔ της επιχείρησης (category1_10 / E3_595).",
+      purchase_title:
+        "Τίτλος κτήσης (3.1) — εκδίδεται από τον αγοραστή για μη υπόχρεο πωλητή· απαιτεί ειδική δομή payload.",
+      purchase_title_refused:
+        "Τίτλος κτήσης (3.2 – άρνηση έκδοσης) — απαιτεί ειδική δομή payload.",
+      rental_income:
+        "Ενοίκιο (έσοδο, 8.1) — απαιτεί ειδική κατηγορία Άλλα Έσοδα Ακινήτων που εξαρτάται από τον ΚΑΔ.",
+      contract_income:
+        "Συμβόλαιο (έσοδο, 7.1) — απαιτεί ειδική κατηγορία Άλλα Έσοδα που εξαρτάται από τον ΚΑΔ.",
+      stay_tax_receipt:
+        "Απόδειξη φόρου διαμονής (8.2) — απαιτεί ειδική δομή Επιπλέον Φόρων και OtherTaxesPercentCategory.",
+    };
+    const reason =
+      familyMessages[doc.type] ??
+      "Αυτός ο τύπος παραστατικού απαιτεί ειδική δομή myDATA payload.";
     return (
-      "Οι εγγραφές τακτοποίησης (17.1–17.6: λοιπές τακτοποιήσεις, ενσωμάτωση μισθοδοσίας, αποσβέσεις) " +
-      "απαιτούν ειδική δομή παραστατικού (χωρίς γραμμές πώλησης, με ταξινόμηση εξόδων) " +
-      "και διαβιβάζονται από τη λογιστική εφαρμογή ή απευθείας μέσω του portal της ΑΑΔΕ. " +
-      "Το πρόχειρο έχει αποθηκευτεί εδώ για ιστορικούς λόγους — μη προσπαθήσεις να το εκδώσεις από το timologion."
+      reason +
+      " " +
+      "Το πρόχειρο έχει αποθηκευτεί εδώ, αλλά η αυτόματη διαβίβαση δεν υποστηρίζεται. " +
+      "Χρησιμοποίησε τη λογιστική σου εφαρμογή ή απευθείας το portal της ΑΑΔΕ (myDATA REST) για να ολοκληρώσεις τη διαβίβαση."
     );
   }
 
