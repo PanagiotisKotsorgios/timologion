@@ -103,6 +103,45 @@ export async function checkActivationAction(): Promise<{
 }
 
 /**
+ * Ask Wrapp (via partner embedded_check_user) whether this tenant
+ * already has an active subscription upstream. Used by the activation
+ * gate to auto-suggest the manual-api-key flow when a user comes back
+ * from Wrapp that told them "you already have an account" — Wrapp
+ * doesn't re-fire the USER-CREATED webhook in that case, so we can't
+ * receive the api_key automatically. Suggesting manual paste with a
+ * "we found your account upstream" hint lifts the confusion.
+ *
+ * Returns { known: false } if Wrapp doesn't recognize our
+ * partner_user_id (fresh tenant, or wrong id — either way no useful
+ * signal), and { known: true, active } otherwise.
+ */
+export async function checkWrappSubscriptionStatusAction(): Promise<
+  | { known: false }
+  | { known: true; active: boolean; email: string }
+> {
+  const ctx = await requireTenant();
+  assertCan(ctx.role, "wrapp:manage");
+
+  try {
+    const partner = await getWrappPartnerClient();
+    if (!partner) return { known: false };
+    const res = await partner.embeddedCheckUser(ctx.businessId);
+    if (!res.found) return { known: false };
+    return {
+      known: true,
+      active: res.activeSubscription,
+      email: res.user,
+    };
+  } catch (err) {
+    logger.warn("wrapp.check_user.failed", {
+      businessId: ctx.businessId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return { known: false };
+  }
+}
+
+/**
  * Escape hatch: paste the tenant api_key straight from Wrapp when the
  * webhook can't reach us (stale webhook_endpoint, DNS, etc.).
  */

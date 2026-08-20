@@ -5,6 +5,7 @@ import {
   devSimulateActivationAction,
   startWrappActivationAction,
   checkActivationAction,
+  checkWrappSubscriptionStatusAction,
   setWrappApiKeyManuallyAction,
 } from "./activation-actions";
 
@@ -24,6 +25,15 @@ export function ActivationGate({
   const [manualEmail, setManualEmail] = useState("");
   const [manualApiKey, setManualApiKey] = useState("");
   const [polling, setPolling] = useState(false);
+  // Set when Wrapp's partner API confirms this tenant already has an
+  // active subscription — but we haven't received the api_key via
+  // webhook (typical when a returning user completes external_login
+  // and Wrapp says "you already have an account"). Triggers a
+  // prominent "we found your account upstream" prompt at the top of
+  // the modal + auto-expand of the manual api_key form.
+  const [alreadyActiveUpstream, setAlreadyActiveUpstream] = useState<
+    { email: string } | null
+  >(null);
 
   const pollRef = useRef<number | null>(null);
 
@@ -64,6 +74,33 @@ export function ActivationGate({
     pollRef.current = id;
     return () => {
       window.clearInterval(id);
+    };
+  }, []);
+
+  // On mount, ask Wrapp whether this tenant is already an active
+  // subscriber upstream. If yes but we have no api_key locally, it
+  // means the user completed onboarding at some point (or was
+  // already a customer via a previous integration) and Wrapp isn't
+  // going to fire the USER-CREATED webhook again on next login.
+  // Manual api_key paste is the only path forward — auto-open that
+  // form + prefill the email + show a helpful banner.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await checkWrappSubscriptionStatusAction();
+        if (cancelled) return;
+        if (res.known && res.active) {
+          setAlreadyActiveUpstream({ email: res.email });
+          setManualEmail(res.email);
+          setShowManual(true);
+        }
+      } catch {
+        // silent — this is a discovery signal, never gate the UI on it
+      }
+    })();
+    return () => {
+      cancelled = true;
     };
   }, []);
 
@@ -258,12 +295,51 @@ export function ActivationGate({
               >
                 Χειροκίνητη καταχώρηση κλειδιού πρόσβασης
               </h2>
-              <p className="mt-4 text-base text-ink-700">
-                Επικοινώνησε με τον πάροχο ηλεκτρονικής τιμολόγησης και ζήτησε
-                το <strong>κλειδί (api_key)</strong> του λογαριασμού σου.
-                Επικόλλησέ το εδώ μαζί με το email με το οποίο ολοκλήρωσες την
-                ενεργοποίηση.
-              </p>
+
+              {alreadyActiveUpstream && (
+                <div className="mt-4 rounded-lg border-2 border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-950">
+                  <p className="font-bold">
+                    Βρήκαμε ενεργό λογαριασμό στη Wrapp
+                  </p>
+                  <p className="mt-1">
+                    Η Wrapp επιβεβαιώνει ότι η επιχείρησή σου{" "}
+                    <strong>{alreadyActiveUpstream.email}</strong> έχει
+                    ενεργή συνδρομή. Δεν χρειάζεται νέα ενεργοποίηση —
+                    χρειαζόμαστε μόνο το <strong>api_key</strong> για να
+                    συνδεθούμε.
+                  </p>
+                </div>
+              )}
+
+              <div className="mt-4 space-y-2 text-base text-ink-700">
+                <p>
+                  {alreadyActiveUpstream
+                    ? "Πάρε το api_key από τη σελίδα σου στη Wrapp και επικόλλησέ το εδώ:"
+                    : "Επικοινώνησε με τον πάροχο ηλεκτρονικής τιμολόγησης και ζήτησε το κλειδί (api_key) του λογαριασμού σου. Επικόλλησέ το εδώ μαζί με το email σου."}
+                </p>
+                <ol className="ml-5 list-decimal space-y-1 text-sm text-ink-600">
+                  <li>
+                    Συνδέσου στο{" "}
+                    <a
+                      href="https://wrapp.ai/el/users/sign_in"
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="font-semibold text-brand-800 underline underline-offset-2 hover:text-brand-900"
+                    >
+                      wrapp.ai
+                    </a>{" "}
+                    με το email της επιχείρησής σου.
+                  </li>
+                  <li>
+                    Πάει στις <strong>Ρυθμίσεις → API</strong> (ή
+                    Integrations) του λογαριασμού σου.
+                  </li>
+                  <li>
+                    Αντίγραψε το <code>api_key</code> και επικόλλησέ το
+                    στο πεδίο παρακάτω.
+                  </li>
+                </ol>
+              </div>
 
               <div className="mt-6 space-y-4">
                 <div>
