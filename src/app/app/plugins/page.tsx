@@ -123,7 +123,8 @@ export default async function PluginsPage({
           <section>
             <SectionHeader
               label="Πακέτα ανά επάγγελμα"
-              chip="Coming soon"
+              chip="Έρχεται σύντομα"
+              chipTone="warning"
             />
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {industry.map((p) => (
@@ -145,17 +146,36 @@ export default async function PluginsPage({
 function SectionHeader({
   label,
   chip,
+  chipTone = "neutral",
 }: {
   label: string;
   chip?: string;
+  /** "warning" tints the chip amber and adds a pulsing dot — used for
+   *  "Έρχεται σύντομα" so the user notices it's not clickable yet. */
+  chipTone?: "neutral" | "warning";
 }) {
+  const chipClasses =
+    chipTone === "warning"
+      ? "border-amber-400 bg-amber-100 text-amber-900"
+      : "border-transparent bg-ink-200 text-ink-700";
   return (
     <header className="mb-4 flex items-center gap-3">
       <h2 className="text-lg font-black uppercase tracking-widest text-brand-900">
         {label}
       </h2>
       {chip && (
-        <span className="rounded-full bg-ink-200 px-3 py-0.5 text-[10px] font-black uppercase tracking-widest text-ink-700">
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-full border-2 px-3 py-0.5 text-[11px] font-black uppercase tracking-widest shadow-sm ${chipClasses}`}
+        >
+          {chipTone === "warning" && (
+            <span
+              aria-hidden
+              className="relative flex h-2 w-2 shrink-0"
+            >
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-500 opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-600" />
+            </span>
+          )}
           {chip}
         </span>
       )}
