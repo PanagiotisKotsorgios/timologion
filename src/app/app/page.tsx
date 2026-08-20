@@ -8,6 +8,7 @@ import {
   Rocket,
   Sparkles,
 } from "lucide-react";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireTenant } from "@/lib/tenant";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -20,8 +21,34 @@ import { money, date } from "@/lib/format";
 import { checkDocumentQuota } from "@/lib/quota";
 import { ClickableRow } from "./ClickableRow";
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ recent?: string }>;
+}) {
   const ctx = await requireTenant();
+
+  // "Πρόσφατα παραστατικά" filter — reads ?recent=... so a link click
+  // re-renders the Server Component with a different query. Values:
+  //   all      (default) — every status
+  //   draft    — μόνο πρόχειρα
+  //   issued   — μόνο διαβιβασθέντα (issued + sending share the "on
+  //              its way to myDATA" reading)
+  //   failed   — πρόχειρα με lastWrappError (χρειάζονται επισκόπηση)
+  const sp = (await searchParams) ?? {};
+  const recentFilter = (
+    ["all", "draft", "issued", "failed"] as const
+  ).includes(sp.recent as never)
+    ? (sp.recent as "all" | "draft" | "issued" | "failed")
+    : "all";
+  const recentWhere: Prisma.DocumentWhereInput = (() => {
+    if (recentFilter === "draft") return { status: "draft" };
+    if (recentFilter === "issued")
+      return { status: { in: ["issued", "sending"] } };
+    if (recentFilter === "failed")
+      return { status: "draft", lastWrappError: { not: null } };
+    return {};
+  })();
 
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -69,7 +96,7 @@ export default async function DashboardPage() {
       },
     }),
     prisma.document.findMany({
-      where: { businessId: ctx.businessId },
+      where: { businessId: ctx.businessId, ...recentWhere },
       orderBy: { createdAt: "desc" },
       take: 5,
       include: { client: { select: { legalName: true } } },
@@ -237,16 +264,70 @@ export default async function DashboardPage() {
                 </LinkButton>
               }
             />
+            {/* Filter chips — server-component links; each one
+                re-renders the page with a different ?recent= value so
+                the query above narrows to the right subset. Uses
+                <Link scroll={false}> semantics via a plain <a> because
+                the app already does server-only routing here. */}
+            <div className="flex flex-wrap gap-2 border-b-2 border-ink-200 px-4 py-3">
+              {(
+                [
+                  { key: "all", label: "Όλα" },
+                  { key: "draft", label: "Μόνο πρόχειρα" },
+                  { key: "issued", label: "Μόνο διαβιβασθέντα" },
+                  { key: "failed", label: "Με σφάλμα διαβίβασης" },
+                ] as const
+              ).map((chip) => {
+                const active = recentFilter === chip.key;
+                const href =
+                  chip.key === "all"
+                    ? "/app"
+                    : `/app?recent=${chip.key}`;
+                return (
+                  <Link
+                    key={chip.key}
+                    href={href}
+                    aria-current={active ? "true" : undefined}
+                    className={
+                      "inline-flex h-8 items-center rounded-full border-2 px-3 text-xs font-black uppercase tracking-widest transition-colors " +
+                      (active
+                        ? "border-brand-900 bg-brand-900 text-white"
+                        : "border-ink-200 bg-white text-ink-700 hover:border-brand-500 hover:text-brand-900")
+                    }
+                  >
+                    {chip.label}
+                  </Link>
+                );
+              })}
+            </div>
             <CardBody className="p-0">
               {recentDocs.length === 0 ? (
                 <div className="p-6">
                   <EmptyState
-                    title="Δεν υπάρχουν παραστατικά ακόμα."
-                    description="Ξεκίνα με ένα πρόχειρο τιμολόγιο."
+                    title={
+                      recentFilter === "all"
+                        ? "Δεν υπάρχουν παραστατικά ακόμα."
+                        : recentFilter === "draft"
+                          ? "Δεν υπάρχουν πρόχειρα παραστατικά."
+                          : recentFilter === "issued"
+                            ? "Δεν έχεις διαβιβάσει παραστατικά ακόμα."
+                            : "Δεν υπάρχουν πρόχειρα με σφάλμα διαβίβασης."
+                    }
+                    description={
+                      recentFilter === "all"
+                        ? "Ξεκίνα με ένα πρόχειρο τιμολόγιο."
+                        : "Άλλαξε φίλτρο παραπάνω για να δεις άλλα παραστατικά."
+                    }
                     action={
-                      <LinkButton href="/app/documents/new">
-                        Νέο Παραστατικό
-                      </LinkButton>
+                      recentFilter === "all" ? (
+                        <LinkButton href="/app/documents/new">
+                          Νέο Παραστατικό
+                        </LinkButton>
+                      ) : (
+                        <LinkButton href="/app" variant="secondary">
+                          Καθαρισμός φίλτρου
+                        </LinkButton>
+                      )
                     }
                   />
                 </div>
