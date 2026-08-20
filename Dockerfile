@@ -67,10 +67,14 @@ HEALTHCHECK --interval=15s --timeout=5s --start-period=180s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/api/health || exit 1
 
 # On startup:
-#   1. Run any pending Prisma migrations (idempotent — tracked in
+#   1. Run pre-migrate self-healer — clears the _prisma_migrations row
+#      for a hard-coded list of known-additive migrations if they're
+#      stuck in the FAILED state. Prevents boot loops when a prior
+#      deploy left a migration half-applied.
+#   2. Run any pending Prisma migrations (idempotent — tracked in
 #      _prisma_migrations table).
-#   2. Run first-boot bootstrap (idempotent — seeds default plans and, on
+#   3. Run first-boot bootstrap (idempotent — seeds default plans and, on
 #      the very first boot only, creates an initial super_admin from
 #      INITIAL_ADMIN_EMAIL if set).
-#   3. Boot the Next.js server.
-CMD ["sh", "-c", "npx prisma migrate deploy && npx tsx scripts/first-boot.ts && npm run start"]
+#   4. Boot the Next.js server.
+CMD ["sh", "-c", "npx tsx scripts/pre-migrate.ts && npx prisma migrate deploy && npx tsx scripts/first-boot.ts && npm run start"]
