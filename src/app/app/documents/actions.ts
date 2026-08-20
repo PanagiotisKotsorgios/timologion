@@ -1930,10 +1930,15 @@ export async function attemptIssueForBusiness(
       .filter(Boolean)
       .join("; ")
       .slice(0, 500);
-    // Translate to plain Greek BEFORE throwing so the user-facing
-    // envelope carries the friendly text; the raw is still logged.
+    // Translate to plain Greek AND append the raw English as a
+    // diagnostic tail. Users see the friendly text first; support can
+    // scan the "[myDATA: …]" suffix on the doc detail page to grab
+    // the exact (category, type, invoice_type_code) tuple that
+    // failed, so the mapping can be fixed in one shot instead of
+    // trial-and-error.
+    const compound = withRawTail(translateWrappError(rawMessage), rawMessage);
     throw new WrappApiError(
-      translateWrappError(rawMessage) || "Η Wrapp επέστρεψε σφάλμα.",
+      compound || "Η Wrapp επέστρεψε σφάλμα.",
       { code: "wrapp.errors", raw: res },
     );
   } catch (err) {
@@ -1945,9 +1950,12 @@ export async function attemptIssueForBusiness(
     });
     const rawMessage =
       err instanceof Error ? err.message.slice(0, 500) : "Άγνωστο σφάλμα.";
-    // Translate again in case the error came from a lower layer (e.g. a
-    // raw fetch error string) that bypassed the WrappApiError wrap above.
-    const friendly = translateWrappError(rawMessage);
+    // The message thrown above already carries the "[myDATA: …]"
+    // suffix. Anything else (raw fetch error, unexpected shape) still
+    // gets translated + tailed here.
+    const friendly = rawMessage.includes("[myDATA:")
+      ? rawMessage
+      : withRawTail(translateWrappError(rawMessage), rawMessage);
     await prisma.document
       .update({
         where: { id: doc.id },
@@ -1960,6 +1968,19 @@ export async function attemptIssueForBusiness(
     }
     return { ok: false as const, error: friendly };
   }
+}
+
+/**
+ * Append the raw Wrapp/myDATA validator text as a diagnostic tail
+ * after the translated Greek message. Skipped when the raw is already
+ * embedded in the friendly text (translator returned it unchanged
+ * because it didn't match any rule) so we don't duplicate.
+ */
+function withRawTail(friendly: string, raw: string): string {
+  const cleanRaw = (raw || "").trim();
+  if (!cleanRaw) return friendly;
+  if (friendly.includes(cleanRaw)) return friendly;
+  return `${friendly}  [myDATA: ${cleanRaw}]`;
 }
 
 // ─── Delivery-note (9.3) payload helper ─────────────────────────────────
