@@ -225,14 +225,15 @@ export function classificationFor(type: DocumentType): {
   // accepts as passthrough while the accountant reclassifies downstream.
   if (type === "purchase_title" || type === "purchase_title_refused")
     return { category: "category1_95", type: "_" };
-  // Self-delivery / self-use (6.1 / 6.2) — per Wrapp classification
-  // table, category1_6 (Αυτοπαραδόσεις / Ιδιοχρησιμοποιήσεις) paired
-  // with type E3_106 (Ιδιοπαραγωγή παγίων - Αυτοπαραδόσεις -
-  // Καταστροφές αποθεμάτων / Εμπορεύματα). myDATA also requires a
+  // Self-delivery / self-use (6.1 / 6.2) — category1_6 is a REPORTING
+  // header, not a per-line code (Wrapp rejects it as "forbidden
+  // combination"). The AADE-accepted per-line pairing is category1_1
+  // (Έσοδα από Πώληση Εμπορευμάτων) with E3_106 (Ιδιοπαραγωγή
+  // παγίων - Αυτοπαραδόσεις / Εμπορεύματα). myDATA also requires a
   // positive VAT amount on these — the user must set a real VAT rate
   // (24 / 13 / 6) on the lines, not zero.
   if (type === "self_delivery" || type === "self_use")
-    return { category: "category1_6", type: "E3_106" };
+    return { category: "category1_1", type: "E3_106" };
   // Retail refund + retail credit + POS receipts all follow retail flow.
   if (
     type === "retail_refund_receipt" ||
