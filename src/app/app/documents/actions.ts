@@ -1750,6 +1750,14 @@ export async function attemptIssueForBusiness(
     }
   }
 
+  // 9.3 Δελτίο Αποστολής — per Wrapp/AADE spec ALL money-carrier
+  // fields must be exactly 0 (net/vat/gross totals at invoice level
+  // AND vat_total / subtotal at each line). The document tracks value
+  // only for information purposes; the transmitted 9.3 payload is
+  // stock-movement metadata, not a monetary transaction.
+  const isDeliveryNote =
+    doc.type === "delivery_note" || doc.type === "delivery_note_correlated";
+
   const wrappPayload = {
     invoice_type_code: invoiceTypeCode,
     billing_book_id: book.wrappBookId,
@@ -1759,14 +1767,27 @@ export async function attemptIssueForBusiness(
       ? undefined
       : mapPaymentMethodToWrapp(doc.paymentMethod),
     // 8.2 sends money on other_taxes_amount, not the standard totals.
-    net_total_amount: isStayTax ? 0 : wire(Number(doc.netTotalAmount)),
-    vat_total_amount: isStayTax ? 0 : wire(Number(doc.vatTotalAmount)),
-    total_amount: isStayTax
-      ? (stayTaxRow?.amount ?? Number(doc.totalAmount))
-      : wire(Number(doc.totalAmount)),
-    payable_total_amount: isStayTax
-      ? (stayTaxRow?.amount ?? Number(doc.payableTotalAmount))
-      : wire(Number(doc.payableTotalAmount)),
+    // 9.3 forces all totals to 0.
+    net_total_amount: isDeliveryNote
+      ? 0
+      : isStayTax
+        ? 0
+        : wire(Number(doc.netTotalAmount)),
+    vat_total_amount: isDeliveryNote
+      ? 0
+      : isStayTax
+        ? 0
+        : wire(Number(doc.vatTotalAmount)),
+    total_amount: isDeliveryNote
+      ? 0
+      : isStayTax
+        ? (stayTaxRow?.amount ?? Number(doc.totalAmount))
+        : wire(Number(doc.totalAmount)),
+    payable_total_amount: isDeliveryNote
+      ? 0
+      : isStayTax
+        ? (stayTaxRow?.amount ?? Number(doc.payableTotalAmount))
+        : wire(Number(doc.payableTotalAmount)),
     other_taxes_amount: isStayTax ? (stayTaxRow?.amount ?? 0) : undefined,
     notes: doc.notes ?? undefined,
     num: reservedNumber ?? undefined,
@@ -1841,10 +1862,17 @@ export async function attemptIssueForBusiness(
         quantity: isSettlement ? undefined : wire(Number(l.quantity)),
         quantity_type: isSettlement ? undefined : 1,
         unit_price: isSettlement ? undefined : wire(Number(l.unitPrice)),
+        // 9.3 delivery notes: net_total_price stays as-is (Wrapp
+        // accepts it as informational), but vat_total + subtotal MUST
+        // be exactly 0 — Wrapp validator rejects any positive value
+        // with "vat_total must have value 0 for this invoice type" /
+        // "subtotal must have value 0 for this invoice type".
         net_total_price: isSettlement ? undefined : net,
+        // Per Wrapp docs, vat_rate on 9.3 stays 24 (informational,
+        // ignored by myDATA because vat_total is 0).
         vat_rate: isSettlement ? undefined : Number(l.vatRate),
-        vat_total: isSettlement ? undefined : vat,
-        subtotal: isSettlement ? undefined : total,
+        vat_total: isSettlement ? undefined : isDeliveryNote ? 0 : vat,
+        subtotal: isSettlement ? undefined : isDeliveryNote ? 0 : total,
         vat_exemption_code: vatExemptionCode,
         classification_category: classification.category,
         classification_type: classification.type,
