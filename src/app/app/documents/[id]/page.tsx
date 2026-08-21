@@ -19,7 +19,7 @@ import { date, money } from "@/lib/format";
 import { IssueButton } from "./IssueButton";
 import { CreditNoteButton } from "./DocumentActions";
 import { SendEmailButton } from "./SendEmailButton";
-import { parseAdditionalTaxes } from "../AdditionalTaxesEditor";
+import { parseAdditionalTaxes } from "../additional-taxes-shared";
 import type { DocumentType } from "@prisma/client";
 
 // Kept in sync with BLOCKED_FROM_AUTO_TRANSMIT in ../actions.ts. The

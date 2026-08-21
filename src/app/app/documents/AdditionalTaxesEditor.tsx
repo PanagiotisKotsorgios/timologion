@@ -4,6 +4,14 @@ import { useEffect, useMemo, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Input";
+import {
+  parseAdditionalTaxes,
+  serializeAdditionalTaxes,
+  type AdditionalTaxRow,
+} from "./additional-taxes-shared";
+// Server Components should import parse/serialize helpers directly
+// from `./additional-taxes-shared` — re-exporting them here would
+// stamp them as "use client" references and break RSC callers.
 
 /**
  * Structured editor for the "Επιπλέον φόροι" block.
@@ -20,12 +28,6 @@ import { Input, Select } from "@/components/ui/Input";
  * plumbing needed. Legacy plain-text values are preserved verbatim in
  * a fallback textarea below the structured rows so no history is lost.
  */
-
-export type AdditionalTaxRow = {
-  category: string;
-  label: string;
-  amount: string;
-};
 
 /**
  * myDATA / Wrapp `other_taxes_percent_category` codes — EXACT match
@@ -75,62 +77,6 @@ const CATEGORY_GROUPS: readonly string[] = [
   "Τέλος διαμονής (υψηλή, Απρ-Οκτ)",
   "Λοιπά",
 ];
-
-/**
- * Parse the stored value. Structured JSON round-trips back to rows;
- * anything else (empty or legacy free-text) becomes an empty grid and
- * the free-text carries over into `legacyText` for display.
- */
-export function parseAdditionalTaxes(raw: string | null | undefined): {
-  rows: AdditionalTaxRow[];
-  legacyText: string;
-} {
-  const s = (raw ?? "").trim();
-  if (!s) return { rows: [], legacyText: "" };
-  try {
-    const parsed = JSON.parse(s);
-    if (
-      parsed &&
-      typeof parsed === "object" &&
-      Array.isArray((parsed as { rows?: unknown }).rows)
-    ) {
-      const rowsUnknown = (parsed as { rows: unknown[] }).rows;
-      const rows = rowsUnknown
-        .map((r) => {
-          if (!r || typeof r !== "object") return null;
-          const rr = r as Record<string, unknown>;
-          return {
-            category: String(rr.category ?? ""),
-            label: String(rr.label ?? ""),
-            amount: String(rr.amount ?? ""),
-          };
-        })
-        .filter((r): r is AdditionalTaxRow => r !== null);
-      const legacyText = String(
-        (parsed as { legacyText?: unknown }).legacyText ?? "",
-      );
-      return { rows, legacyText };
-    }
-  } catch {
-    // Fall through — legacy free-text.
-  }
-  return { rows: [], legacyText: s };
-}
-
-/**
- * Serialize rows + optional legacy text back to the string column.
- * Preserves EMPTY rows on purpose — the parent needs to see them so
- * they survive re-renders during editing. The backend (payload
- * builder + preflight guard) is where empty rows get filtered out
- * before hitting Wrapp.
- */
-export function serializeAdditionalTaxes(
-  rows: AdditionalTaxRow[],
-  legacyText: string,
-): string {
-  if (rows.length === 0 && !legacyText.trim()) return "";
-  return JSON.stringify({ rows, legacyText: legacyText.trim() });
-}
 
 export function AdditionalTaxesEditor({
   value,
