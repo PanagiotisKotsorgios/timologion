@@ -1861,13 +1861,23 @@ export async function attemptIssueForBusiness(
         description: undefined,
         quantity: isSettlement ? undefined : wire(Number(l.quantity)),
         quantity_type: isSettlement ? undefined : 1,
-        unit_price: isSettlement ? undefined : wire(Number(l.unitPrice)),
-        // 9.3 delivery notes: net_total_price stays as-is (Wrapp
-        // accepts it as informational), but vat_total + subtotal MUST
-        // be exactly 0 — Wrapp validator rejects any positive value
-        // with "vat_total must have value 0 for this invoice type" /
-        // "subtotal must have value 0 for this invoice type".
-        net_total_price: isSettlement ? undefined : net,
+        // For 9.3 the AADE validator demands every money field on the
+        // line to be exactly 0 — including unit_price and net_total_price.
+        // The rejection was "Net value must have value 0 for this
+        // invoice type; sum of net values of the invoice lines doesn't
+        // match with total net value of the invoice" — first because
+        // we sent the real net, second because the line net didn't
+        // match the zeroed invoice net. Zeroing both aligns the two.
+        unit_price: isSettlement
+          ? undefined
+          : isDeliveryNote
+            ? 0
+            : wire(Number(l.unitPrice)),
+        net_total_price: isSettlement
+          ? undefined
+          : isDeliveryNote
+            ? 0
+            : net,
         // Per Wrapp docs, vat_rate on 9.3 stays 24 (informational,
         // ignored by myDATA because vat_total is 0).
         vat_rate: isSettlement ? undefined : Number(l.vatRate),
