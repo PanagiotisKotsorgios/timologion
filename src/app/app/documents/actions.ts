@@ -1782,17 +1782,20 @@ export async function attemptIssueForBusiness(
       const vat = wire(Number(l.vatAmount));
       const total = wire(Number(l.totalAmount));
 
-      // ── 8.2 stay-tax special line: no name/quantity/vat, just
-      //    accommodation_tax + other_taxes_percent_category. Only one
-      //    line is meaningful (see stayTaxRow above).
+      // ── 8.2 stay-tax special line: matches the Wrapp docs example
+      //    exactly — no name/quantity/vat, no classification_type
+      //    (Wrapp's own example omits it for 8.2), and money-carriers
+      //    accommodation_tax + other_taxes_percent_category +
+      //    other_taxes_amount.
       if (isStayTax) {
         return {
           line_number: i + 1,
           accommodation_tax: stayTaxRow?.amount ?? 0,
           other_taxes_percent_category: stayTaxRow?.category ?? "7",
           other_taxes_amount: stayTaxRow?.amount ?? 0,
-          classification_category: classification.category,
-          classification_type: classification.type,
+          classification_category: classification.category, // category1_95
+          // classification_type intentionally omitted for 8.2
+          classification_type: undefined,
         };
       }
 

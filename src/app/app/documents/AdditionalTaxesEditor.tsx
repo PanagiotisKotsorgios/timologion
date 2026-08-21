@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Input";
@@ -28,26 +28,52 @@ export type AdditionalTaxRow = {
 };
 
 /**
- * myDATA / Wrapp "OtherTaxesCategory" codes (see AADE myDATA spec).
- * Kept as (value, label) so the payload sends the correct integer code
- * once the backend plumbs this into the Wrapp `other_taxes` array.
+ * myDATA / Wrapp `other_taxes_percent_category` codes — EXACT match
+ * to the Wrapp API doc table so the value sent on the wire is what
+ * the AADE validator expects. Grouped optgroups keep the seasonal
+ * accommodation-tax variants readable (Wrapp uses different codes
+ * for high/low season and per star rating).
  */
-const CATEGORY_OPTIONS: { value: string; label: string }[] = [
-  { value: "", label: "— Επιλογή κατηγορίας —" },
-  { value: "1", label: "1 · Τέλος συνδρομητών κινητής τηλεφωνίας" },
-  { value: "2", label: "2 · Τέλος συνδρομητών σταθερής τηλεφωνίας" },
-  { value: "3", label: "3 · Τέλος συνδρομητικής τηλεόρασης" },
-  { value: "4", label: "4 · Εισφορά ΕΡΤ" },
-  { value: "5", label: "5 · Τέλος διανυκτέρευσης (φόρος διαμονής)" },
-  { value: "6", label: "6 · Ειδικός φόρος κατανάλωσης" },
-  { value: "7", label: "7 · Τέλη χαρτοσήμου" },
-  { value: "8", label: "8 · Ειδικός φόρος πολυτελείας" },
-  { value: "9", label: "9 · Λοιπά τέλη" },
-  { value: "10", label: "10 · Παρακράτηση φόρου εισοδήματος" },
-  { value: "11", label: "11 · Παρακράτηση ειδικής εισφοράς αλληλεγγύης" },
-  { value: "12", label: "12 · ΟΓΑ χαρτοσήμου" },
-  { value: "13", label: "13 · Λοιποί φόροι" },
-  { value: "14", label: "14 · Κρατήσεις" },
+type CategoryOption = { value: string; label: string; group: string };
+const CATEGORY_OPTIONS: CategoryOption[] = [
+  // Ασφάλιστρα
+  { value: "3", label: "3 · Ασφάλιστρα κλάδου ζωής 4%", group: "Ασφάλιστρα" },
+  { value: "4", label: "4 · Ασφάλιστρα λοιπών κλάδων 15%", group: "Ασφάλιστρα" },
+  { value: "5", label: "5 · Απαλλασσόμενα φόρου ασφαλίστρων 0%", group: "Ασφάλιστρα" },
+  { value: "15", label: "15 · Ασφάλιστρα κλάδου πυρός 20%", group: "Ασφάλιστρα" },
+  // Τέλος ανθεκτικότητας — Χαμηλή περίοδος (Νοέμβριος-Μάρτιος)
+  { value: "6", label: "6 · Ξενοδοχεία 1-2 αστέρων — 0,50€", group: "Τέλος διαμονής (χαμηλή, Νοε-Μαρ)" },
+  { value: "7", label: "7 · Ξενοδοχεία 3 αστέρων — 1,50€", group: "Τέλος διαμονής (χαμηλή, Νοε-Μαρ)" },
+  { value: "8", label: "8 · Ξενοδοχεία 4 αστέρων — 3,00€", group: "Τέλος διαμονής (χαμηλή, Νοε-Μαρ)" },
+  { value: "9", label: "9 · Ξενοδοχεία 5 αστέρων — 4,00€", group: "Τέλος διαμονής (χαμηλή, Νοε-Μαρ)" },
+  { value: "10", label: "10 · Ενοικιαζόμενα δωμάτια/διαμερίσματα — 0,50€", group: "Τέλος διαμονής (χαμηλή, Νοε-Μαρ)" },
+  { value: "28", label: "28 · Βραχυχρόνια μίσθωση έως 80τ.μ. — 2,00€", group: "Τέλος διαμονής (χαμηλή, Νοε-Μαρ)" },
+  { value: "29", label: "29 · Βραχυχρόνια μίσθωση >80τ.μ. — 4,00€", group: "Τέλος διαμονής (χαμηλή, Νοε-Μαρ)" },
+  { value: "30", label: "30 · Αυτοεξυπηρετούμενα / Βίλες — 4,00€", group: "Τέλος διαμονής (χαμηλή, Νοε-Μαρ)" },
+  // Τέλος ανθεκτικότητας — Υψηλή περίοδος (Απρίλιος-Οκτώβριος)
+  { value: "20", label: "20 · Ξενοδοχεία 1-2 αστέρων — 2,00€", group: "Τέλος διαμονής (υψηλή, Απρ-Οκτ)" },
+  { value: "21", label: "21 · Ξενοδοχεία 3 αστέρων — 5,00€", group: "Τέλος διαμονής (υψηλή, Απρ-Οκτ)" },
+  { value: "22", label: "22 · Ξενοδοχεία 4 αστέρων — 10,00€", group: "Τέλος διαμονής (υψηλή, Απρ-Οκτ)" },
+  { value: "23", label: "23 · Ξενοδοχεία 5 αστέρων — 15,00€", group: "Τέλος διαμονής (υψηλή, Απρ-Οκτ)" },
+  { value: "24", label: "24 · Ενοικιαζόμενα δωμάτια/διαμερίσματα — 2,00€", group: "Τέλος διαμονής (υψηλή, Απρ-Οκτ)" },
+  { value: "25", label: "25 · Βραχυχρόνια μίσθωση έως 80τ.μ. — 8,00€", group: "Τέλος διαμονής (υψηλή, Απρ-Οκτ)" },
+  { value: "26", label: "26 · Βραχυχρόνια μίσθωση >80τ.μ. — 15,00€", group: "Τέλος διαμονής (υψηλή, Απρ-Οκτ)" },
+  { value: "27", label: "27 · Αυτοεξυπηρετούμενα / Βίλες — 15,00€", group: "Τέλος διαμονής (υψηλή, Απρ-Οκτ)" },
+  // Λοιπά
+  { value: "11", label: "11 · Ειδικός Φόρος Τηλεοπτικών Διαφημίσεων 5%", group: "Λοιπά" },
+  { value: "12", label: "12 · Φόρος πολυτελείας (ενδοκοιν./εισαγωγή) 10%", group: "Λοιπά" },
+  { value: "13", label: "13 · Φόρος πολυτελείας (εγχώρια παραγωγή) 10%", group: "Λοιπά" },
+  { value: "14", label: "14 · Δικαίωμα Δημοσίου καζίνο 80%", group: "Λοιπά" },
+  { value: "16", label: "16 · Λοιποί Τελωνειακοί Δασμοί/Φόροι", group: "Λοιπά" },
+  { value: "17", label: "17 · Λοιποί Φόροι", group: "Λοιπά" },
+  { value: "18", label: "18 · Επιβαρύνσεις Λοιπών Φόρων", group: "Λοιπά" },
+  { value: "19", label: "19 · ΕΦΚ (Ειδικός Φόρος Κατανάλωσης)", group: "Λοιπά" },
+];
+const CATEGORY_GROUPS: readonly string[] = [
+  "Ασφάλιστρα",
+  "Τέλος διαμονής (χαμηλή, Νοε-Μαρ)",
+  "Τέλος διαμονής (υψηλή, Απρ-Οκτ)",
+  "Λοιπά",
 ];
 
 /**
@@ -91,16 +117,19 @@ export function parseAdditionalTaxes(raw: string | null | undefined): {
   return { rows: [], legacyText: s };
 }
 
-/** Serialize rows + optional legacy text back to the string column. */
+/**
+ * Serialize rows + optional legacy text back to the string column.
+ * Preserves EMPTY rows on purpose — the parent needs to see them so
+ * they survive re-renders during editing. The backend (payload
+ * builder + preflight guard) is where empty rows get filtered out
+ * before hitting Wrapp.
+ */
 export function serializeAdditionalTaxes(
   rows: AdditionalTaxRow[],
   legacyText: string,
 ): string {
-  const cleanRows = rows.filter(
-    (r) => r.category || r.label || r.amount.trim(),
-  );
-  if (cleanRows.length === 0 && !legacyText.trim()) return "";
-  return JSON.stringify({ rows: cleanRows, legacyText: legacyText.trim() });
+  if (rows.length === 0 && !legacyText.trim()) return "";
+  return JSON.stringify({ rows, legacyText: legacyText.trim() });
 }
 
 export function AdditionalTaxesEditor({
@@ -110,30 +139,54 @@ export function AdditionalTaxesEditor({
   value: string;
   onChange: (next: string) => void;
 }) {
-  const { rows, legacyText } = useMemo(() => parseAdditionalTaxes(value), [
-    value,
-  ]);
+  // Component owns the row array locally so an empty "Προσθήκη
+  // γραμμής" row survives the round-trip (serialize -> parent state
+  // -> parse). Previous version filtered empty rows on serialize,
+  // which stripped the freshly-added row immediately and made the
+  // "Add" button appear broken.
+  const initial = useMemo(() => parseAdditionalTaxes(value), [value]);
+  const [rows, setRows] = useState<AdditionalTaxRow[]>(initial.rows);
+  const [legacyText, setLegacyText] = useState<string>(initial.legacyText);
+
+  // Keep local state in sync when the parent form resets `value`
+  // (e.g. cancel + reopen with a different document). Ignored when
+  // the parent is just echoing back our own serialize output.
+  useEffect(() => {
+    const echo = serializeAdditionalTaxes(rows, legacyText);
+    if (echo !== value) {
+      const parsed = parseAdditionalTaxes(value);
+      setRows(parsed.rows);
+      setLegacyText(parsed.legacyText);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
+  function push(next: AdditionalTaxRow[], legacy: string) {
+    setRows(next);
+    setLegacyText(legacy);
+    onChange(serializeAdditionalTaxes(next, legacy));
+  }
 
   function updateRow(i: number, patch: Partial<AdditionalTaxRow>) {
-    const next = rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r));
-    onChange(serializeAdditionalTaxes(next, legacyText));
+    push(
+      rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)),
+      legacyText,
+    );
   }
 
   function removeRow(i: number) {
-    const next = rows.filter((_, idx) => idx !== i);
-    onChange(serializeAdditionalTaxes(next, legacyText));
+    push(rows.filter((_, idx) => idx !== i), legacyText);
   }
 
   function addRow() {
-    const next = [
-      ...rows,
-      { category: "", label: "", amount: "" } as AdditionalTaxRow,
-    ];
-    onChange(serializeAdditionalTaxes(next, legacyText));
+    push(
+      [...rows, { category: "", label: "", amount: "" } as AdditionalTaxRow],
+      legacyText,
+    );
   }
 
   function updateLegacy(next: string) {
-    onChange(serializeAdditionalTaxes(rows, next));
+    push(rows, next);
   }
 
   const total = rows.reduce((acc, r) => {
@@ -170,10 +223,17 @@ export function AdditionalTaxesEditor({
                         updateRow(i, { category: e.target.value })
                       }
                     >
-                      {CATEGORY_OPTIONS.map((o) => (
-                        <option key={o.value} value={o.value}>
-                          {o.label}
-                        </option>
+                      <option value="">— Επιλογή κατηγορίας —</option>
+                      {CATEGORY_GROUPS.map((group) => (
+                        <optgroup key={group} label={group}>
+                          {CATEGORY_OPTIONS.filter(
+                            (o) => o.group === group,
+                          ).map((o) => (
+                            <option key={o.value} value={o.value}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </optgroup>
                       ))}
                     </Select>
                   </td>
