@@ -100,7 +100,7 @@ export const t = {
       credit_note: "Πιστωτικό (μη συσχ.)",
       credit_note_correlated: "Πιστωτικό (συσχ.)",
       delivery_note: "Δελτίο αποστολής",
-      stay_tax_receipt: "Απόδειξη φόρου διαμονής",
+      stay_tax_receipt: "Τέλος ανθεκτικότητας (πρώην φόρος διαμονής)",
       third_party_sale_invoice: "Πώληση για λ/σμο τρίτων",
       third_party_sale_clearing: "Εκκαθάριση πωλήσεων τρίτων",
       complementary_invoice: "Συμπληρωματικό τιμολόγιο",

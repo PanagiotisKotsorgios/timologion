@@ -121,7 +121,7 @@ const DOC_TYPE_OPTIONS: { value: DraftInput["type"]; label: string }[] = [
   { value: "self_use", label: "Στοιχεία ιδιοχρησιμοποίησης (6.2)" },
   { value: "contract_income", label: "Συμβόλαιο — έσοδο (7.1)" },
   { value: "rental_income", label: "Ενοίκιο — έσοδο (8.1)" },
-  { value: "stay_tax_receipt", label: "Απόδειξη φόρου διαμονής (8.2)" },
+  { value: "stay_tax_receipt", label: "Τέλος ανθεκτικότητας κλιμ. κρίσης / πρώην φόρος διαμονής (8.2)" },
   { value: "retail_refund_receipt", label: "Απόδειξη επιστροφής (8.4)" },
   { value: "pos_income_receipt", label: "Απόδειξη είσπραξης POS (8.5)" },
   { value: "pos_payment_receipt", label: "Απόδειξη πληρωμής POS (8.6)" },
@@ -1471,17 +1471,17 @@ function StayTaxCard({
   return (
     <div className="rounded-2xl border-2 border-purple-300 bg-purple-50/60 p-5">
       <p className="text-[11px] font-black uppercase tracking-widest text-purple-900/80">
-        Πληροφορίες φόρου διαμονής (απαιτείται για 8.2)
+        Τέλος ανθεκτικότητας κλιμ. κρίσης / πρώην φόρος διαμονής (8.2)
       </p>
       <p className="mt-1 text-sm text-purple-900/80">
         Επίλεξε την κατηγορία καταλύματος και συμπλήρωσε το συνολικό ποσό
-        του φόρου διαμονής που εισπράχθηκε.
+        του τέλους ανθεκτικότητας που εισπράχθηκε (πρώην φόρος διαμονής, Ν. 5073/2023).
       </p>
       <div className="mt-4 grid gap-4 md:grid-cols-2">
         <Field
           label="Κατηγορία καταλύματος"
           htmlFor="stayTaxCategory"
-          help="Καθορίζει το ποσό του φόρου διαμονής ανά διανυκτέρευση σύμφωνα με τον Ν. 4389/2016 (10€/7€/3€/1.5€/0.5€)."
+          help="Καθορίζει το ποσό του τέλους ανά διανυκτέρευση/ημέρα ανάλογα με τον τύπο καταλύματος και τη σεζόν (Ν. 5073/2023)."
         >
           <Select
             id="stayTaxCategory"
@@ -1499,7 +1499,7 @@ function StayTaxCard({
         <Field
           label="Συνολικό ποσό φόρου (€)"
           htmlFor="stayTaxAmount"
-          help="Ποσό φόρου διαμονής × αριθμός διανυκτερεύσεων. Π.χ. για ξενοδοχείο 4 αστέρων 3 βράδια: 7 × 3 = 21€."
+          help="Ποσό τέλους × αριθμός διανυκτερεύσεων. Π.χ. για ξενοδοχείο 4 αστέρων υψηλής σεζόν 3 βράδια: 10€ × 3 = 30€."
         >
           <Input
             id="stayTaxAmount"

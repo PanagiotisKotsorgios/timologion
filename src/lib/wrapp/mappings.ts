@@ -247,14 +247,19 @@ export function classificationFor(type: DocumentType): {
   // amount on 6.1/6.2 (real Greek VAT rate on the lines, not zero).
   if (type === "self_delivery" || type === "self_use")
     return { category: "category1_95", type: "_" };
-  // Retail refund + retail credit + POS receipts all follow retail flow.
-  if (
-    type === "retail_refund_receipt" ||
-    type === "retail_credit_note" ||
-    type === "pos_income_receipt" ||
-    type === "pos_payment_receipt"
-  )
+  // Retail refund + retail credit follow the retail flow.
+  if (type === "retail_refund_receipt" || type === "retail_credit_note")
     return { category: "category1_3", type: "E3_561_003" };
+  // POS receipts (8.5 income / 8.6 payment) — per Wrapp docs example
+  // for 8.6 (list_open_catering_order_notes / cancel_catering_order_note)
+  // the accepted classification is category1_95 + "_". myDATA rejects
+  // category1_3 + E3_561_003 on these codes with:
+  //   "Could not load valid validation doc for classification with
+  //    category category1_3 and type E3_561_003;
+  //    Classification with type category1_3 and category E3_561_003
+  //    not found in invoice summary."
+  if (type === "pos_income_receipt" || type === "pos_payment_receipt")
+    return { category: "category1_95", type: "_" };
   // Complementary invoices inherit the classification of the parent
   // invoice — the safe default is wholesale.
   if (

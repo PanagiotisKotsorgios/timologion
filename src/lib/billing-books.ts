@@ -64,7 +64,7 @@ const DEFAULT_LABEL: Record<DocumentType, string> = {
   credit_note: "Πιστωτικά",
   credit_note_correlated: "Πιστωτικά (συσχετισμένα)",
   delivery_note: "Δελτία αποστολής",
-  stay_tax_receipt: "Αποδείξεις φόρου διαμονής",
+  stay_tax_receipt: "Τέλος ανθεκτικότητας κλιμ. κρίσης",
   third_party_sale_invoice: "Πωλήσεις για λ/σμο τρίτων",
   third_party_sale_clearing: "Εκκαθαρίσεις πωλήσεων τρίτων",
   complementary_invoice: "Συμπληρωματικά τιμολόγια",
