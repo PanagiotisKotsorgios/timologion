@@ -1150,13 +1150,17 @@ const EU_COUNTRY_CODES: ReadonlySet<string> = new Set([
 ]);
 
 // Doc types where every line's VAT rate must be 0 (myDATA vatCategory 7).
-// Only intra-EU / third-country flows — for those the exemption code
-// tells the AADE validator WHY VAT is zero.
+// Includes intra-EU / third-country flows (exemption code = the EU
+// Article ID) AND τίτλος κτήσης 3.1/3.2 which is buyer-issued for a
+// non-obligated seller and always carries 0% VAT (κατηγορία 8 -
+// χωρίς ΦΠΑ, per AADE, exemption code 1 = Άρθρο 2 & 3).
 const ZERO_VAT_TYPES: ReadonlySet<DocumentType> = new Set([
   "eu_sale_invoice",
   "eu_service_invoice",
   "third_country_sale_invoice",
   "third_country_service_invoice",
+  "purchase_title",
+  "purchase_title_refused",
 ] as const);
 
 // The block list is now EMPTY — after wiring the correct Wrapp fields
@@ -1708,7 +1712,13 @@ export async function attemptIssueForBusiness(
     doc.type === "expense_settlement_accounting" ||
     doc.type === "expense_settlement_tax" ||
     doc.type === "payroll_entry" ||
-    doc.type === "depreciation";
+    doc.type === "depreciation" ||
+    // Τίτλος κτήσης (3.1/3.2) — buyer-issued for a non-obligated
+    // seller. myDATA validator rejects incomeClassification on these
+    // codes; setting expense:true switches Wrapp to emit the entry
+    // under expensesClassifications instead.
+    doc.type === "purchase_title" ||
+    doc.type === "purchase_title_refused";
   const isStayTax = doc.type === "stay_tax_receipt";
 
   // Parse structured "Επιπλέον φόροι" (JSON) if present. Only the

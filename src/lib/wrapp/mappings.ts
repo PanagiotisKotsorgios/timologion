@@ -223,11 +223,18 @@ export function classificationFor(type: DocumentType): {
   // category1_4 / E3_881_004 pairing was invalid.
   if (type === "rental_income" || type === "contract_income")
     return { category: "category1_5", type: "E3_562" };
-  // Purchase titles (τίτλος κτήσης 3.1/3.2) — buyer-issued docs. Use
-  // the informational-only combo category1_95 + "_" which myDATA
-  // accepts as passthrough while the accountant reclassifies downstream.
+  // Purchase titles (τίτλος κτήσης 3.1/3.2) — buyer-issued docs
+  // paying a non-obligated seller (usually a private person for
+  // one-off services). myDATA rejects income classifications on
+  // these codes ("incomeClassification is forbidden for invoice
+  // detail"), so the payload builder sets `expense: true` on the
+  // line which flips Wrapp to emit the entry under
+  // expensesClassifications. The (category, type) pair is picked
+  // from the EXPENSE side of the AADE tables: category2_3 (Λήψη
+  // Υπηρεσιών) + E3_585_009 (Λοιπές Αμοιβές για υπηρεσίες
+  // ημεδαπής) is the safe default for freelance-style payments.
   if (type === "purchase_title" || type === "purchase_title_refused")
-    return { category: "category1_95", type: "_" };
+    return { category: "category2_3", type: "E3_585_009" };
   // Self-delivery / self-use (6.1 / 6.2) — category1_6 is a REPORTING
   // header, not a per-line code (Wrapp rejects it as "forbidden
   // combination"). The AADE-accepted per-line pairing is category1_1
