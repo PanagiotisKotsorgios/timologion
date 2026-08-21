@@ -219,17 +219,18 @@ export function classificationFor(type: DocumentType): {
   if (type === "stay_tax_receipt")
     return { category: "category1_95", type: "_" };
   // Third-party sales / clearings / retail-for-third-party (1.4 / 1.5 /
-  // 11.5) — myDATA validator rejects the previously used E3_561_007
-  // combination on these codes ("Could not load valid validation doc
-  // for classification with category1_3 and type E3_561_007"). Use the
-  // passthrough combo Wrapp accepts and let the accountant reclassify
-  // downstream.
+  // 11.5) — myDATA rejected BOTH the E3_561_007 attempt AND the
+  // category3/"_" fallback ("Could not load valid validation doc for
+  // classification with category category3 and type"). Move to the
+  // informational-only category1_95 + "_" combo which Wrapp accepts
+  // as passthrough for retail-style codes (same as POS 8.4/8.5 and
+  // 8.6 catering). Accountant reclassifies downstream if needed.
   if (
     type === "third_party_sale_invoice" ||
     type === "third_party_sale_clearing" ||
     type === "third_party_retail_receipt"
   )
-    return { category: "category3", type: "_" };
+    return { category: "category1_95", type: "_" };
   // Rental income (8.1) and contract income (7.1) — per Wrapp/AADE
   // classification tables these fall under category1_5 (Λοιπά Έσοδα /
   // Κέρδη) with type E3_562 (Λοιπά συνήθη έσοδα). The earlier
