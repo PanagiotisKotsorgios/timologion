@@ -184,18 +184,21 @@ export function classificationFor(type: DocumentType): {
     type === "depreciation"
   )
     return { category: "category3", type: "_" };
-  // EU intra-community sales/services — corrected from the earlier
-  // E3_561_002 (invalid for 1.2/2.2) to E3_561_006 which is the
-  // dedicated "πωλήσεις ενδοκοινοτικές" income bucket accepted by
-  // myDATA for intracommunity invoice type codes.
+  // EU intra-community sales/services (1.2 / 2.2) — per Wrapp/AADE
+  // classification table E3_561_005 is "Πωλήσεις αγαθών και υπηρεσιών
+  // Εξωτερικού Ενδοκοινοτικές". The earlier iteration had 005 and 006
+  // swapped; the Wrapp validator rejected E3_561_006 for 1.2 with
+  // "Classification type E3_561_006 is forbidden for category1_3
+  // combined with invoice type Item1_2".
   if (type === "eu_sale_invoice" || type === "eu_service_invoice")
-    return { category: "category1_3", type: "E3_561_006" };
-  // Third-country sales/services — E3_561_005 (Πωλήσεις τρίτων χωρών).
+    return { category: "category1_3", type: "E3_561_005" };
+  // Third-country sales/services (1.3 / 2.3) — E3_561_006 "Πωλήσεις
+  // αγαθών και υπηρεσιών Εξωτερικού Τρίτες Χώρες".
   if (
     type === "third_country_sale_invoice" ||
     type === "third_country_service_invoice"
   )
-    return { category: "category1_3", type: "E3_561_005" };
+    return { category: "category1_3", type: "E3_561_006" };
   // Stay-tax receipts (8.2) — per Wrapp docs the line uses
   // `category1_95` (Λοιπά Πληροφοριακά Στοιχεία Εσόδων) with no
   // classification type; the tax amount rides in `other_taxes_amount`
