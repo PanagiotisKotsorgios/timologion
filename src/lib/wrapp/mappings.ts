@@ -235,15 +235,18 @@ export function classificationFor(type: DocumentType): {
   // ημεδαπής) is the safe default for freelance-style payments.
   if (type === "purchase_title" || type === "purchase_title_refused")
     return { category: "category2_3", type: "E3_585_009" };
-  // Self-delivery / self-use (6.1 / 6.2) — category1_6 is a REPORTING
-  // header, not a per-line code (Wrapp rejects it as "forbidden
-  // combination"). The AADE-accepted per-line pairing is category1_1
-  // (Έσοδα από Πώληση Εμπορευμάτων) with E3_106 (Ιδιοπαραγωγή
-  // παγίων - Αυτοπαραδόσεις / Εμπορεύματα). myDATA also requires a
-  // positive VAT amount on these — the user must set a real VAT rate
-  // (24 / 13 / 6) on the lines, not zero.
+  // Self-delivery / self-use (6.1 / 6.2) — Wrapp validator rejected
+  // both the header combo (category1_6 + E3_106) and the ordinary
+  // merchandise combo (category1_1 + E3_106) with "Could not load
+  // valid validation doc for classification with category X and type
+  // Y". Fall back to the informational-only combo category1_95 + "_"
+  // — the same passthrough Wrapp uses in its own docs example for
+  // 8.6 catering orders. Wrapp accepts it as "λοιπά πληροφοριακά
+  // στοιχεία εσόδων" without validating the E3 code; the accountant
+  // reclassifies downstream. myDATA still requires a positive VAT
+  // amount on 6.1/6.2 (real Greek VAT rate on the lines, not zero).
   if (type === "self_delivery" || type === "self_use")
-    return { category: "category1_1", type: "E3_106" };
+    return { category: "category1_95", type: "_" };
   // Retail refund + retail credit + POS receipts all follow retail flow.
   if (
     type === "retail_refund_receipt" ||
