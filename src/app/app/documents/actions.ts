@@ -1849,40 +1849,40 @@ export async function attemptIssueForBusiness(
                   ? 1 // Άρθρο 2, 3 — fallback
                   : undefined
           : undefined;
+      // Name sanitization: Wrapp validator rejects "<", ">", "/" and
+      // similar shell/HTML metacharacters ("Το κείμενο περιέχει μη
+      // επιτρεπτούς χαρακτήρες"). Strip them from every line name
+      // globally so no doc type triggers that error.
+      const safeName =
+        (l.description ?? "Είδος")
+          .replace(/[<>\/\\]/g, "-")
+          .trim()
+          .slice(0, 200) || "Είδος";
       return {
         line_number: i + 1,
-        // 17.x forbids MeasurementUnit + Quantity + name/price/vat on
-        // the line — send only line_number + classification + expense
-        // flag so Wrapp emits an expensesClassifications entry.
-        name: isSettlement
-          ? undefined
-          : (l.description?.trim() || "Είδος").slice(0, 200),
+        // 17.x settlement types: name is REQUIRED by the Wrapp
+        // validator ("Invoice lines name δεν πρέπει να είναι κενό"),
+        // vat_rate is REQUIRED and must be a number (0 = απαλλασσόμενα),
+        // but quantity + quantity_type are FORBIDDEN by the myDATA
+        // XSD ("MeasurementUnit Per Line is forbidden").
+        name: safeName,
         code: undefined,
         description: undefined,
         quantity: isSettlement ? undefined : wire(Number(l.quantity)),
         quantity_type: isSettlement ? undefined : 1,
         // For 9.3 the AADE validator demands every money field on the
-        // line to be exactly 0 — including unit_price and net_total_price.
-        // The rejection was "Net value must have value 0 for this
-        // invoice type; sum of net values of the invoice lines doesn't
-        // match with total net value of the invoice" — first because
-        // we sent the real net, second because the line net didn't
-        // match the zeroed invoice net. Zeroing both aligns the two.
-        unit_price: isSettlement
-          ? undefined
-          : isDeliveryNote
-            ? 0
-            : wire(Number(l.unitPrice)),
-        net_total_price: isSettlement
-          ? undefined
-          : isDeliveryNote
-            ? 0
-            : net,
-        // Per Wrapp docs, vat_rate on 9.3 stays 24 (informational,
-        // ignored by myDATA because vat_total is 0).
-        vat_rate: isSettlement ? undefined : Number(l.vatRate),
-        vat_total: isSettlement ? undefined : isDeliveryNote ? 0 : vat,
-        subtotal: isSettlement ? undefined : isDeliveryNote ? 0 : total,
+        // line to be exactly 0 (invoice + line must sum to 0). For
+        // 17.x settlement the same must-be-0 rule applies.
+        unit_price:
+          isSettlement || isDeliveryNote ? 0 : wire(Number(l.unitPrice)),
+        net_total_price:
+          isSettlement || isDeliveryNote ? 0 : net,
+        // vat_rate: 9.3 stays at real rate (informational, ignored by
+        // myDATA because vat_total is 0). 17.x must be 0 (vatCategory
+        // 8 = απαλλασσόμενα).
+        vat_rate: isSettlement ? 0 : Number(l.vatRate),
+        vat_total: isSettlement || isDeliveryNote ? 0 : vat,
+        subtotal: isSettlement || isDeliveryNote ? 0 : total,
         vat_exemption_code: vatExemptionCode,
         classification_category: classification.category,
         classification_type: classification.type,
