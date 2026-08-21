@@ -1309,15 +1309,22 @@ function preIssueValidation(doc: PreflightDoc): string | null {
     }
   }
 
-  // Delivery notes — dispatch time must be >= issue time
+  // Delivery notes — the payload builder now auto-bumps dispatch time
+  // forward to issueDate + 1min if it's earlier, so this used to fire
+  // in normal use and confused users. Only reject if the dispatch is
+  // MORE than 1 day before the issue (clearly a data entry mistake,
+  // not a clock skew or minute-precision race).
   if (
     doc.type === "delivery_note" ||
     doc.type === "delivery_note_correlated"
   ) {
-    if (doc.dispatchAt && doc.dispatchAt.getTime() < doc.issueDate.getTime()) {
+    if (
+      doc.dispatchAt &&
+      doc.dispatchAt.getTime() < doc.issueDate.getTime() - 86_400_000
+    ) {
       return (
-        "Η ώρα αποστολής του δελτίου δεν μπορεί να είναι πριν την ώρα έκδοσης. " +
-        "Άνοιξε την επεξεργασία και όρισε ώρα αποστολής ίση ή μεταγενέστερη."
+        "Η ημερομηνία αποστολής του δελτίου είναι πριν από την ημερομηνία έκδοσης. " +
+        "Άνοιξε την επεξεργασία και όρισε ημερομηνία αποστολής ίση ή μεταγενέστερη."
       );
     }
   }
@@ -1615,6 +1622,7 @@ export async function attemptIssueForBusiness(
     doc.type === "delivery_note" || doc.type === "delivery_note_correlated"
       ? buildDeliveryDetail({
           dispatchAt: doc.dispatchAt,
+          issueDate: doc.issueDate,
           dispatchReason: doc.dispatchReason,
           dispatchPurpose: doc.dispatchPurpose,
           loadingAddress: doc.loadingAddress,
@@ -2007,6 +2015,9 @@ type IssuerAddress = {
 
 type DispatchInput = {
   dispatchAt: Date | null;
+  /** The doc's issueDate — used to clamp dispatch datetime forward so
+   * Wrapp doesn't reject with "dispatch time must be >= issue time". */
+  issueDate: Date;
   dispatchReason: string | null;
   dispatchPurpose: string | null;
   /** τόπος φόρτωσης — overrides the issuer branch address when set. */
@@ -2038,9 +2049,30 @@ type DispatchInput = {
  * title slot to carry dispatchPurpose so both survive the round-trip.
  */
 function buildDeliveryDetail(input: DispatchInput) {
-  const now = input.dispatchAt ?? new Date();
-  const dispatchDate = now.toISOString().slice(0, 10);
-  const dispatchTime = now.toISOString().slice(11, 16);
+  // Defensive auto-bump: myDATA rejects dispatch_time < invoice_issue_time,
+  // and race conditions in the UI (draft created "now", dispatch time
+  // auto-set to "now" with minute-level precision but issueDate stored
+  // with second-level precision) meant the two could disagree by a few
+  // seconds and Wrapp would refuse the payload. Silently clamp the
+  // dispatch datetime forward to the issue datetime + 1 minute so the
+  // ordering is always valid on the wire.
+  const requested = input.dispatchAt ?? new Date();
+  const minAllowed = input.issueDate
+    ? new Date(input.issueDate.getTime() + 60_000)
+    : requested;
+  const now = requested.getTime() < minAllowed.getTime() ? minAllowed : requested;
+
+  // Wrapp docs specify format "DD-MM-YYYY" for dispatch_date (e.g.
+  // "21-03-2025") and "HH:MM" for dispatch_time. Toolkit ISO output
+  // (YYYY-MM-DD) worked historically because Wrapp was lenient, but
+  // we now match the documented format exactly.
+  const dd = String(now.getUTCDate()).padStart(2, "0");
+  const mm = String(now.getUTCMonth() + 1).padStart(2, "0");
+  const yyyy = now.getUTCFullYear();
+  const dispatchDate = `${dd}-${mm}-${yyyy}`;
+  const hh = String(now.getUTCHours()).padStart(2, "0");
+  const mi = String(now.getUTCMinutes()).padStart(2, "0");
+  const dispatchTime = `${hh}:${mi}`;
 
   // τόπος φόρτωσης — explicit user input wins over the branch address,
   // so 9.3 payloads reflect the ACTUAL loading point when it differs

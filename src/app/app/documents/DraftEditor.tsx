@@ -1933,12 +1933,17 @@ function DispatchInfoCard({
         <Field
           label="Ημ/νία & ώρα αποστολής"
           htmlFor="dispatchAt"
-          help="Πότε αναχωρούν τα αγαθά από την επιχείρησή σου. Υποχρεωτικό στα Δελτία Αποστολής (9.3)."
+          help="Πότε αναχωρούν τα αγαθά από την επιχείρησή σου. Πρέπει να είναι μεταγενέστερη ή ίση με την ώρα έκδοσης — το σύστημα το ρυθμίζει αυτόματα αν χρειαστεί."
         >
           <Input
             id="dispatchAt"
             type="datetime-local"
             value={dispatchAt}
+            // Prevent obvious past-date entries at the widget level.
+            // The server-side payload builder also auto-bumps forward
+            // to issueDate + 1min if the two disagree, so a slight UI
+            // race can't cause a Wrapp rejection.
+            min={nowInAthensDateTimeLocal()}
             onChange={(e) => setDispatchAt(e.target.value)}
           />
         </Field>
