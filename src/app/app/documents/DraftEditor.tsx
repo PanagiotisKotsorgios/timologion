@@ -123,8 +123,8 @@ const DOC_TYPE_OPTIONS: { value: DraftInput["type"]; label: string }[] = [
   { value: "rental_income", label: "Ενοίκιο — έσοδο (8.1)" },
   { value: "stay_tax_receipt", label: "Τέλος ανθεκτικότητας κλιμ. κρίσης / πρώην φόρος διαμονής (8.2)" },
   { value: "retail_refund_receipt", label: "Απόδειξη επιστροφής (8.4)" },
-  { value: "pos_income_receipt", label: "Απόδειξη είσπραξης POS (8.5)" },
-  { value: "pos_payment_receipt", label: "Απόδειξη πληρωμής POS (8.6)" },
+  { value: "pos_income_receipt", label: "Απόδειξη Είσπραξης POS (8.4)" },
+  { value: "pos_payment_receipt", label: "Απόδειξη Επιστροφής POS (8.5)" },
   { value: "delivery_note", label: "Δελτίο αποστολής (9.3)" },
   {
     value: "delivery_note_correlated",

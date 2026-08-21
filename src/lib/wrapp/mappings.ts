@@ -66,12 +66,25 @@ export function mapDocumentTypeToWrapp(type: DocumentType): string | null {
     case "rental_income":
       return "8.1"; // Ενοίκια - Έσοδο
     case "retail_refund_receipt":
-      // Απόδειξη Επιστροφής — requires correlated parent MARK.
-      return "8.4";
+      // Απόδειξη Επιστροφής (retail refund). The AADE renumbering moved
+      // 8.4 to "Απόδειξη Είσπραξης POS", so we route retail refunds to
+      // 11.4 (Πιστωτικό Στοιχείο Λιανικής) which is the current spec
+      // code for retail credit/refund. Requires correlated parent MARK.
+      return "11.4";
     case "pos_income_receipt":
-      return "8.5"; // Απόδειξη Είσπραξης POS
+      // Per the current Wrapp/AADE spec (Wrapp API docs "Είδη
+      // Παραστατικών" table), 8.4 = Απόδειξη Είσπραξης POS. The old
+      // numbering placed this at 8.5; migrating to 8.4 fixes the
+      // classification-validator rejection ("category1_3 + E3_561_003
+      // not found in invoice summary") because 8.4 has its own
+      // whitelist.
+      return "8.4";
     case "pos_payment_receipt":
-      return "8.6"; // Απόδειξη Πληρωμής POS
+      // 8.5 = Απόδειξη Επιστροφής POS (POS-side refund). The previous
+      // "8.6" mapping was WRONG — 8.6 is now "Δελτίο Παραγγελίας
+      // Εστίασης" (catering order note), so drafts of pos_payment_receipt
+      // were printing as "Δελτίο Παραγγελίας Εστίασης" on the Wrapp PDF.
+      return "8.5";
     case "retail_credit_note":
       // Πιστωτικό Στοιχείο Λιανικής — requires correlated parent MARK.
       return "11.4";
@@ -250,14 +263,12 @@ export function classificationFor(type: DocumentType): {
   // Retail refund + retail credit follow the retail flow.
   if (type === "retail_refund_receipt" || type === "retail_credit_note")
     return { category: "category1_3", type: "E3_561_003" };
-  // POS receipts (8.5 income / 8.6 payment) — per Wrapp docs example
-  // for 8.6 (list_open_catering_order_notes / cancel_catering_order_note)
-  // the accepted classification is category1_95 + "_". myDATA rejects
-  // category1_3 + E3_561_003 on these codes with:
-  //   "Could not load valid validation doc for classification with
-  //    category category1_3 and type E3_561_003;
-  //    Classification with type category1_3 and category E3_561_003
-  //    not found in invoice summary."
+  // POS receipts (8.4 Είσπραξη / 8.5 Επιστροφή). Wrapp rejects
+  // category1_3 + E3_561_003 on these codes ("Could not load valid
+  // validation doc for classification with category1_3 and type
+  // E3_561_003; ... not found in invoice summary"), so we use the
+  // informational passthrough category1_95 + "_" that Wrapp's own
+  // docs example uses for 8.6 catering order notes.
   if (type === "pos_income_receipt" || type === "pos_payment_receipt")
     return { category: "category1_95", type: "_" };
   // Complementary invoices inherit the classification of the parent

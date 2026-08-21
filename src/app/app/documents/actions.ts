@@ -1280,7 +1280,7 @@ function preIssueValidation(doc: PreflightDoc): string | null {
     stay_tax_receipt: "Η απόδειξη φόρου διαμονής (8.2)",
     complementary_invoice: "Το συμπληρωματικό τιμολόγιο (1.6)",
     complementary_service_invoice: "Το συμπληρωματικό παροχής (2.4)",
-    retail_refund_receipt: "Η απόδειξη επιστροφής (8.4)",
+    retail_refund_receipt: "Η απόδειξη επιστροφής (11.4)",
     retail_credit_note: "Το πιστωτικό λιανικής (11.4)",
     delivery_note_correlated: "Το δελτίο αποστολής συσχετιζόμενο (9.3)",
   };
@@ -1638,7 +1638,7 @@ export async function attemptIssueForBusiness(
     stay_tax_receipt: "Η απόδειξη φόρου διαμονής (8.2)",
     complementary_invoice: "Το συμπληρωματικό τιμολόγιο (1.6)",
     complementary_service_invoice: "Το συμπληρωματικό παροχής (2.4)",
-    retail_refund_receipt: "Η απόδειξη επιστροφής (8.4)",
+    retail_refund_receipt: "Η απόδειξη επιστροφής (11.4)",
     retail_credit_note: "Το πιστωτικό λιανικής (11.4)",
     delivery_note_correlated: "Το δελτίο αποστολής συσχετιζόμενο (9.3)",
   };

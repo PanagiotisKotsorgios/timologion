@@ -57,7 +57,7 @@ const DOC_TYPE_LABEL: Record<string, string> = {
   rental_income: "ΕΝΟΙΚΙΟ — ΕΣΟΔΟ",
   retail_refund_receipt: "ΑΠΟΔΕΙΞΗ ΕΠΙΣΤΡΟΦΗΣ",
   pos_income_receipt: "ΑΠΟΔΕΙΞΗ ΕΙΣΠΡΑΞΗΣ POS",
-  pos_payment_receipt: "ΑΠΟΔΕΙΞΗ ΠΛΗΡΩΜΗΣ POS",
+  pos_payment_receipt: "ΑΠΟΔΕΙΞΗ ΕΠΙΣΤΡΟΦΗΣ POS",
   retail_credit_note: "ΠΙΣΤΩΤΙΚΟ ΛΙΑΝΙΚΗΣ",
   third_party_retail_receipt: "ΛΙΑΝΙΚΗ ΓΙΑ Λ/ΣΜΟ ΤΡΙΤΩΝ",
   proforma: "ΠΡΟΤΙΜΟΛΟΓΙΟ",
