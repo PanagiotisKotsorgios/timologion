@@ -3,7 +3,7 @@
 import { useActionState, useState, useTransition } from "react";
 import { Save, Plus, Search, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { Field, Input, Textarea } from "@/components/ui/Input";
+import { Field, Input, Select, Textarea } from "@/components/ui/Input";
 import { Alert } from "@/components/ui/Alert";
 import { PhoneField } from "@/components/ui/PhoneField";
 import { EmailField } from "@/components/ui/EmailField";
@@ -25,10 +25,60 @@ type ClientLike = {
   addressLine?: string | null;
   city?: string | null;
   postalCode?: string | null;
+  country?: string | null;
   email?: string | null;
   phone?: string | null;
   notes?: string | null;
 };
+
+// ISO-3166 alpha-2 country codes surfaced in the dropdown. GR is the
+// default. The 26 EU members are grouped first (needed for
+// intracommunity 1.2/2.2 invoices), then common non-EU countries
+// (needed for third-country 1.3/2.3 invoices). A user can still type
+// any 2-letter code manually if their partner isn't in the list.
+const COUNTRY_OPTIONS: { code: string; label: string; group: string }[] = [
+  { code: "GR", label: "Ελλάδα (GR)", group: "Ελλάδα" },
+  { code: "AT", label: "Αυστρία (AT)", group: "Ε.Ε." },
+  { code: "BE", label: "Βέλγιο (BE)", group: "Ε.Ε." },
+  { code: "BG", label: "Βουλγαρία (BG)", group: "Ε.Ε." },
+  { code: "HR", label: "Κροατία (HR)", group: "Ε.Ε." },
+  { code: "CY", label: "Κύπρος (CY)", group: "Ε.Ε." },
+  { code: "CZ", label: "Τσεχία (CZ)", group: "Ε.Ε." },
+  { code: "DK", label: "Δανία (DK)", group: "Ε.Ε." },
+  { code: "EE", label: "Εσθονία (EE)", group: "Ε.Ε." },
+  { code: "FI", label: "Φινλανδία (FI)", group: "Ε.Ε." },
+  { code: "FR", label: "Γαλλία (FR)", group: "Ε.Ε." },
+  { code: "DE", label: "Γερμανία (DE)", group: "Ε.Ε." },
+  { code: "HU", label: "Ουγγαρία (HU)", group: "Ε.Ε." },
+  { code: "IE", label: "Ιρλανδία (IE)", group: "Ε.Ε." },
+  { code: "IT", label: "Ιταλία (IT)", group: "Ε.Ε." },
+  { code: "LV", label: "Λετονία (LV)", group: "Ε.Ε." },
+  { code: "LT", label: "Λιθουανία (LT)", group: "Ε.Ε." },
+  { code: "LU", label: "Λουξεμβούργο (LU)", group: "Ε.Ε." },
+  { code: "MT", label: "Μάλτα (MT)", group: "Ε.Ε." },
+  { code: "NL", label: "Ολλανδία (NL)", group: "Ε.Ε." },
+  { code: "PL", label: "Πολωνία (PL)", group: "Ε.Ε." },
+  { code: "PT", label: "Πορτογαλία (PT)", group: "Ε.Ε." },
+  { code: "RO", label: "Ρουμανία (RO)", group: "Ε.Ε." },
+  { code: "SK", label: "Σλοβακία (SK)", group: "Ε.Ε." },
+  { code: "SI", label: "Σλοβενία (SI)", group: "Ε.Ε." },
+  { code: "ES", label: "Ισπανία (ES)", group: "Ε.Ε." },
+  { code: "SE", label: "Σουηδία (SE)", group: "Ε.Ε." },
+  { code: "GB", label: "Ην. Βασίλειο (GB)", group: "Τρίτες χώρες" },
+  { code: "CH", label: "Ελβετία (CH)", group: "Τρίτες χώρες" },
+  { code: "NO", label: "Νορβηγία (NO)", group: "Τρίτες χώρες" },
+  { code: "US", label: "ΗΠΑ (US)", group: "Τρίτες χώρες" },
+  { code: "CA", label: "Καναδάς (CA)", group: "Τρίτες χώρες" },
+  { code: "AU", label: "Αυστραλία (AU)", group: "Τρίτες χώρες" },
+  { code: "TR", label: "Τουρκία (TR)", group: "Τρίτες χώρες" },
+  { code: "AL", label: "Αλβανία (AL)", group: "Τρίτες χώρες" },
+  { code: "MK", label: "Βόρεια Μακεδονία (MK)", group: "Τρίτες χώρες" },
+  { code: "RS", label: "Σερβία (RS)", group: "Τρίτες χώρες" },
+  { code: "IL", label: "Ισραήλ (IL)", group: "Τρίτες χώρες" },
+  { code: "AE", label: "Ην. Αραβικά Εμιράτα (AE)", group: "Τρίτες χώρες" },
+  { code: "CN", label: "Κίνα (CN)", group: "Τρίτες χώρες" },
+  { code: "JP", label: "Ιαπωνία (JP)", group: "Τρίτες χώρες" },
+];
 
 export function ClientForm({
   initial,
@@ -56,6 +106,7 @@ export function ClientForm({
     addressLine: initial?.addressLine ?? "",
     city: initial?.city ?? "",
     postalCode: initial?.postalCode ?? "",
+    country: initial?.country ?? "GR",
     email: initial?.email ?? "",
     phone: initial?.phone ?? "",
     notes: initial?.notes ?? "",
@@ -254,6 +305,31 @@ export function ClientForm({
             onChange={(e) => set("postalCode", e.target.value)}
             maxLength={20}
           />
+        </Field>
+        <Field
+          label="Χώρα"
+          htmlFor="country"
+          help="Απαραίτητο για ενδοκοινοτικά τιμολόγια (Ε.Ε. εκτός Ελλάδας) και για παραστατικά τρίτων χωρών."
+        >
+          <Select
+            id="country"
+            name="country"
+            value={values.country ?? "GR"}
+            onChange={(e) => set("country", e.target.value.toUpperCase())}
+          >
+            {/* Grouped for scannability: Ελλάδα → Ε.Ε. → Τρίτες χώρες. */}
+            {(["Ελλάδα", "Ε.Ε.", "Τρίτες χώρες"] as const).map((group) => (
+              <optgroup key={group} label={group}>
+                {COUNTRY_OPTIONS.filter((c) => c.group === group).map(
+                  (c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.label}
+                    </option>
+                  ),
+                )}
+              </optgroup>
+            ))}
+          </Select>
         </Field>
         <EmailField
           htmlFor="email"

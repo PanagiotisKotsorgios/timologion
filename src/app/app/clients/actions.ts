@@ -21,6 +21,10 @@ const clientSchema = z.object({
   addressLine: z.string().max(200).optional().or(z.literal("")),
   city: z.string().max(80).optional().or(z.literal("")),
   postalCode: z.string().max(20).optional().or(z.literal("")),
+  // ISO-3166 alpha-2 code (GR, DE, IT, US...). Stored as VARCHAR(2)
+  // in the DB with default "GR". Empty string collapses to "GR" in
+  // the update mapping so we never persist an invalid short code.
+  country: z.string().max(2).optional().or(z.literal("")),
   email: z.string().email().optional().or(z.literal("")),
   phone: z.string().max(30).optional().or(z.literal("")),
   notes: z.string().max(5000).optional().or(z.literal("")),
@@ -55,6 +59,7 @@ export async function createClientAction(
       addressLine: o(parsed.data.addressLine),
       city: o(parsed.data.city),
       postalCode: o(parsed.data.postalCode),
+      country: (parsed.data.country || "GR").toUpperCase(),
       email: o(parsed.data.email),
       phone: o(parsed.data.phone),
       notes: o(parsed.data.notes),
@@ -104,6 +109,7 @@ export async function quickCreateClientAction(formData: FormData): Promise<
       addressLine: o(parsed.data.addressLine),
       city: o(parsed.data.city),
       postalCode: o(parsed.data.postalCode),
+      country: (parsed.data.country || "GR").toUpperCase(),
       email: o(parsed.data.email),
       phone: o(parsed.data.phone),
       notes: o(parsed.data.notes),
@@ -152,6 +158,7 @@ export async function updateClientAction(
       addressLine: o(parsed.data.addressLine),
       city: o(parsed.data.city),
       postalCode: o(parsed.data.postalCode),
+      country: (parsed.data.country || "GR").toUpperCase(),
       email: o(parsed.data.email),
       phone: o(parsed.data.phone),
       notes: o(parsed.data.notes),
