@@ -2048,6 +2048,54 @@ type DispatchInput = {
  * the user's dispatchReason straight through and use the "Άλλο" custom
  * title slot to carry dispatchPurpose so both survive the round-trip.
  */
+/**
+ * Normalize a user-facing "Σκοπός διακίνησης" string to the myDATA
+ * integer code the AADE validator expects (1-20, plus 15/16/17/18
+ * excluded per Wrapp docs).
+ *
+ * The DraftEditor's select stores the Greek label (legacy), but Wrapp
+ * requires an integer per its "Σκοπός Διακίνησης" table. This function
+ * accepts either the integer code (passthrough), an exact Greek label
+ * match, or a fuzzy substring — and falls back to 19 (Λοιπές
+ * Διακινήσεις) for anything unrecognized so the payload still
+ * validates.
+ */
+function mapDispatchReasonToCode(raw: string | null | undefined): string {
+  if (!raw) return "1"; // default: Πώληση
+  const trimmed = raw.trim();
+  // Already an integer code — passthrough after clamping to valid range.
+  if (/^\d+$/.test(trimmed)) {
+    const n = Number(trimmed);
+    const allowed = new Set([1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12, 13, 14, 19, 20]);
+    return allowed.has(n) ? String(n) : "19";
+  }
+  const lower = trimmed.toLowerCase();
+  const label = lower.normalize("NFD").replace(/\p{Diacritic}/gu, "");
+  const map: Array<[RegExp, string]> = [
+    [/^πωληση$/i, "1"],
+    [/λογαριασμο τριτ/i, "2"],
+    [/δειγμ/i, "3"],
+    [/εκθεσ/i, "4"],
+    [/επιστροφ/i, "5"],
+    [/επεξεργ|συναρμολ|αποσυναρμολ/i, "7"],
+    [/ενδοδιακιν|μεταξυ εγκαταστ/i, "8"],
+    [/αγορ/i, "9"],
+    [/εφοδιασμ|πλοι|αεροσκα/i, "10"],
+    [/δωρεαν/i, "11"],
+    [/εγγυησ/i, "12"],
+    [/χρησιδανε/i, "13"],
+    [/αποθηκευσ.*τριτ/i, "14"],
+    [/λοιπ|αλλο/i, "19"],
+    [/μεταφορ|ταχυμετ/i, "20"],
+  ];
+  for (const [re, code] of map) {
+    if (re.test(label)) return code;
+  }
+  // Unknown free-text — bucket as "Λοιπές Διακινήσεις" so the payload
+  // still validates. The original string travels via custom_title.
+  return "19";
+}
+
 function buildDeliveryDetail(input: DispatchInput) {
   // Defensive auto-bump: myDATA rejects dispatch_time < invoice_issue_time,
   // and race conditions in the UI (draft created "now", dispatch time
@@ -2087,10 +2135,20 @@ function buildDeliveryDetail(input: DispatchInput) {
     dispatch_date: dispatchDate,
     dispatch_time: dispatchTime,
     vehicle_number: (input.vehicleNumber || "-").slice(0, 40),
-    purpose_of_movement: (input.dispatchReason || "Πώληση").slice(0, 200),
-    purpose_of_movement_custom_title: input.dispatchPurpose
-      ? input.dispatchPurpose.slice(0, 200)
-      : undefined,
+    // myDATA validator requires an integer 1-20 (from the AADE
+    // "Σκοπός Διακίνησης" table), not the Greek label. Users pick
+    // a Greek dropdown value in the UI — we normalize it back to
+    // the myDATA code here. Unknown/free-text falls back to 19
+    // ("Λοιπές Διακινήσεις") + carries the raw label as the custom
+    // title so the meaning survives in the AADE payload.
+    purpose_of_movement: mapDispatchReasonToCode(input.dispatchReason),
+    purpose_of_movement_custom_title:
+      mapDispatchReasonToCode(input.dispatchReason) === "19"
+        ? (input.dispatchPurpose || input.dispatchReason || "").slice(0, 200) ||
+          undefined
+        : input.dispatchPurpose
+          ? input.dispatchPurpose.slice(0, 200)
+          : undefined,
     issuer_of_movement: (
       input.driverName ||
       input.issuerAddress?.legalName ||
