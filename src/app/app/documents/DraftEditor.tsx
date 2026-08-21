@@ -81,6 +81,30 @@ type Line = {
   vatRate: string;
 };
 
+// ISO-3166 alpha-2 → Ελληνική ονομασία. Kept in sync with the
+// ClientForm's grouped selector so the read-only display matches
+// what the user picked. Falls back to the raw 2-letter code when
+// unknown so a hand-typed code still appears (better than a fake
+// "Ελλάδα" default that was there before).
+const COUNTRY_LABELS: Record<string, string> = {
+  GR: "Ελλάδα", AT: "Αυστρία", BE: "Βέλγιο", BG: "Βουλγαρία",
+  HR: "Κροατία", CY: "Κύπρος", CZ: "Τσεχία", DK: "Δανία",
+  EE: "Εσθονία", FI: "Φινλανδία", FR: "Γαλλία", DE: "Γερμανία",
+  HU: "Ουγγαρία", IE: "Ιρλανδία", IT: "Ιταλία", LV: "Λετονία",
+  LT: "Λιθουανία", LU: "Λουξεμβούργο", MT: "Μάλτα", NL: "Ολλανδία",
+  PL: "Πολωνία", PT: "Πορτογαλία", RO: "Ρουμανία", SK: "Σλοβακία",
+  SI: "Σλοβενία", ES: "Ισπανία", SE: "Σουηδία",
+  GB: "Ην. Βασίλειο", CH: "Ελβετία", NO: "Νορβηγία", US: "ΗΠΑ",
+  CA: "Καναδάς", AU: "Αυστραλία", TR: "Τουρκία", AL: "Αλβανία",
+  MK: "Β. Μακεδονία", RS: "Σερβία", IL: "Ισραήλ",
+  AE: "Ην. Αραβ. Εμιράτα", CN: "Κίνα", JP: "Ιαπωνία",
+};
+function countryLabel(code: string | null | undefined): string {
+  if (!code) return "Ελλάδα";
+  const up = code.toUpperCase();
+  return COUNTRY_LABELS[up] ?? up;
+}
+
 const DOC_TYPE_OPTIONS: { value: DraftInput["type"]; label: string }[] = [
   { value: "invoice", label: "Τιμολόγιο πώλησης (1.1)" },
   { value: "eu_sale_invoice", label: "Τιμολόγιο πώλησης — ενδοκοινοτικό (1.2)" },
@@ -858,11 +882,7 @@ export function DraftEditor({
               <ReadOnly label="ΑΦΜ" value={selectedClient?.vatNumber ?? "—"} />
               <ReadOnly
                 label="Χώρα"
-                value={
-                  selectedClient?.country === "EN"
-                    ? "Ηνωμ. Βασίλειο"
-                    : "Ελλάδα"
-                }
+                value={countryLabel(selectedClient?.country)}
               />
               <ReadOnly label="Πόλη" value={selectedClient?.city ?? "—"} />
               <ReadOnly

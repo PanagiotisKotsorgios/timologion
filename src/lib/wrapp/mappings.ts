@@ -183,20 +183,26 @@ export function classificationFor(type: DocumentType): {
 } {
   if (type === "delivery_note" || type === "delivery_note_correlated")
     return { category: "category3", type: "_" };
-  // 17.x settlement entries — myDATA doesn't require classification rows
-  // (the transmitted "invoice_details" carries aggregated adjustment
-  // amounts, not itemized income/expense). category3 with type "_" is
-  // the safe passthrough Wrapp accepts for these adjustment codes; the
-  // accountant reclassifies downstream in their bookkeeping software.
+  // 17.x settlement entries. Wrapp validator refused category3/"_"
+  // ("Could not load valid validation doc for classification with
+  // category3 and type") AND demands expensesClassification (the
+  // payload builder sets expense:true on the line). The AADE expense
+  // side has dedicated codes for settlement:
+  //   category2_12 = Λοιπές Εγγραφές Τακτοποίησης Εξόδων
+  //   E3_588       = Ασυνήθη έξοδα, ζημιές και πρόστιμα (safe generic)
+  //   E3_581_001-3 = Παροχές σε εργαζόμενους (μισθοδοσία specific)
+  //   E3_587       = Αποσβέσεις (depreciation specific)
+  if (type === "payroll_entry")
+    return { category: "category2_6", type: "E3_581_001" };
+  if (type === "depreciation")
+    return { category: "category2_8", type: "E3_587" };
   if (
     type === "income_settlement_accounting" ||
     type === "income_settlement_tax" ||
     type === "expense_settlement_accounting" ||
-    type === "expense_settlement_tax" ||
-    type === "payroll_entry" ||
-    type === "depreciation"
+    type === "expense_settlement_tax"
   )
-    return { category: "category3", type: "_" };
+    return { category: "category2_12", type: "E3_588" };
   // EU intra-community sales/services (1.2 / 2.2) — per Wrapp/AADE
   // classification table E3_561_005 is "Πωλήσεις αγαθών και υπηρεσιών
   // Εξωτερικού Ενδοκοινοτικές". The earlier iteration had 005 and 006

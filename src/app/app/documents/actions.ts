@@ -1717,14 +1717,14 @@ export async function attemptIssueForBusiness(
     doc.type === "expense_settlement_accounting" ||
     doc.type === "expense_settlement_tax";
   const isExpenseSide =
-    doc.type === "expense_settlement_accounting" ||
-    doc.type === "expense_settlement_tax" ||
-    doc.type === "payroll_entry" ||
-    doc.type === "depreciation" ||
+    // ALL 17.x settlement entries — income AND expense variants — use
+    // expensesClassifications per Wrapp validator ("expensesClassification
+    // is mandatory for invoice detail 1; incomeClassification is
+    // forbidden"). AADE treats the whole 17.x family as expense-side
+    // adjustments in the myDATA structure.
+    isSettlement ||
     // Τίτλος κτήσης (3.1/3.2) — buyer-issued for a non-obligated
-    // seller. myDATA validator rejects incomeClassification on these
-    // codes; setting expense:true switches Wrapp to emit the entry
-    // under expensesClassifications instead.
+    // seller. Same expensesClassifications requirement.
     doc.type === "purchase_title" ||
     doc.type === "purchase_title_refused";
   const isStayTax = doc.type === "stay_tax_receipt";
@@ -1766,28 +1766,35 @@ export async function attemptIssueForBusiness(
     payment_method_type: isSettlement
       ? undefined
       : mapPaymentMethodToWrapp(doc.paymentMethod),
-    // 8.2 sends money on other_taxes_amount, not the standard totals.
-    // 9.3 forces all totals to 0.
+    // Per-type total handling:
+    //   9.3 (delivery note): all money fields = 0 (stock movement).
+    //   8.2 (stay tax): only other_taxes_amount carries value.
+    //   17.x settlement: totals must EQUAL the sum of line nets (which
+    //     must be > 0), with vat_total = 0 (κατ. 8 απαλλασσόμενα).
     net_total_amount: isDeliveryNote
       ? 0
       : isStayTax
         ? 0
-        : wire(Number(doc.netTotalAmount)),
-    vat_total_amount: isDeliveryNote
+        : isSettlement
+          ? Math.abs(Number(doc.netTotalAmount))
+          : wire(Number(doc.netTotalAmount)),
+    vat_total_amount: isDeliveryNote || isStayTax || isSettlement
       ? 0
-      : isStayTax
-        ? 0
-        : wire(Number(doc.vatTotalAmount)),
+      : wire(Number(doc.vatTotalAmount)),
     total_amount: isDeliveryNote
       ? 0
       : isStayTax
         ? (stayTaxRow?.amount ?? Number(doc.totalAmount))
-        : wire(Number(doc.totalAmount)),
+        : isSettlement
+          ? Math.abs(Number(doc.netTotalAmount))
+          : wire(Number(doc.totalAmount)),
     payable_total_amount: isDeliveryNote
       ? 0
       : isStayTax
         ? (stayTaxRow?.amount ?? Number(doc.payableTotalAmount))
-        : wire(Number(doc.payableTotalAmount)),
+        : isSettlement
+          ? Math.abs(Number(doc.netTotalAmount))
+          : wire(Number(doc.payableTotalAmount)),
     other_taxes_amount: isStayTax ? (stayTaxRow?.amount ?? 0) : undefined,
     notes: doc.notes ?? undefined,
     num: reservedNumber ?? undefined,
@@ -1870,19 +1877,32 @@ export async function attemptIssueForBusiness(
         description: undefined,
         quantity: isSettlement ? undefined : wire(Number(l.quantity)),
         quantity_type: isSettlement ? undefined : 1,
-        // For 9.3 the AADE validator demands every money field on the
-        // line to be exactly 0 (invoice + line must sum to 0). For
-        // 17.x settlement the same must-be-0 rule applies.
-        unit_price:
-          isSettlement || isDeliveryNote ? 0 : wire(Number(l.unitPrice)),
-        net_total_price:
-          isSettlement || isDeliveryNote ? 0 : net,
-        // vat_rate: 9.3 stays at real rate (informational, ignored by
-        // myDATA because vat_total is 0). 17.x must be 0 (vatCategory
-        // 8 = απαλλασσόμενα).
+        // 9.3 delivery notes: ALL money fields = 0 (stock movement,
+        // no monetary value).
+        // 17.x settlement: net values MUST be > 0 ("NetValue per
+        // line ... must have value greater than 0 for this invoice
+        // type"), and MUST equal the invoice net. VAT is always 0.
+        unit_price: isDeliveryNote
+          ? 0
+          : isSettlement
+            ? Math.abs(Number(l.unitPrice)) || Math.abs(net) || 0
+            : wire(Number(l.unitPrice)),
+        net_total_price: isDeliveryNote
+          ? 0
+          : isSettlement
+            ? Math.abs(net) || 0
+            : net,
+        // vat_rate: 9.3 stays at real rate (informational). 17.x = 0
+        // (vatCategory 8 = απαλλασσόμενα; Wrapp auto-derives cat 8
+        // when vat_rate=0 with no vat_exemption_code set).
         vat_rate: isSettlement ? 0 : Number(l.vatRate),
         vat_total: isSettlement || isDeliveryNote ? 0 : vat,
-        subtotal: isSettlement || isDeliveryNote ? 0 : total,
+        // subtotal on 17.x = net (VAT is 0, so gross = net).
+        subtotal: isDeliveryNote
+          ? 0
+          : isSettlement
+            ? Math.abs(net) || 0
+            : total,
         vat_exemption_code: vatExemptionCode,
         classification_category: classification.category,
         classification_type: classification.type,
