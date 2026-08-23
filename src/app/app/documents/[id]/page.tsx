@@ -22,13 +22,19 @@ import { SendEmailButton } from "./SendEmailButton";
 import { parseAdditionalTaxes } from "../additional-taxes-shared";
 import type { DocumentType } from "@prisma/client";
 
-// Kept in sync with BLOCKED_FROM_AUTO_TRANSMIT in ../actions.ts. The
-// list is currently empty because every myDATA type our doc-picker
-// exposes now transmits through the standard pipeline. If a new
-// blocking edge case appears, add its DocumentType here and the
-// "Διαβίβαση" button hides + the amber "μόνο τοπική αποθήκευση"
-// banner appears in its place.
-const AUTO_TRANSMIT_BLOCKED_TYPES: ReadonlySet<DocumentType> = new Set([]);
+// Kept in sync with BLOCKED_FROM_AUTO_TRANSMIT in ../actions.ts.
+// 17.x settlement entries can't be pushed through the standard
+// invoice payload (Wrapp validator demands vatCategory=8 which the
+// exemption-code table can't produce). Users transmit these via
+// their bookkeeping software or the AADE portal.
+const AUTO_TRANSMIT_BLOCKED_TYPES: ReadonlySet<DocumentType> = new Set([
+  "income_settlement_accounting",
+  "income_settlement_tax",
+  "expense_settlement_accounting",
+  "expense_settlement_tax",
+  "payroll_entry",
+  "depreciation",
+] as const);
 
 export default async function DocumentDetailPage({
   params,

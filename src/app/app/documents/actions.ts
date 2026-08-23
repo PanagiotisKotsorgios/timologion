@@ -1163,15 +1163,30 @@ const ZERO_VAT_TYPES: ReadonlySet<DocumentType> = new Set([
   "purchase_title_refused",
 ] as const);
 
-// The block list is now EMPTY — after wiring the correct Wrapp fields
-// (`expense: true` for 17.x, `accommodation_tax` + `other_taxes_amount`
-// for 8.2, correct classification codes per doc type per AADE spec),
-// every myDATA type our doc-picker exposes can transmit through the
-// standard pipeline. Kept as a `Set<DocumentType>` (rather than
-// deleted) so the mechanism stays in place — if we discover a new
-// blocking edge case later, add its DocumentType here and the
-// pre-issue guard + UI hide-list pick it up automatically.
-const BLOCKED_FROM_AUTO_TRANSMIT: ReadonlySet<DocumentType> = new Set([]);
+// 17.x settlement entries (τακτ. εσόδων/εξόδων, μισθοδοσία,
+// αποσβέσεις) are BLOCKED from auto-transmit. Wrapp's validator
+// demands vatCategory=8 (απαλλασσόμενα) on these codes, but Wrapp's
+// exemption-code table only translates to vatCategory=7 (χωρίς ΦΠΑ) —
+// there is no exposed way through the standard invoice payload to
+// signal category 8 for these types. Multiple attempts (exemption
+// codes 1/7/15, absence, expense flag toggles, category1_10/1_95/2_12
+// classifications) all got rejected with either
+//   "Vat category must have value 8" or
+//   "When vatCategory has value 7, element vatExemptionCategory is mandatory".
+//
+// 17.x is a rare, accountant-only flow. Users transmit these through
+// their bookkeeping software or the AADE portal directly. When Wrapp
+// exposes a proper way (either an explicit vat_category field or a
+// documented exemption code that maps to 8 for 17.x), remove the
+// blocking entry here and revisit the payload builder.
+const BLOCKED_FROM_AUTO_TRANSMIT: ReadonlySet<DocumentType> = new Set([
+  "income_settlement_accounting",
+  "income_settlement_tax",
+  "expense_settlement_accounting",
+  "expense_settlement_tax",
+  "payroll_entry",
+  "depreciation",
+] as const);
 
 type PreflightDoc = {
   type: DocumentType;
