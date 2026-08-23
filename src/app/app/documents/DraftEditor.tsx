@@ -162,24 +162,17 @@ const DOC_TYPE_OPTIONS: { value: DraftInput["type"]; label: string }[] = [
     value: "third_party_retail_receipt",
     label: "Λιανική για λ/σμό τρίτων (11.5)",
   },
-  {
-    value: "income_settlement_accounting",
-    label: "Τακτοποίηση εσόδων — λογιστική βάση (17.1)",
-  },
-  {
-    value: "income_settlement_tax",
-    label: "Τακτοποίηση εσόδων — φορολογική βάση (17.2)",
-  },
-  {
-    value: "expense_settlement_accounting",
-    label: "Τακτοποίηση εξόδων — λογιστική βάση (17.3)",
-  },
-  {
-    value: "expense_settlement_tax",
-    label: "Τακτοποίηση εξόδων — φορολογική βάση (17.4)",
-  },
-  { value: "payroll_entry", label: "Ενσωμάτωση μισθοδοσίας (17.5)" },
-  { value: "depreciation", label: "Αποσβέσεις (17.6)" },
+  // 17.x settlement types (Λοιπές Εγγραφές Τακτοποίησης, Μισθοδοσία,
+  // Αποσβέσεις) are hidden from the picker. Wrapp's REST API cannot
+  // signal myDATA vatCategory=8 which the validator demands for these
+  // codes, so we can't auto-transmit them. They're an accountant-only
+  // flow handled by bookkeeping software or the AADE portal directly —
+  // showing them here just leads to failed transmission attempts and
+  // user confusion.
+  //
+  // Existing drafts of these types still render on the detail page
+  // (with a "Μόνο τοπική αποθήκευση" banner) — the values remain in
+  // the DocumentType enum for historical reasons.
   {
     value: "quantitative_receipt",
     label: "Δελτίο ποσοτικής παραλαβής (εσωτ.)",

@@ -278,12 +278,10 @@ function groupByCode(items: Option[]): { label: string; items: Option[] }[] {
     simplified_invoice: "Λιανικές αποδείξεις (11.x)",
     retail_credit_note: "Λιανικές αποδείξεις (11.x)",
     third_party_retail_receipt: "Λιανικές αποδείξεις (11.x)",
-    income_settlement_accounting: "Λοιπές εγγραφές τακτοποίησης (17.x)",
-    income_settlement_tax: "Λοιπές εγγραφές τακτοποίησης (17.x)",
-    expense_settlement_accounting: "Λοιπές εγγραφές τακτοποίησης (17.x)",
-    expense_settlement_tax: "Λοιπές εγγραφές τακτοποίησης (17.x)",
-    payroll_entry: "Λοιπές εγγραφές τακτοποίησης (17.x)",
-    depreciation: "Λοιπές εγγραφές τακτοποίησης (17.x)",
+    // 17.x settlement types intentionally omitted — hidden from
+    // picker (see DraftEditor DOC_TYPE_OPTIONS). If a legacy doc of
+    // one of these types reaches the picker somehow, it falls into
+    // the "Άλλα" bucket via the ?? fallback below.
     quantitative_receipt: "Εσωτερικά — δεν στέλνονται στην ΑΑΔΕ",
     proforma: "Εσωτερικά — δεν στέλνονται στην ΑΑΔΕ",
     quote: "Εσωτερικά — δεν στέλνονται στην ΑΑΔΕ",
