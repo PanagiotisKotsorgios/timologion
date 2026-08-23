@@ -1716,13 +1716,17 @@ export async function attemptIssueForBusiness(
     doc.type === "income_settlement_tax" ||
     doc.type === "expense_settlement_accounting" ||
     doc.type === "expense_settlement_tax";
+  // ONLY the true expense-side 17.x types (τακτοποιήσεις ΕΞΟΔΩΝ,
+  // μισθοδοσία, αποσβέσεις) use expensesClassifications. The income
+  // variants (17.3/17.4 τακτοποιήσεις ΕΣΟΔΩΝ) MUST use
+  // incomeClassifications — Wrapp's validator explicitly says
+  // "incomeClassification is mandatory; expensesClassification is
+  // forbidden" for those subtypes.
   const isExpenseSide =
-    // ALL 17.x settlement entries — income AND expense variants — use
-    // expensesClassifications per Wrapp validator ("expensesClassification
-    // is mandatory for invoice detail 1; incomeClassification is
-    // forbidden"). AADE treats the whole 17.x family as expense-side
-    // adjustments in the myDATA structure.
-    isSettlement ||
+    doc.type === "expense_settlement_accounting" ||
+    doc.type === "expense_settlement_tax" ||
+    doc.type === "payroll_entry" ||
+    doc.type === "depreciation" ||
     // Τίτλος κτήσης (3.1/3.2) — buyer-issued for a non-obligated
     // seller. Same expensesClassifications requirement.
     doc.type === "purchase_title" ||
@@ -1762,10 +1766,20 @@ export async function attemptIssueForBusiness(
     invoice_type_code: invoiceTypeCode,
     billing_book_id: book.wrappBookId,
     branch: branch?.wrappBranchId ?? undefined,
-    // 17.x forbids payment_method_type per Wrapp validator.
-    payment_method_type: isSettlement
-      ? undefined
-      : mapPaymentMethodToWrapp(doc.paymentMethod),
+    // Payment method rules per 17.x subtype (Wrapp validator, cross-checked
+    // against actual rejection messages):
+    //   17.1 payroll        → REQUIRED ("Payment Methods is mandatory")
+    //   17.2 depreciation   → FORBIDDEN ("Payment Methods is forbidden")
+    //   17.3-17.6 settlement → FORBIDDEN ("Payment Methods is forbidden")
+    // Everything else keeps the user-picked value.
+    payment_method_type:
+      doc.type === "depreciation" ||
+      doc.type === "income_settlement_accounting" ||
+      doc.type === "income_settlement_tax" ||
+      doc.type === "expense_settlement_accounting" ||
+      doc.type === "expense_settlement_tax"
+        ? undefined
+        : mapPaymentMethodToWrapp(doc.paymentMethod),
     // Per-type total handling:
     //   9.3 (delivery note): all money fields = 0 (stock movement).
     //   8.2 (stay tax): only other_taxes_amount carries value.

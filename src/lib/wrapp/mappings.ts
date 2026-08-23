@@ -192,13 +192,24 @@ export function classificationFor(type: DocumentType): {
   //   E3_588       = Ασυνήθη έξοδα, ζημιές και πρόστιμα (safe generic)
   //   E3_581_001-3 = Παροχές σε εργαζόμενους (μισθοδοσία specific)
   //   E3_587       = Αποσβέσεις (depreciation specific)
+  // Payroll (17.1) + Depreciation (17.2) → expense side.
   if (type === "payroll_entry")
     return { category: "category2_6", type: "E3_581_001" };
   if (type === "depreciation")
     return { category: "category2_8", type: "E3_587" };
+  // Income settlement (17.3/17.4) → INCOME side (Wrapp explicitly:
+  // "incomeClassification is mandatory; expensesClassification is
+  // forbidden"). category1_95 + "_" is the informational passthrough
+  // Wrapp accepts for income adjustments (same combo used by 8.6
+  // catering in the docs example).
   if (
     type === "income_settlement_accounting" ||
-    type === "income_settlement_tax" ||
+    type === "income_settlement_tax"
+  )
+    return { category: "category1_95", type: "_" };
+  // Expense settlement (17.5/17.6) → expense side. category2_12 =
+  // Λοιπές Εγγραφές Τακτοποίησης Εξόδων + E3_588 = Ασυνήθη έξοδα.
+  if (
     type === "expense_settlement_accounting" ||
     type === "expense_settlement_tax"
   )
