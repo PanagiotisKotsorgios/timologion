@@ -146,7 +146,11 @@ const DOC_TYPE_OPTIONS: { value: DraftInput["type"]; label: string }[] = [
   { value: "contract_income", label: "Συμβόλαιο — έσοδο (7.1)" },
   { value: "rental_income", label: "Ενοίκιο — έσοδο (8.1)" },
   { value: "stay_tax_receipt", label: "Τέλος ανθεκτικότητας κλιμ. κρίσης / πρώην φόρος διαμονής (8.2)" },
-  { value: "retail_refund_receipt", label: "Απόδειξη επιστροφής (8.4)" },
+  // `retail_refund_receipt` hidden — the AADE renumbering merged it
+  // into 11.4 (Πιστωτικό Στοιχείο Λιανικής), so `retail_credit_note`
+  // below covers the exact same case. Keeping the enum value in the
+  // DB for legacy drafts; only removed from the picker to eliminate
+  // the confusing duplicate "(8.4)" label.
   { value: "pos_income_receipt", label: "Απόδειξη Είσπραξης POS (8.4)" },
   { value: "pos_payment_receipt", label: "Απόδειξη Επιστροφής POS (8.5)" },
   { value: "delivery_note", label: "Δελτίο αποστολής (9.3)" },
