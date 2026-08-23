@@ -1858,7 +1858,7 @@ export async function attemptIssueForBusiness(
       //   6  = Άρθρο 24 (τρίτες χώρες — exports)
       //   14 = Άρθρο 33 (ενδοκοινοτικές παραδόσεις αγαθών)
       const vatExemptionCode: number | undefined =
-        Number(l.vatRate) === 0
+        Number(l.vatRate) === 0 || isSettlement
           ? doc.type === "eu_sale_invoice"
             ? 14
             : doc.type === "eu_service_invoice"
@@ -1866,9 +1866,16 @@ export async function attemptIssueForBusiness(
               : doc.type === "third_country_sale_invoice" ||
                   doc.type === "third_country_service_invoice"
                 ? 6
-                : ZERO_VAT_TYPES.has(doc.type)
-                  ? 1 // Άρθρο 2, 3 — fallback
-                  : undefined
+                : isSettlement
+                  ? 15 // Άρθρο 44 - Μικρές επιχειρήσεις. Wrapp
+                       // sometimes rejects vatCategory=7 as default
+                       // when 17.x lines have vat_rate=0 and no
+                       // exemption code — provide 15 explicitly so
+                       // the payload maps to vatCategory=8 as the
+                       // validator demands.
+                  : ZERO_VAT_TYPES.has(doc.type)
+                    ? 1 // Άρθρο 2, 3 — fallback
+                    : undefined
           : undefined;
       // Name sanitization: Wrapp validator rejects "<", ">", "/" and
       // similar shell/HTML metacharacters ("Το κείμενο περιέχει μη
@@ -1920,9 +1927,20 @@ export async function attemptIssueForBusiness(
         vat_exemption_code: vatExemptionCode,
         classification_category: classification.category,
         classification_type: classification.type,
-        // Flip to expensesClassifications for settlement types
-        // (17.1–17.6 and any explicit expense-side entry).
-        expense: isExpenseSide ? true : undefined,
+        // expense flag:
+        //   true  → Wrapp emits under expensesClassifications
+        //   false → Wrapp emits under incomeClassifications (needed
+        //           for 17.3/17.4 income settlement where Wrapp
+        //           otherwise defaults to expense side and rejects
+        //           with "incomeClassification is mandatory;
+        //           expensesClassification is forbidden")
+        //   undefined → Wrapp default (income for most types)
+        expense: isExpenseSide
+          ? true
+          : doc.type === "income_settlement_accounting" ||
+              doc.type === "income_settlement_tax"
+            ? false
+            : undefined,
       };
     }),
   };

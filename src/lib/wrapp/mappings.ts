@@ -197,16 +197,17 @@ export function classificationFor(type: DocumentType): {
     return { category: "category2_6", type: "E3_581_001" };
   if (type === "depreciation")
     return { category: "category2_8", type: "E3_587" };
-  // Income settlement (17.3/17.4) → INCOME side (Wrapp explicitly:
-  // "incomeClassification is mandatory; expensesClassification is
-  // forbidden"). category1_95 + "_" is the informational passthrough
-  // Wrapp accepts for income adjustments (same combo used by 8.6
-  // catering in the docs example).
+  // Income settlement (17.3/17.4) → INCOME side. Per AADE income
+  // classification table category1_10 = "Λοιπές Εγγραφές Τακτοποίησης
+  // Εσόδων" is the settlement-specific bucket. E3_570 = "Ασυνήθη
+  // έσοδα και κέρδη" is the safe generic type for adjustment entries
+  // and is one of the codes that pair with category1_10 in the
+  // AADE validator whitelist.
   if (
     type === "income_settlement_accounting" ||
     type === "income_settlement_tax"
   )
-    return { category: "category1_95", type: "_" };
+    return { category: "category1_10", type: "E3_570" };
   // Expense settlement (17.5/17.6) → expense side. category2_12 =
   // Λοιπές Εγγραφές Τακτοποίησης Εξόδων + E3_588 = Ασυνήθη έξοδα.
   if (
