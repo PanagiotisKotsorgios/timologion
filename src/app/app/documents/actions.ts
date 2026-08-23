@@ -1867,12 +1867,12 @@ export async function attemptIssueForBusiness(
                   doc.type === "third_country_service_invoice"
                 ? 6
                 : isSettlement
-                  ? 15 // Άρθρο 44 - Μικρές επιχειρήσεις. Wrapp
-                       // sometimes rejects vatCategory=7 as default
-                       // when 17.x lines have vat_rate=0 and no
-                       // exemption code — provide 15 explicitly so
-                       // the payload maps to vatCategory=8 as the
-                       // validator demands.
+                  ? 7 // Άρθρο 27 (Απαλλαγές στο εσωτερικό της χώρας)
+                      // — the internal-exemption code that maps to
+                      // myDATA vatCategory=8 (απαλλασσόμενα), which
+                      // is what the validator demands for 17.x. The
+                      // earlier attempt with code 15 (Άρθρο 44) still
+                      // mapped to vatCategory=7 and got rejected.
                   : ZERO_VAT_TYPES.has(doc.type)
                     ? 1 // Άρθρο 2, 3 — fallback
                     : undefined
