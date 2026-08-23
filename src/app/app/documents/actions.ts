@@ -1857,26 +1857,27 @@ export async function attemptIssueForBusiness(
       //   3  = Άρθρο 17 (τόπος παράδοσης αγαθών)
       //   6  = Άρθρο 24 (τρίτες χώρες — exports)
       //   14 = Άρθρο 33 (ενδοκοινοτικές παραδόσεις αγαθών)
+      // vat_exemption_code is only for FOREIGN transactions (Wrapp
+      // maps it to vatCategory=7 "χωρίς ΦΠΑ"). For 17.x settlement
+      // where the validator demands vatCategory=8 (απαλλασσόμενα),
+      // sending ANY exemption code seems to force category 7. Absence
+      // of the field appears to signal category 8 by default. Never
+      // send the code for isSettlement types.
       const vatExemptionCode: number | undefined =
-        Number(l.vatRate) === 0 || isSettlement
-          ? doc.type === "eu_sale_invoice"
-            ? 14
-            : doc.type === "eu_service_invoice"
-              ? 3
-              : doc.type === "third_country_sale_invoice" ||
-                  doc.type === "third_country_service_invoice"
-                ? 6
-                : isSettlement
-                  ? 7 // Άρθρο 27 (Απαλλαγές στο εσωτερικό της χώρας)
-                      // — the internal-exemption code that maps to
-                      // myDATA vatCategory=8 (απαλλασσόμενα), which
-                      // is what the validator demands for 17.x. The
-                      // earlier attempt with code 15 (Άρθρο 44) still
-                      // mapped to vatCategory=7 and got rejected.
+        isSettlement
+          ? undefined
+          : Number(l.vatRate) === 0
+            ? doc.type === "eu_sale_invoice"
+              ? 14
+              : doc.type === "eu_service_invoice"
+                ? 3
+                : doc.type === "third_country_sale_invoice" ||
+                    doc.type === "third_country_service_invoice"
+                  ? 6
                   : ZERO_VAT_TYPES.has(doc.type)
                     ? 1 // Άρθρο 2, 3 — fallback
                     : undefined
-          : undefined;
+            : undefined;
       // Name sanitization: Wrapp validator rejects "<", ">", "/" and
       // similar shell/HTML metacharacters ("Το κείμενο περιέχει μη
       // επιτρεπτούς χαρακτήρες"). Strip them from every line name
