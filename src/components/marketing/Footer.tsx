@@ -51,6 +51,8 @@ const COLUMNS = [
       { href: "/privacy", label: "Πολιτική απορρήτου" },
       { href: "/refunds", label: "Πολιτική επιστροφών" },
       { href: "/cookies", label: "Πολιτική Cookies" },
+      { href: "/legal-info", label: "Νομικές πληροφορίες" },
+      { href: "/accessibility", label: "Δήλωση προσβασιμότητας" },
     ],
   },
 ];

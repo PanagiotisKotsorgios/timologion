@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { User, Shield, Monitor, AlertTriangle, ShieldCheck, Clock } from "lucide-react";
+import { User, Shield, Monitor, AlertTriangle, ShieldCheck, Clock, Download } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth/session";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -142,6 +142,39 @@ export default async function AccountSettingsPage() {
                 label="Δημιουργήθηκε"
                 value={user.createdAt.toLocaleDateString("el-GR")}
               />
+            </CardBody>
+          </Card>
+
+          {/* GDPR Άρθρο 20 — δικαίωμα φορητότητας. Self-service
+              download of every field the app holds on this user, in a
+              machine-readable JSON bundle. Rendered as a plain link
+              (not a fetch button) so the browser handles the download
+              through the standard Save dialog — no UI freeze, no
+              disabled-during-download state. Intentionally understated
+              so the average user isn't distracted by legal jargon:
+              the section carries a short explainer, the CTA is a
+              single download button. */}
+          <Card>
+            <CardHeader
+              title="Τα δεδομένα μου"
+              subtitle="Λήψη των προσωπικών σου δεδομένων σε αρχείο JSON (GDPR άρθρο 20)."
+              action={<Download size={16} className="text-ink-500" />}
+            />
+            <CardBody>
+              <p className="text-sm text-ink-700">
+                Λαμβάνεις σε ένα αρχείο τα στοιχεία λογαριασμού, τις
+                συνδεδεμένες επιχειρήσεις, τις ενεργές συνεδρίες και το
+                ιστορικό ενεργειών σου. Παραστατικά και πελατολόγιο
+                εξάγονται σε Excel/PDF από τις αντίστοιχες σελίδες.
+              </p>
+              <a
+                href="/api/user/gdpr-export"
+                className="mt-4 inline-flex h-11 items-center gap-2 rounded-lg border-2 border-brand-800 bg-white px-4 text-sm font-bold text-brand-900 transition-colors hover:bg-brand-50"
+                download
+              >
+                <Download size={14} strokeWidth={2.5} aria-hidden />
+                Λήψη δεδομένων μου (JSON)
+              </a>
             </CardBody>
           </Card>
 
