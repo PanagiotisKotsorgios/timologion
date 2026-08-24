@@ -4,7 +4,10 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Cookie, X } from "lucide-react";
 
-const STORAGE_KEY = "etl_cookie_consent";
+// Cookie name kept in sync with the /cookies documentation table.
+// The Πολιτική Cookies page lists exactly this identifier, so a user
+// inspecting their browser can match the row to the actual cookie.
+const STORAGE_KEY = "cookieConsent";
 const CHOICE = { accepted: "accepted", declined: "declined" } as const;
 type Choice = (typeof CHOICE)[keyof typeof CHOICE];
 
@@ -21,9 +24,12 @@ function readChoice(): Choice | null {
 }
 
 function writeChoice(choice: Choice) {
-  // 6-month cookie, path=/, samesite lax so it survives internal navigations.
-  const oneYear = 60 * 60 * 24 * 180;
-  document.cookie = `${STORAGE_KEY}=${choice}; Max-Age=${oneYear}; Path=/; SameSite=Lax`;
+  // Cookie lifetime = 12 months, matching what the /cookies policy
+  // table documents. path=/ + SameSite=Lax so the choice survives
+  // internal navigations and reload, but doesn't leak to third-party
+  // contexts (per Article 5(3) ePrivacy / Ν. 3471/2006).
+  const twelveMonths = 60 * 60 * 24 * 365;
+  document.cookie = `${STORAGE_KEY}=${choice}; Max-Age=${twelveMonths}; Path=/; SameSite=Lax`;
 }
 
 export function CookieBanner() {
