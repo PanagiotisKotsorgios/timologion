@@ -293,7 +293,7 @@ export default function CookiesPage() {
               >
                 support@timologion.gr
               </a>
-              , +30 2631 028 971.
+              , +30 6986 788 178.
             </p>
           </Section>
         </Container>

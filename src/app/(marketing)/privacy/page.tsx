@@ -61,15 +61,28 @@ export default function PrivacyPage() {
           <Section title="1. Υπεύθυνος επεξεργασίας">
             <p>
               Υπεύθυνος επεξεργασίας για τα δεδομένα λογαριασμού και
-              χρήσης της πλατφόρμας timologion είναι το timologion.
-              Στοιχεία επικοινωνίας:
+              χρήσης της πλατφόρμας timologion είναι:
             </p>
             <ul className="mt-2 list-disc space-y-1 pl-5">
-              <li>Email: support@timologion.gr</li>
-              <li>Τηλέφωνο: +30 2631 028 971</li>
               <li>
-                Ταχυδρομική διεύθυνση: όπως δημοσιεύεται στη σελίδα
-                Επικοινωνίας
+                <strong>Κοτσόργιος Παναγιώτης</strong> — Ατομική
+                επιχείρηση
+              </li>
+              <li>ΑΦΜ: 176091030 · ΔΟΥ: Μεσολογγίου</li>
+              <li>
+                Έδρα: Εργατικές Κατοικίες Λιμάνι Μεσολογγίου 113,
+                Μεσολόγγι Τ.Κ. 30200
+              </li>
+              <li>Email: support@timologion.gr</li>
+              <li>Τηλέφωνο: +30 6986 788 178</li>
+              <li>
+                Πλήρη νομικά στοιχεία:{" "}
+                <a
+                  href="/legal-info"
+                  className="font-semibold text-brand-800 underline"
+                >
+                  /legal-info
+                </a>
               </li>
             </ul>
             <p className="mt-3">
@@ -468,7 +481,7 @@ export default function PrivacyPage() {
               >
                 support@timologion.gr
               </a>
-              , +30 2631 028 971.
+              , +30 6986 788 178.
             </p>
           </Section>
         </Container>

@@ -275,7 +275,7 @@ export function MarketingHeader() {
                   className="inline-flex items-center gap-1.5 hover:text-white"
                 >
                   <Phone size={12} aria-hidden />
-                  +30 2631 028971
+                  +30 6986 788 178
                 </a>
               </div>
             </div>

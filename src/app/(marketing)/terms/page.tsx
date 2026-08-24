@@ -51,13 +51,16 @@ export default function TermsPage() {
           <Section title="1. Πάροχος & ταυτοποίηση">
             <ul className="mt-2 list-disc space-y-2 pl-5">
               <li>
-                Την υπηρεσία «timologion» (εφεξής η «Υπηρεσία») παρέχει η
-                εταιρεία με στοιχεία που δημοσιεύονται στη σελίδα{" "}
+                Την υπηρεσία «timologion» (εφεξής η «Υπηρεσία») παρέχει
+                ο Κοτσόργιος Παναγιώτης (Ατομική επιχείρηση), με ΑΦΜ
+                176091030 και έδρα: Εργατικές Κατοικίες Λιμάνι
+                Μεσολογγίου 113, Μεσολόγγι Τ.Κ. 30200 — αναλυτικά
+                στοιχεία στη σελίδα{" "}
                 <a
-                  href="/contact"
+                  href="/legal-info"
                   className="font-semibold text-brand-800 underline"
                 >
-                  Επικοινωνία
+                  Νομικές πληροφορίες
                 </a>{" "}
                 (εφεξής ο «Πάροχος», «εμείς»).
               </li>
@@ -69,7 +72,7 @@ export default function TermsPage() {
                 >
                   support@timologion.gr
                 </a>
-                , τηλέφωνο +30 2631 028 971 (Δευτ–Παρ 09:00–18:00 EET).
+                , τηλέφωνο +30 6986 788 178 (Δευτ–Παρ 09:00–18:00 EET).
               </li>
             </ul>
           </Section>
@@ -483,7 +486,7 @@ export default function TermsPage() {
               >
                 support@timologion.gr
               </a>
-              , +30 2631 028 971.
+              , +30 6986 788 178.
             </p>
           </Section>
         </Container>

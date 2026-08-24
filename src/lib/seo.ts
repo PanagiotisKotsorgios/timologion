@@ -41,7 +41,7 @@ export const SITE = {
   defaultDescription:
     "Τιμολόγιον: ελληνικό online πρόγραμμα ηλεκτρονικής τιμολόγησης με άμεση σύνδεση στο myDATA της ΑΑΔΕ. Έκδοση παραστατικών, αναζήτηση ΑΦΜ, πελατολόγιο, POS, CRM. Ξεκίνα δωρεάν — χωρίς κάρτα.",
   contactEmail: "support@timologion.gr",
-  phone: "+30 2631 028971",
+  phone: "+30 6986 788 178",
   logoPath: "/logo.png",
   ogImagePath: "/logo.png",
 } as const;

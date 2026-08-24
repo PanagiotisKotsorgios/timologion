@@ -47,52 +47,33 @@ export default function LegalInfoPage() {
 
       <section className="bg-white">
         <Container size="reading" className="py-20 md:py-24 space-y-14 text-black">
-          {/* Placeholder banner — remove ONLY after replacing every
-              «— (συμπληρώνεται) —» placeholder below with real values. */}
-          <div className="rounded-2xl border-2 border-amber-300 bg-amber-50 p-5 text-sm text-amber-900">
-            <p className="font-bold">Σημείωση εγκατάστασης</p>
-            <p className="mt-1">
-              Τα πεδία που εμφανίζονται ως «— (συμπληρώνεται) —»
-              χρειάζονται τα πραγματικά στοιχεία της νομικής οντότητας
-              που εκμεταλλεύεται την υπηρεσία (νόμιμη επωνυμία, ΑΦΜ,
-              ΓΕΜΗ, νόμιμος εκπρόσωπος). Αντικατέστησέ τα πριν την
-              παραγωγική χρήση.
-            </p>
-          </div>
-
           <Section title="1. Στοιχεία παρόχου">
             <ul className="mt-2 list-disc space-y-2 pl-5">
               <li>
-                <strong>Νόμιμη επωνυμία</strong>: — (συμπληρώνεται) —
+                <strong>Ονοματεπώνυμο</strong>: Κοτσόργιος Παναγιώτης
               </li>
               <li>
                 <strong>Διακριτικός τίτλος</strong>: Τιμολόγιον / timologion
               </li>
               <li>
-                <strong>Νομική μορφή</strong>: — (συμπληρώνεται — π.χ.
-                Ι.Κ.Ε. / Ο.Ε. / Ε.Ε. / Ε.Π.Ε. / Α.Ε.) —
+                <strong>Νομική μορφή</strong>: Ατομική επιχείρηση
               </li>
               <li>
-                <strong>ΑΦΜ</strong>: — (συμπληρώνεται) —
+                <strong>ΑΦΜ</strong>: 176091030
               </li>
               <li>
-                <strong>ΔΟΥ</strong>: — (συμπληρώνεται) —
+                <strong>ΔΟΥ</strong>: Μεσολογγίου
               </li>
               <li>
-                <strong>ΓΕΜΗ</strong>: — (συμπληρώνεται) —
-              </li>
-              <li>
-                <strong>Επιμελητήριο</strong>: — (συμπληρώνεται — π.χ.
-                ΕΒΕΑ) —
-              </li>
-              <li>
-                <strong>Έδρα</strong>: — (συμπληρώνεται — οδός, πόλη,
-                ΤΚ) —
-              </li>
-              <li>
-                <strong>Νόμιμος εκπρόσωπος</strong>: — (συμπληρώνεται) —
+                <strong>Έδρα</strong>: Εργατικές Κατοικίες Λιμάνι
+                Μεσολογγίου 113, Μεσολόγγι Αιτωλοακαρνανίας, Τ.Κ.
+                30200, Ελλάδα
               </li>
             </ul>
+            <p className="mt-3 text-sm text-black/60">
+              Ως ατομική επιχείρηση, ο νόμιμος εκπρόσωπος ταυτίζεται
+              με το φυσικό πρόσωπο του παραπάνω ονοματεπωνύμου.
+            </p>
           </Section>
 
           <Section title="2. Επικοινωνία">
@@ -106,7 +87,16 @@ export default function LegalInfoPage() {
                   support@timologion.gr
                 </a>
               </li>
-              <li>Τηλέφωνο: +30 2631 028 971 (Δευτ–Παρ 09:00–18:00 EET)</li>
+              <li>
+                Τηλέφωνο επικοινωνίας:{" "}
+                <a
+                  className="font-semibold text-brand-800 underline"
+                  href="tel:+306986788178"
+                >
+                  +30 6986 788 178
+                </a>{" "}
+                (Δευτ–Παρ 09:00–18:00 EET)
+              </li>
               <li>
                 Ταχυδρομική διεύθυνση: όπως αναφέρεται στην ενότητα «Στοιχεία
                 παρόχου» παραπάνω.

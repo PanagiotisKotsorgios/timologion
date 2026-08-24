@@ -59,7 +59,7 @@ const COLUMNS = [
 
 const CONTACT = [
   { label: "Email", value: "support@timologion.gr" },
-  { label: "Τηλέφωνο", value: "+30 2631 028971" },
+  { label: "Τηλέφωνο", value: "+30 6986 788 178" },
   { label: "Ωράριο", value: "Δευτ – Παρ · 09:00–18:00 (EET)" },
 ];
 
