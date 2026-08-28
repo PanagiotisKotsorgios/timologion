@@ -72,7 +72,7 @@ export default function TermsPage() {
                 >
                   support@timologion.gr
                 </a>
-                , τηλέφωνο +30 6986 788 178 (Δευτ–Παρ 09:00–18:00 EET).
+                , τηλέφωνο +30 2631 028 971 (Δευτ–Παρ 09:00–18:00 EET).
               </li>
             </ul>
           </Section>
@@ -486,7 +486,7 @@ export default function TermsPage() {
               >
                 support@timologion.gr
               </a>
-              , +30 6986 788 178.
+              , +30 2631 028 971.
             </p>
           </Section>
         </Container>

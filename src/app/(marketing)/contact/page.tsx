@@ -48,7 +48,7 @@ export default function ContactPage() {
 
                 <div className="mt-10 space-y-8">
                   <Channel label="Email" value="support@timologion.gr" />
-                  <Channel label="Τηλέφωνο" value="+30 6986 788 178" />
+                  <Channel label="Τηλέφωνο" value="+30 2631 028 971" />
                 </div>
               </div>
             </div>

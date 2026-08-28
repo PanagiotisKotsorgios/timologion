@@ -74,7 +74,7 @@ export default function PrivacyPage() {
                 Μεσολόγγι Τ.Κ. 30200
               </li>
               <li>Email: support@timologion.gr</li>
-              <li>Τηλέφωνο: +30 6986 788 178</li>
+              <li>Τηλέφωνο: +30 2631 028 971</li>
               <li>
                 Πλήρη νομικά στοιχεία:{" "}
                 <a
@@ -481,7 +481,7 @@ export default function PrivacyPage() {
               >
                 support@timologion.gr
               </a>
-              , +30 6986 788 178.
+              , +30 2631 028 971.
             </p>
           </Section>
         </Container>

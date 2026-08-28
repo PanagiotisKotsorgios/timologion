@@ -91,9 +91,9 @@ export default function LegalInfoPage() {
                 Τηλέφωνο επικοινωνίας:{" "}
                 <a
                   className="font-semibold text-brand-800 underline"
-                  href="tel:+306986788178"
+                  href="tel:+302631028971"
                 >
-                  +30 6986 788 178
+                  +30 2631 028 971
                 </a>{" "}
                 (Δευτ–Παρ 09:00–18:00 EET)
               </li>

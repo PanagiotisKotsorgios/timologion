@@ -12,8 +12,8 @@ import { NewTicketForm } from "./NewTicketForm";
 // value here and every user surface picks it up immediately (no
 // search-and-replace across the app).
 const SUPPORT_EMAIL = "support@timologion.gr";
-const SUPPORT_PHONE_DISPLAY = "+30 6986 788 178";
-const SUPPORT_PHONE_TEL = "+306986788178";
+const SUPPORT_PHONE_DISPLAY = "+30 2631 028 971";
+const SUPPORT_PHONE_TEL = "+302631028971";
 const SUPPORT_HOURS = "Δευτ–Παρ 09:00–18:00";
 
 export const dynamic = "force-dynamic";

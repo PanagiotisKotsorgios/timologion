@@ -271,11 +271,11 @@ export function MarketingHeader() {
                   support@timologion.gr
                 </a>
                 <a
-                  href="tel:+306986788178"
+                  href="tel:+302631028971"
                   className="inline-flex items-center gap-1.5 hover:text-white"
                 >
                   <Phone size={12} aria-hidden />
-                  +30 6986 788 178
+                  +30 2631 028 971
                 </a>
               </div>
             </div>
