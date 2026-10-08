@@ -24,6 +24,9 @@ const envSchema = z.object({
   // Optional webhook secret to enforce beyond HMAC(api_key). Left empty and
   // the receiver falls back to the api_key HMAC scheme documented by Wrapp.
   WRAPP_WEBHOOK_SECRET: z.string().optional().default(""),
+  // Server-to-server integration used by Kalypsis. Production issuance is
+  // deliberately disabled unless an operator explicitly enables it.
+  KALYPSIS_ALLOW_PRODUCTION_ISSUE: z.string().optional().default("false"),
   APP_BASE_URL: z.string().url().default("http://localhost:3000"),
   GOOGLE_CLIENT_ID: z.string().optional().default(""),
   GOOGLE_CLIENT_SECRET: z.string().optional().default(""),
@@ -64,6 +67,7 @@ const parsed = envSchema.safeParse({
   WRAPP_STAGING_TENANT_API_KEY: process.env.WRAPP_STAGING_TENANT_API_KEY,
   WRAPP_STAGING_TENANT_EMAIL: process.env.WRAPP_STAGING_TENANT_EMAIL,
   WRAPP_WEBHOOK_SECRET: process.env.WRAPP_WEBHOOK_SECRET,
+  KALYPSIS_ALLOW_PRODUCTION_ISSUE: process.env.KALYPSIS_ALLOW_PRODUCTION_ISSUE,
   APP_BASE_URL: process.env.APP_BASE_URL,
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
@@ -104,6 +108,8 @@ export const env = parsed.success
       WRAPP_STAGING_TENANT_API_KEY: process.env.WRAPP_STAGING_TENANT_API_KEY ?? "",
       WRAPP_STAGING_TENANT_EMAIL: process.env.WRAPP_STAGING_TENANT_EMAIL ?? "",
       WRAPP_WEBHOOK_SECRET: process.env.WRAPP_WEBHOOK_SECRET ?? "",
+      KALYPSIS_ALLOW_PRODUCTION_ISSUE:
+        process.env.KALYPSIS_ALLOW_PRODUCTION_ISSUE ?? "false",
       APP_BASE_URL: process.env.APP_BASE_URL ?? "http://localhost:3000",
       GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID ?? "",
       GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET ?? "",

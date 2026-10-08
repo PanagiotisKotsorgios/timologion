@@ -6,6 +6,7 @@ import {
   Hash,
   Send,
   UserCog,
+  KeyRound,
   ArrowRight,
   type LucideIcon,
 } from "lucide-react";
@@ -70,9 +71,12 @@ const CARDS: SettingCard[] = [
     title: "Χρήστες & ρόλοι",
     description: "Πρόσθεσε συνεργάτες με τα δικαιώματα που τους αντιστοιχούν.",
   },
-  // API keys card hidden pre-production — the page is gated with a
-  // notFound() at src/app/app/settings/api-keys/page.tsx. Re-enable
-  // when the public API + docs + rate limits are ready to ship.
+  {
+    href: "/app/settings/api-keys",
+    icon: KeyRound,
+    title: "Κλειδιά API",
+    description: "Δημιούργησε και ανακάλεσε ασφαλή κλειδιά για το Kalypsis και άλλες διασυνδέσεις.",
+  },
 ];
 
 export const dynamic = "force-dynamic";
